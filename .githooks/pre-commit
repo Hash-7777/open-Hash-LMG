@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+#
+# Refuses a commit that would put a secret, a private note, a rendered film or
+# build output into this repository.
+#
+# A secret pushed to a repository is copied by everyone who clones it, and
+# history rewriting, the only real cleanup, breaks every clone. So the gate
+# has to be a check, not a good intention.
+#
+# Install (per clone; git does not carry hooks, on purpose, because a hook is
+# code that runs on checkout):
+#
+#   git config core.hooksPath .githooks
+#
+# Everything below judges only what is STAGED. An unstaged file in the working
+# tree is not going anywhere and is none of this hook's business.
+#
+# To get past it deliberately: `git commit --no-verify`. That decision belongs
+# to the repository owner, so it is left possible and left loud.
+#
+set -uo pipefail
+
+fail=0
+problem() {
+  if [ "$fail" -eq 0 ]; then
+    printf '\nThis commit was refused. What is wrong:\n\n' >&2
+  fi
+  fail=1
+  printf '  %s\n' "$1" >&2
+}
+
+staged="$(git diff --cached --name-only --diff-filter=ACM)"
+[ -z "$staged" ] && exit 0
+
+# 1. Files that must never be committed, judged by name so a file never seen
+#    before is still caught. .gitignore covers most of these, but `git add -f`
+#    overrides it.
+while IFS= read -r file; do
+  case "$file" in
+    *.local.md)
+      problem "$file is a local-only note. It must never be committed." ;;
+    .env|.env.*)
+      case "$file" in
+        .env.example) : ;;
+        *) problem "$file may hold real secrets. Commit .env.example instead." ;;
+      esac ;;
+    *.p12|*.mobileprovision|AuthKey_*.p8|*.pem|*.key)
+      problem "$file is signing or key material and must never be committed." ;;
+    *.DS_Store)
+      problem "$file is macOS junk, not a project file." ;;
+    src-tauri/target/*|src-tauri/gen/*|dist/*|node_modules/*)
+      problem "$file is build output or a dependency. The repository holds sources." ;;
+    *.dmg|*.app/*|*.AppImage|*.deb|*.msi|*.mp4|*.mov|*.webm)
+      problem "$file is a built product or a rendered film. Neither belongs in git." ;;
+    *\ 2.*)
+      problem "$file looks like an iCloud conflict copy." ;;
+  esac
+done <<< "$staged"
+
+# 2. Oversized files stay in the history forever.
+MAX_BYTES=$((2 * 1024 * 1024))
+while IFS= read -r file; do
+  [ -f "$file" ] || continue
+  bytes=$(wc -c <"$file" | tr -d ' ')
+  if [ "$bytes" -gt "$MAX_BYTES" ]; then
+    problem "$file is larger than 2 MB. Large binaries do not belong in git history."
+  fi
+done <<< "$staged"
+
+# 3. Secret-shaped strings in the added lines. Matched by pattern, never by a
+#    stored literal: writing a secret here to compare against would itself be
+#    the leak. A removed line that matches is a leak being cleaned up.
+added="$(git diff --cached --diff-filter=ACM -U0 | grep '^+' | grep -v '^+++' || true)"
+check_pattern() {
+  if printf '%s' "$added" | grep -qE "$1"; then
+    problem "$2"
+  fi
+}
+check_pattern '\bsk-ant-[A-Za-z0-9_-]{16,}'    "an Anthropic key"
+check_pattern '\bsk-[A-Za-z0-9_-]{20,}'        "an OpenAI-style key (OpenAI, OpenRouter, DeepSeek, Moonshot)"
+check_pattern '\bcsk-[A-Za-z0-9_-]{20,}'       "a Cerebras key"
+check_pattern '\bxai-[A-Za-z0-9_-]{20,}'       "an xAI key"
+check_pattern '\bnvapi-[A-Za-z0-9_-]{20,}'     "an NVIDIA key"
+check_pattern 'gsk_[A-Za-z0-9]{32,}'           "a Groq key"
+check_pattern 'hf_[A-Za-z0-9]{20,}'            "a Hugging Face token"
+check_pattern 'AIza[A-Za-z0-9_-]{30,}'         "a Google key"
+check_pattern 'gh[pousr]_[A-Za-z0-9]{30,}'     "a GitHub token"
+check_pattern 'AKIA[A-Z0-9]{16}'               "an AWS access key id"
+check_pattern 'xox[abprs]-[A-Za-z0-9-]{10,}'   "a Slack token"
+check_pattern 'BEGIN [A-Z ]*PRIVATE KEY'       "a private key block"
+check_pattern '(passphrase|PASSPHRASE)[[:space:]]*[=:][[:space:]]*[^[:space:]"'"'"'{$]' \
+  "a passphrase being assigned a literal value"
+
+# 4. Machine paths. Repository-relative paths are project content; a home
+#    folder is a detail of one computer.
+check_pattern '/Users/[A-Za-z]|/home/[a-z][a-z0-9_-]*/|C:\\\\Users\\\\' \
+  "a path from one machine's home folder"
+
+# 5. Private network addresses. Users are not on the developer's network.
+#    Loopback is fine: that is where a user's own local model server lives.
+LAN='\b(192\.168\.[0-9]{1,3}\.[0-9]{1,3}|10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3})\b'
+if printf '%s' "$added" | grep -vE '^\+\s*(//|#|\*)' | grep -qE "$LAN"; then
+  problem "a private network address. Make it a setting, not a default."
+fi
+
+if [ "$fail" -ne 0 ]; then
+  cat >&2 <<'EOF'
+
+Nothing has been committed. Unstage what should not be there:
+
+    git restore --staged <file>
+
+If this is a false alarm and you are sure, commit with --no-verify.
+EOF
+  exit 1
+fi
+
+exit 0

@@ -1,0 +1,7 @@
+# Text files keep LF line endings in every checkout, on every system. The
+# checks read the source as text and expect one kind of line ending.
+* text=auto eol=lf
+
+*.png binary
+*.icns binary
+*.ico binary

@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+*.local
+
+# Local-only notes, plans and handoffs. `*.local` above does NOT match a
+# `.local.md` suffix, so this pattern is separate and load-bearing: it is what
+# keeps working notes out of the repository.
+*.local.md
+
+# Tauri build output, regenerated on every build
+src-tauri/target/
+src-tauri/gen/
+src-tauri/WixTools/
+
+# Environment files may hold real keys
+.env
+.env.local
+.env.*.local
+
+# Rendered films and frames never belong in git
+*.mp4
+*.mov
+renders/
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+
+# OS
+.DS_Store
+._*
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
