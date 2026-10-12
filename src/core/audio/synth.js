@@ -1,0 +1,214 @@
+// Sound sources for the score, written as plain arithmetic on sample arrays so
+// a film's music is the same on every machine and needs no audio device.
+//
+// Built from sound design rather than melody (a low pad, a round kick, a sub
+// on the off-beat, soft ticks, a boom, a swell, a bell), which is what can be
+// made well in code. Every noise source is seeded.
+
+import { rand } from '../engine/math.js';
+
+export const SR = 48000;
+const TAU = Math.PI * 2;
+
+// A sine table is several times faster than Math.sin in the hot loops.
+const TABLE_BITS = 13, TABLE = new Float32Array((1 << TABLE_BITS) + 1);
+for (let i = 0; i <= 1 << TABLE_BITS; i++) TABLE[i] = Math.sin((i / (1 << TABLE_BITS)) * TAU);
+function sinp(phase) {
+  // phase in turns
+  const p = phase - Math.floor(phase);
+  const x = p * (1 << TABLE_BITS);
+  const i = x | 0, f = x - i;
+  return TABLE[i] + (TABLE[i + 1] - TABLE[i]) * f;
+}
+
+export class Bus {
+  constructor(seconds) {
+    this.n = Math.ceil(seconds * SR);
+    this.L = new Float32Array(this.n);
+    this.R = new Float32Array(this.n);
+  }
+  // Adds a mono or stereo buffer at time t with gain and pan (-1..1).
+  add(sig, t, gain = 1, pan = 0) {
+    const start = Math.round(t * SR);
+    const mono = !Array.isArray(sig);
+    const sl = mono ? sig : sig[0], sr = mono ? sig : sig[1];
+    const gl = gain * (pan > 0 ? 1 - pan : 1), gr = gain * (pan < 0 ? 1 + pan : 1);
+    const a = Math.max(0, -start), b = Math.min(sl.length, this.n - start);
+    for (let i = a; i < b; i++) { this.L[start + i] += sl[i] * gl; this.R[start + i] += sr[i] * gr; }
+  }
+}
+
+// A soft pad note: a few detuned harmonics with slow attack and release.
+export function pad(freq, dur, seed = 1, { harmonics = 5, tilt = 1.7, attack = 0.9, release = 1.2, detune = 0.0022 } = {}) {
+  const n = Math.ceil(dur * SR), out = new Float32Array(n);
+  const r = rand(seed);
+  for (let h = 1; h <= harmonics; h++) {
+    for (const d of [-detune, detune]) {
+      const inc = (freq * h * (1 + d)) / SR, amp = 1 / h ** tilt;
+      let ph = r();
+      for (let i = 0; i < n; i++) { out[i] += sinp(ph) * amp; ph += inc; }
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    out[i] *= Math.min(1, t / attack) * Math.max(0, Math.min(1, (dur - t) / release)) * 0.22;
+  }
+  return out;
+}
+
+// A round, short kick: a falling sine with a soft click, gently saturated.
+export function kick(seed = 3) {
+  const n = Math.ceil(0.42 * SR), out = new Float32Array(n);
+  const r = rand(seed);
+  let ph = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const f = 46 + 70 * Math.exp(-t * 38);
+    ph += f / SR;
+    out[i] = Math.tanh(1.6 * sinp(ph) * Math.exp(-t * 7.5)) + (r() * 2 - 1) * 0.22 * Math.exp(-t * 300);
+  }
+  return out;
+}
+
+// A sub-bass note, saturated so its harmonics carry on phone speakers.
+export function sub(freq, dur = 0.22) {
+  const n = Math.ceil(dur * SR), out = new Float32Array(n);
+  let ph = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    ph += freq / SR;
+    const env = Math.min(1, t / 0.006) * Math.exp(-t * 9);
+    out[i] = Math.tanh(2.4 * sinp(ph) * env) * 0.8;
+  }
+  return out;
+}
+
+// One-pole filtered noise: high-passed for ticks and hats, band-limited for snaps.
+function noise(n, seed, hp = 0.9, lp = 0) {
+  const r = rand(seed), out = new Float32Array(n);
+  let prev = 0, hpOut = 0, lpOut = 0;
+  for (let i = 0; i < n; i++) {
+    const x = r() * 2 - 1;
+    hpOut = hp * (hpOut + x - prev);
+    prev = x;
+    lpOut = lp ? lpOut + lp * (hpOut - lpOut) : hpOut;
+    out[i] = lpOut;
+  }
+  return out;
+}
+
+export function tick(seed = 5) {
+  const n = Math.ceil(0.03 * SR), out = noise(n, seed, 0.97);
+  for (let i = 0; i < n; i++) out[i] *= Math.exp((-i / SR) * 170);
+  return out;
+}
+
+export function hat(seed = 7) {
+  const n = Math.ceil(0.12 * SR), out = noise(n, seed, 0.95);
+  for (let i = 0; i < n; i++) out[i] *= Math.exp((-i / SR) * 32) * 0.8;
+  return out;
+}
+
+export function snap(seed = 9) {
+  const n = Math.ceil(0.25 * SR), out = noise(n, seed, 0.8, 0.35);
+  for (let i = 0; i < n; i++) out[i] *= Math.exp((-i / SR) * 26) * 1.4;
+  return out;
+}
+
+// A deep boom for reveals.
+export function boom(seed = 11) {
+  const n = Math.ceil(3.2 * SR), out = new Float32Array(n);
+  const nz = noise(n, seed, 0.6, 0.05);
+  let ph = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    ph += (30 + 34 * Math.exp(-t * 2.2)) / SR;
+    out[i] = Math.tanh(1.8 * sinp(ph) * Math.exp(-t * 1.3)) + nz[i] * Math.exp(-t * 6) * 0.9;
+  }
+  return out;
+}
+
+// A rising swell into a reveal: filtered noise and a gliding tone, cut sharp.
+export function swell(dur, seed = 13) {
+  const n = Math.ceil(dur * SR), out = new Float32Array(n);
+  const nz = noise(n, seed, 0.85, 0.3);
+  let ph = 0;
+  for (let i = 0; i < n; i++) {
+    const p = i / n, t = i / SR;
+    ph += (110 + 330 * p * p) / SR;
+    out[i] = (nz[i] * 0.7 * p ** 2.5 + sinp(ph) * p ** 3 * 0.25) * Math.min(1, (dur - t) / 0.02);
+  }
+  return out;
+}
+
+// A short air movement for a transition.
+export function whoosh(dur = 0.45, seed = 17) {
+  const n = Math.ceil(dur * SR), out = new Float32Array(n);
+  const nz = noise(n, seed, 0.9, 0.25);
+  for (let i = 0; i < n; i++) {
+    const p = i / n;
+    out[i] = nz[i] * Math.sin(Math.PI * p) ** 2 * 0.6;
+  }
+  return out;
+}
+
+// A glassy bell: a sine with inharmonic partials that die faster.
+export function bell(freq, dur = 2.4) {
+  const n = Math.ceil(dur * SR), out = new Float32Array(n);
+  let p1 = 0, p2 = 0, p3 = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    p1 += freq / SR; p2 += (freq * 2.76) / SR; p3 += (freq * 5.4) / SR;
+    out[i] = (sinp(p1) + 0.35 * sinp(p2) * Math.exp(-t * 4) + 0.2 * sinp(p3) * Math.exp(-t * 9)) * Math.exp(-t * 2.2) * Math.min(1, t / 0.003);
+  }
+  return out;
+}
+
+// A soft single hit for a cut: a short low thump with a little air.
+export function hit(seed = 19) {
+  const n = Math.ceil(0.6 * SR), out = new Float32Array(n);
+  const nz = noise(n, seed, 0.7, 0.2);
+  let ph = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    ph += (60 + 40 * Math.exp(-t * 20)) / SR;
+    out[i] = sinp(ph) * Math.exp(-t * 9) * 0.9 + nz[i] * Math.exp(-t * 30) * 0.4;
+  }
+  return out;
+}
+
+// A small stereo reverb, returned as its wet signal: eight combs and four all-passes per side, with the
+// right side's delays offset so the tail is wide. Cheap, smooth and seed-free.
+export function reverb(L, R, { size = 0.84, damp = 0.25, wet = 0.3 } = {}) {
+  const combs = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617].map((d) => Math.round(d * SR / 44100));
+  const alls = [556, 441, 341, 225].map((d) => Math.round(d * SR / 44100));
+  const run = (inp, spread) => {
+    const n = inp.length, out = new Float32Array(n);
+    for (const d0 of combs) {
+      const d = d0 + spread, buf = new Float32Array(d);
+      let idx = 0, store = 0;
+      for (let i = 0; i < n; i++) {
+        const y = buf[idx];
+        store = y * (1 - damp) + store * damp;
+        buf[idx] = inp[i] * 0.015 + store * size;
+        out[i] += y;
+        if (++idx >= d) idx = 0;
+      }
+    }
+    for (const d0 of alls) {
+      const d = d0 + spread, buf = new Float32Array(d);
+      let idx = 0;
+      for (let i = 0; i < n; i++) {
+        const b = buf[idx];
+        const y = -out[i] + b;
+        buf[idx] = out[i] + b * 0.5;
+        out[i] = y;
+        if (++idx >= d) idx = 0;
+      }
+    }
+    return out;
+  };
+  const wl = run(L, 0), wr = run(R, 23);
+  for (let i = 0; i < wl.length; i++) { wl[i] *= wet; wr[i] *= wet; }
+  return [wl, wr];
+}
