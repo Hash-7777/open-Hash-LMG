@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="236" viewBox="0 0 1280 236" role="img" aria-label="The six built-in styles: Studio, Paper, Mono, Vivid, Editorial and Tech">
+<rect width="1280" height="236" rx="16" fill="#0b0b0d"/><rect x="0.5" y="0.5" width="1279" height="235" rx="15.5" fill="none" stroke="#26262d"/>
+<rect x="32.0" y="32" width="189.3" height="132" rx="10" fill="#0b0b0d" stroke="#26262d"/>
+<text x="50.0" y="96" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="44" font-weight="700" letter-spacing="-1" fill="#f4f3ef">Aa</text>
+<rect x="50.0" y="112" width="44" height="4" rx="2" fill="#d9b46c"/>
+<rect x="191.3" y="140" width="12" height="12" rx="2.5" fill="#f4f3ef" stroke="#26262d" stroke-width="0.8"/>
+<rect x="173.3" y="140" width="12" height="12" rx="2.5" fill="#d9b46c" stroke="#26262d" stroke-width="0.8"/>
+<rect x="155.3" y="140" width="12" height="12" rx="2.5" fill="#8d8c88" stroke="#26262d" stroke-width="0.8"/>
+<text x="34.0" y="196" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#f4f3ef">Studio</text>
+<rect x="237.3" y="32" width="189.3" height="132" rx="10" fill="#f3f1ec" stroke="#26262d"/>
+<text x="255.3" y="96" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="44" font-weight="700" letter-spacing="-1" fill="#141414">Aa</text>
+<rect x="255.3" y="112" width="44" height="4" rx="2" fill="#b8381c"/>
+<rect x="396.7" y="140" width="12" height="12" rx="2.5" fill="#141414" stroke="#26262d" stroke-width="0.8"/>
+<rect x="378.7" y="140" width="12" height="12" rx="2.5" fill="#b8381c" stroke="#26262d" stroke-width="0.8"/>
+<rect x="360.7" y="140" width="12" height="12" rx="2.5" fill="#6f6c66" stroke="#26262d" stroke-width="0.8"/>
+<text x="239.3" y="196" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#f4f3ef">Paper</text>
+<rect x="442.7" y="32" width="189.3" height="132" rx="10" fill="#000000" stroke="#26262d"/>
+<text x="460.7" y="96" font-family="'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="44" font-weight="600" letter-spacing="-1" fill="#ffffff">Aa</text>
+<rect x="460.7" y="112" width="44" height="4" rx="2" fill="#ffffff"/>
+<rect x="602.0" y="140" width="12" height="12" rx="2.5" fill="#ffffff" stroke="#26262d" stroke-width="0.8"/>
+<rect x="584.0" y="140" width="12" height="12" rx="2.5" fill="#ffffff" stroke="#26262d" stroke-width="0.8"/>
+<rect x="566.0" y="140" width="12" height="12" rx="2.5" fill="#7a7a7a" stroke="#26262d" stroke-width="0.8"/>
+<text x="444.7" y="196" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#f4f3ef">Mono</text>
+<rect x="648.0" y="32" width="189.3" height="132" rx="10" fill="#1f3bff" stroke="#26262d"/>
+<text x="666.0" y="96" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="44" font-weight="800" letter-spacing="-1" fill="#ffffff">Aa</text>
+<rect x="666.0" y="112" width="44" height="4" rx="2" fill="#ffd23f"/>
+<rect x="807.3" y="140" width="12" height="12" rx="2.5" fill="#ffffff" stroke="#26262d" stroke-width="0.8"/>
+<rect x="789.3" y="140" width="12" height="12" rx="2.5" fill="#ffd23f" stroke="#26262d" stroke-width="0.8"/>
+<rect x="771.3" y="140" width="12" height="12" rx="2.5" fill="#c9d1ff" stroke="#26262d" stroke-width="0.8"/>
+<text x="650.0" y="196" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#f4f3ef">Vivid</text>
+<rect x="853.3" y="32" width="189.3" height="132" rx="10" fill="#15130f" stroke="#26262d"/>
+<text x="871.3" y="96" font-family="'New York', 'Iowan Old Style', Charter, Georgia, serif" font-size="44" font-weight="600" letter-spacing="-1" fill="#efe8da">Aa</text>
+<rect x="871.3" y="112" width="44" height="4" rx="2" fill="#c8a15a"/>
+<rect x="1012.7" y="140" width="12" height="12" rx="2.5" fill="#efe8da" stroke="#26262d" stroke-width="0.8"/>
+<rect x="994.7" y="140" width="12" height="12" rx="2.5" fill="#c8a15a" stroke="#26262d" stroke-width="0.8"/>
+<rect x="976.7" y="140" width="12" height="12" rx="2.5" fill="#9b927f" stroke="#26262d" stroke-width="0.8"/>
+<text x="855.3" y="196" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#f4f3ef">Editorial</text>
+<rect x="1058.7" y="32" width="189.3" height="132" rx="10" fill="#070b14" stroke="#26262d"/>
+<text x="1076.7" y="96" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="44" font-weight="700" letter-spacing="-1" fill="#e8eefc">Aa</text>
+<rect x="1076.7" y="112" width="44" height="4" rx="2" fill="#4fd1ff"/>
+<rect x="1218.0" y="140" width="12" height="12" rx="2.5" fill="#e8eefc" stroke="#26262d" stroke-width="0.8"/>
+<rect x="1200.0" y="140" width="12" height="12" rx="2.5" fill="#4fd1ff" stroke="#26262d" stroke-width="0.8"/>
+<rect x="1182.0" y="140" width="12" height="12" rx="2.5" fill="#7d8aa5" stroke="#26262d" stroke-width="0.8"/>
+<text x="1060.7" y="196" font-family="'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#f4f3ef">Tech</text>
+</svg>
