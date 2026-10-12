@@ -2,10 +2,12 @@
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/assets/hero-light.svg">
-  <img src="docs/assets/hero-dark.svg" width="100%" alt="Hash LMG: motion graphics from a sentence, made with local models or your own keys">
+  <img src="docs/assets/hero-dark.svg" width="100%" alt="Hash LMG, Hash Local Motion Graphics: motion graphics from a sentence, made with local models or your own keys">
 </picture>
 
 <br><br>
+
+### Hash Local Motion Graphics
 
 **Type what the film should say. Get a designed, timed, scored motion-graphics film back.**<br>
 Made by the model on your own computer, or by any cloud model on your own key.
@@ -16,7 +18,7 @@ Made by the model on your own computer, or by any cloud model on your own key.
 
 <br>
 
-> **LMG stands for Local Motion Graphics.** The best AI models already make motion graphics by working like a studio: they plan the story, write the animation, render frames, look at the stills and fix what is wrong. Hash LMG turns that way of working into an app, and does the hard parts itself, so even a small model on a laptop can make a film that looks designed.
+> **Hash LMG is Hash Local Motion Graphics.** The best AI models already make motion graphics by working like a studio: they plan the story, write the animation, render frames, look at the stills and fix what is wrong. Hash LMG turns that way of working into an app, and does the hard parts itself, so even a small model on a laptop can make a film that looks designed.
 
 <br>
 
