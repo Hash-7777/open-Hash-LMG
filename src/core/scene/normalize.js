@@ -376,6 +376,8 @@ function normScene(S, i, ctx) {
       duration: tdur,
       direction: oneOf(tr.direction ?? tr.dir, DIRECTIONS, 'left'),
       ease: easeName(tr.ease, 'inOutCubic'),
+      // Which layer of the scene before becomes which layer of this one.
+      carry: kind === 'carry' && isObj(tr.carry) && slug(tr.carry.from) && slug(tr.carry.to) ? { from: slug(tr.carry.from), to: slug(tr.carry.to) } : null,
     },
     background: S.background === undefined || S.background === null ? null : colour(S.background, null),
     camera: {
@@ -465,7 +467,7 @@ export function normalizeScene(input, opts = {}) {
   const used = new Set();
   const layerIds = new Set();
   scenes.forEach((S, i) => {
-    if (i === 0) { S.transition.kind = 'cut'; S.transition.duration = 0; }
+    if (i === 0) { S.transition.kind = 'cut'; S.transition.duration = 0; S.transition.carry = null; }
     S.start = +Math.max(0, t - S.transition.duration).toFixed(4);
     t = S.start + S.duration;
     let id = S.id, n = 2;

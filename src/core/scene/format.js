@@ -51,7 +51,9 @@ export const OUT_PRESETS = ['none', 'fade', 'rise', 'soft', 'fall', 'slide-left'
 // What a layer does while it holds. No pulsing: a beat-pulsing frame reads as cheap.
 export const HOLD_PRESETS = ['none', 'float', 'drift', 'underline', 'marker', 'shimmer'];
 
-export const TRANSITIONS = ['cut', 'fade', 'dip', 'push', 'slide', 'zoom', 'wipe'];
+// carry: one layer of the scene before becomes one layer of this scene,
+// moving and resizing into place while everything else fades.
+export const TRANSITIONS = ['cut', 'fade', 'dip', 'push', 'slide', 'zoom', 'wipe', 'carry'];
 export const DIRECTIONS = ['left', 'right', 'up', 'down'];
 export const BACKGROUNDS = ['solid', 'grain', 'grid', 'dots', 'vignette', 'field'];
 export const SCORES = ['pulse', 'soft', 'cinematic', 'none'];
@@ -87,7 +89,7 @@ export const PRESET_ALIASES = {
   'fall-down': 'fall', 'drop-out': 'fall', 'rise-out': 'rise',
   'mask-out': 'mask-down',
   crossfade: 'fade', dissolve: 'fade', 'cross-fade': 'fade', 'dip-to-black': 'dip', 'fade-through': 'dip',
-  'zoom-through': 'zoom', 'push-left': 'push', 'push-right': 'push', 'slide-over': 'slide', 'hard-cut': 'cut', none: 'none',
+  'zoom-through': 'zoom', 'shared-element': 'carry', morph: 'carry', 'match-cut': 'carry', 'magic-move': 'carry', handoff: 'carry', 'push-left': 'push', 'push-right': 'push', 'slide-over': 'slide', 'hard-cut': 'cut', none: 'none',
   pulse: 'none', shake: 'none', wiggle: 'none', bob: 'float', hover: 'float', highlight: 'marker', highlighter: 'marker', shine: 'shimmer', sweep: 'shimmer',
 };
 

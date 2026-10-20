@@ -30,7 +30,7 @@ function lineSize(words, big, vertical) {
 }
 
 // Transitions in which both scenes share the frame for a moment.
-const HANDOFF = new Set(['fade', 'zoom']);
+const HANDOFF = new Set(['fade', 'zoom', 'carry']);
 
 // How much each kind of beat is worth keeping when a storyboard runs long.
 // Ties go to the earlier beat: a later one of the same kind is dropped first.
@@ -269,6 +269,24 @@ export function compileStoryboard(input, opts = {}) {
       camera,
       layers,
     });
+  });
+
+  // The same words in two scenes in a row are one element carried across:
+  // the line moves and resizes into its new place instead of leaving and
+  // arriving again.
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  scenes.forEach((S, i) => {
+    if (i === 0 || S.transition.kind === 'cut') return;
+    const prev = scenes[i - 1];
+    for (const a of prev.layers) {
+      if (a.type !== 'text' || !norm(a.text)) continue;
+      const b = S.layers.find((L) => L.type === 'text' && norm(L.text) === norm(a.text));
+      if (!b) continue;
+      a.id = a.id || `carry-${i}-from`;
+      b.id = b.id || `carry-${i}-to`;
+      S.transition = { ...S.transition, kind: 'carry', duration: Math.max(S.transition.duration, Math.min(0.8, beat * 1.5)), carry: { from: a.id, to: b.id } };
+      break;
+    }
   });
 
   // A handoff, not a pile-up: after a fade or a zoom, where both scenes share

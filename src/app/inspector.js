@@ -127,11 +127,20 @@ export function createInspector({ store, onVersion }) {
         field('Background', colourInput(S.background, s.palette, (v) => inScene(S.id, (T) => { T.background = v; }), { allowNone: true }), 'None uses the film’s background.')),
       index > 0 ? section('Enters with',
         pair(
-          field('Transition', select(tr.kind, labelled(TRANSITIONS), (v) => inScene(S.id, (T) => { T.transition.kind = v; if (v !== 'cut' && !T.transition.duration) T.transition.duration = 0.5; }))),
+          field('Transition', select(tr.kind, labelled(TRANSITIONS), (v) => inScene(S.id, (T, doc) => {
+            T.transition.kind = v;
+            if (v !== 'cut' && !T.transition.duration) T.transition.duration = 0.5;
+            if (v === 'carry' && !T.transition.carry) {
+              const prev = doc.scenes[doc.scenes.indexOf(T) - 1];
+              const first = (list) => (list.find((L) => L.type === 'text') || list[0] || {}).id;
+              if (prev && first(prev.layers) && first(T.layers)) T.transition.carry = { from: first(prev.layers), to: first(T.layers) };
+            }
+          }))),
           field('Duration', numberInput(tr.duration, (v) => inScene(S.id, (T) => { T.transition.duration = v; }), { min: 0.05, max: 3, step: 0.05, unit: 's' }))),
         ['push', 'slide', 'wipe'].includes(tr.kind)
           ? field('Direction', segmented(tr.direction, labelled(DIRECTIONS), (v) => inScene(S.id, (T) => { T.transition.direction = v; })))
-          : null) : null,
+          : null,
+        tr.kind === 'carry' ? carryFields(S, s.scenes[index - 1]) : null) : null,
       section('Camera',
         pair(
           field('Zoom from', numberInput(S.camera.zoom[0], (v) => inScene(S.id, (T) => { T.camera.zoom[0] = v; }), { min: 0.25, max: 4, step: 1, scale: 100, unit: '%', digits: 0 })),
@@ -152,6 +161,21 @@ export function createInspector({ store, onVersion }) {
           textButton('Duplicate', () => duplicateScene(S.id)),
           textButton('Delete', () => deleteScene(S.id), 'danger'))),
     ];
+  }
+
+  // A carry names a layer of the scene before and the layer it becomes here;
+  // a missing half defaults to the first line of words in its scene.
+  function carryFields(S, prev) {
+    const name = (L) => (L.name || L.text || L.type).replace(/\n/g, ' ').slice(0, 40);
+    const firstText = (list) => (list.find((L) => L.type === 'text') || list[0] || {}).id || '';
+    const cur = S.transition.carry || {};
+    const setCarry = (part) => inScene(S.id, (T) => {
+      const c = T.transition.carry || {};
+      T.transition.carry = { from: c.from || firstText(prev.layers), to: c.to || firstText(T.layers), ...part };
+    });
+    return pair(
+      field('Carries', select(cur.from || '', [['', 'Choose'], ...prev.layers.map((L) => [L.id, name(L)])], (v) => setCarry({ from: v }))),
+      field('Into', select(cur.to || '', [['', 'Choose'], ...S.layers.map((L) => [L.id, name(L)])], (v) => setCarry({ to: v }))));
   }
 
   function addLayer(S, layer) {

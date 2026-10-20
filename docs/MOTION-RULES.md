@@ -50,6 +50,7 @@ rules when it lays a storyboard out, so a guided film starts out passing them.
 | Four or more things never arrive in the same instant. | `crowded-entrance`; fixed by a short stagger. | Signalling: one cue at a time (Mayer). | Strong |
 | Two or three kinds of transition, used consistently. | `transition-mix`; fixed by the style's own transitions; the compiler cycles only those. | Consistency reads as designed. | Lore |
 | A transition arrives in about half a second. | `slow-transition` above 1.2 s. | | Lore |
+| One element carries the story across a scene change: the same words in two scenes in a row move and resize into place instead of leaving and arriving again. | The `carry` transition (`src/core/engine/carry.js`); the compiler uses it wherever two scenes in a row show the same words. | Creator briefs for directed motion: one object keeps its identity across shots. | Lore |
 | A slow push on text scenes, so nothing is ever fully still. | The compiler's scene cameras. | Product launch films keep the camera drifting. | Lore |
 
 ## Time and sound

@@ -71,7 +71,7 @@ Each style is a complete design: palette, type, background, and the two or three
 | **Kinetic type** | Letters, words, typewriter, mask reveals and wipes, with accent words, underlines drawn on and highlighter sweeps |
 | **Motion** | Fourteen entrances, plus exits, holds and keyframes, eased the way motion designers ease: fast in, no bounce |
 | **Shapes and data** | Rings, lines, arrows and any SVG path drawn on stroke by stroke; counters that count up; bar and line charts that grow |
-| **Camera and cuts** | Slow pushes and pans per scene; push, slide, zoom-through, wipe, fade and dip transitions |
+| **Camera and cuts** | Slow pushes and pans per scene; push, slide, zoom-through, wipe, fade and dip transitions, and a carry that moves one element into the next scene while the rest crossfades |
 | **Formats** | 16:9, 9:16, 1:1 and 4:5, at 24 to 60 frames a second |
 | **Sound** | Three score flavours (deep pulse, soft, cinematic) built from the film's own scenes: a build into the reveal, a boom on the drop, a fade on the end card |
 | **Narration** | One line per scene, the music lowered under the voice, captions that light up word by word as they are said |

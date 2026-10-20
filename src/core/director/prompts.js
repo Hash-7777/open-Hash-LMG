@@ -110,7 +110,8 @@ export function planFormatReference() {
  "palette": {"bg","surface","ink","muted","accent","accent2"} as CSS colours (optional; the style has one),
  "scenes": [ {
    "id": string, "name": the beat kind, "duration": seconds,
-   "transition": {"kind": one of ${TRANSITIONS.join(', ')}, "duration": 0.3 to 0.6, "direction": left|right|up|down},
+   "transition": {"kind": one of ${TRANSITIONS.join(', ')}, "duration": 0.3 to 0.6, "direction": left|right|up|down,
+                  "carry": {"from": a layer id in the scene before, "to": a layer id in this scene} only with kind carry, which moves that one element into place while the rest crossfades},
    "camera": {"zoom": [from, to]} (a slow push such as [1, 1.04] keeps a scene alive),
    "background": optional colour or palette name,
    "layers": [ {

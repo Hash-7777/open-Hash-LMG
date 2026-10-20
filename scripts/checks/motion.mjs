@@ -12,6 +12,8 @@ import { normalizeScene } from '../../src/core/scene/normalize.js';
 import { fakeContext } from './lib/fake-canvas.mjs';
 import { createKit } from '../../src/core/engine/kit.js';
 import { renderPlan } from '../../src/core/engine/render-plan.js';
+import { compileStoryboard } from '../../src/core/scene/compile.js';
+import { lintScene, autofix } from '../../src/core/scene/lint.js';
 
 section('Easing curves');
 for (const name of EASE_NAMES) {
@@ -57,4 +59,44 @@ await claim('the left column comes to rest first', () => {
   assert.ok(mid.length > 6);
 });
 await claim('the checks still see the figure as a line of text', () => assert.ok(drawn(2.5).boxes.some((b) => b.kind === 'text' && b.text === '4,820+' && b.tag === 'figure')));
+
+section('One element carried into the next scene');
+const carryDoc = normalizeScene({ scenes: [
+  { duration: 3, layers: [{ id: 'name-a', type: 'text', text: 'Lumen Desk', x: 0.5, y: 0.6, size: 132 }] },
+  { duration: 3, transition: { kind: 'carry', duration: 0.8, carry: { from: 'name-a', to: 'name-b' } }, layers: [{ id: 'name-b', type: 'text', text: 'Lumen Desk', x: 0.5, y: 0.3, size: 90, in: { preset: 'letters', duration: 1 } }] },
+] }).scene;
+const frame = (doc, t) => {
+  const ctx = fakeContext(doc.width, doc.height);
+  const kit = createKit(ctx, { width: doc.width, height: doc.height, palette: doc.palette, assets: {} });
+  const boxes = [];
+  renderPlan(kit, doc, t, { collect: boxes });
+  return boxes.filter((b) => b.kind === 'text' && b.alpha > 0.05);
+};
+await claim('the carry survives normalising, twice', () => {
+  assert.deepEqual(carryDoc.scenes[1].transition.carry, { from: 'name-a', to: 'name-b' });
+  assert.equal(JSON.stringify(normalizeScene(carryDoc).scene), JSON.stringify(carryDoc));
+});
+await claim('half way, the line is drawn once, between its two places', () => {
+  const S = carryDoc.scenes[1];
+  const mid = frame(carryDoc, S.start + 0.4).filter((b) => /lumen desk/i.test(b.text));
+  assert.equal(mid.length, 1);
+  const cy = mid[0].y + mid[0].h / 2;
+  assert.ok(cy < 0.6 * carryDoc.height && cy > 0.3 * carryDoc.height, `centre ${cy}`);
+});
+await claim('once arrived it stays in place instead of making its entrance again', () => {
+  const S = carryDoc.scenes[1];
+  const after = frame(carryDoc, S.start + 0.85).filter((b) => b.tag === 'name-b');
+  assert.equal(after.length, 1); assert.ok(after[0].alpha > 0.95);
+});
+await claim('the compiler carries a name shown in two scenes in a row', () => {
+  const { scene } = compileStoryboard({ title: 'Lumen', beats: [{ kind: 'hook', text: 'Your desk is loud.' }, { kind: 'title', text: 'Lumen Desk', sub: 'The quiet lamp' }, { kind: 'end', text: 'Lumen Desk', sub: 'lumen.example' }] }, { style: 'studio', targetDuration: 15 });
+  const tr = scene.scenes[2].transition;
+  assert.equal(tr.kind, 'carry'); assert.ok(tr.carry && tr.carry.from && tr.carry.to);
+});
+await claim('a carry is never counted as a mixed-in transition nor replaced', () => {
+  const doc = normalizeScene({ scenes: ['fade', 'push', 'zoom', 'carry', 'wipe'].map((k, i) => ({ duration: 2, transition: { kind: k, carry: { from: `l${i - 1}`, to: `l${i}` } }, layers: [{ id: `l${i}`, type: 'text', text: 'Same words' }] })) }).scene;
+  const mix = lintScene(doc, {}).find((i) => i.code === 'transition-mix');
+  const fixed = mix ? autofix(doc, [mix]).scene : doc;
+  assert.equal(fixed.scenes[3].transition.kind, 'carry');
+});
 done();

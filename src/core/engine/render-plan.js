@@ -7,6 +7,7 @@
 // drawn after frame 899.
 
 import { drawOdometer } from './odometer.js';
+import { carryPair, drawCarrier, arrived } from './carry.js';
 import { resolveEase } from './ease.js';
 import { clamp, mix, noise } from './math.js';
 import { layerState } from './motion.js';
@@ -301,6 +302,14 @@ export function renderPlan(kit, doc, t, opts = {}) {
   // The last moment of the film holds its last frame instead of falling
   // past the end of the final scene.
   const alive = activeScenes(doc, Math.min(t, doc.duration - 1e-4));
+  // Layers carried across a scene change: each scene leaves its half out
+  // while the carrier is drawn, and the arriving layer stays put after.
+  const carriers = [];
+  const skip = new Set();
+  for (const A of alive) {
+    const pair = A.inKind === 'carry' ? carryPair(doc, A.index) : null;
+    if (pair && A.inP < 1) { carriers.push({ pair, p: A.inP }); skip.add(pair.from.id); skip.add(pair.to.id); }
+  }
   for (const A of alive) {
     const S = A.scene;
     ctx.save();
@@ -309,7 +318,7 @@ export function renderPlan(kit, doc, t, opts = {}) {
     if (A.inP < 1) {
       const p = A.inP, [ux, uy] = DIR[A.inDir] || DIR.left;
       switch (A.inKind) {
-        case 'fade': alpha *= p; break;
+        case 'fade': case 'carry': alpha *= p; break;
         case 'dip': alpha *= clamp(p * 2 - 1); break;
         case 'push': case 'slide': dx += -ux * (1 - p) * W; dy += -uy * (1 - p) * H; break;
         case 'zoom': alpha *= p; scale *= 0.86 + 0.14 * p; break;
@@ -322,6 +331,7 @@ export function renderPlan(kit, doc, t, opts = {}) {
       const p = A.outP, [ux, uy] = DIR[A.outDir] || DIR.left;
       switch (A.outKind) {
         case 'dip': alpha *= clamp(1 - p * 2); break;
+        case 'carry': alpha *= 1 - p; break;
         case 'push': dx += ux * p * W; dy += uy * p * H; break;
         case 'slide': scale *= 1 - 0.05 * p; shade = 0.45 * p; break;
         case 'zoom': alpha *= 1 - p; scale *= 1 + 0.22 * p; break;
@@ -351,7 +361,11 @@ export function renderPlan(kit, doc, t, opts = {}) {
     ctx.translate(W / 2, H / 2);
     ctx.scale(z, z);
     ctx.translate(-W / 2 - cx, -H / 2 - cy);
-    for (const L of [...S.layers].sort((a, b) => a.z - b.z)) drawLayer(kit, doc, L, A.local);
+    const arrivedId = S.transition.kind === 'carry' && carryPair(doc, A.index) ? S.transition.carry.to : null;
+    for (const L of [...S.layers].sort((a, b) => a.z - b.z)) {
+      if (skip.has(L.id)) continue;
+      drawLayer(kit, doc, L.id === arrivedId ? arrived(L) : L, A.local);
+    }
     ctx.restore();
 
     if (shade > 0) {
@@ -369,6 +383,8 @@ export function renderPlan(kit, doc, t, opts = {}) {
       ctx.restore();
     }
   }
+
+  for (const c of carriers) drawCarrier(kit, doc, c.pair, t, c.p, drawLayer);
 
   if (doc.voice && doc.voice.captions) drawCaptions(kit, doc, t);
   if (doc.background.kind === 'grain') kit.grain(t, 0.045);

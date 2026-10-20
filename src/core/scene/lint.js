@@ -93,7 +93,8 @@ export function lintScene(doc, opts = {}) {
   if (!doc.scenes.length) add('error', 'empty-film', 'The film has no scenes yet.');
 
   // Transition families: two or three read as designed, more read as a template sampler.
-  const kinds = new Set(doc.scenes.slice(1).map((S) => S.transition.kind).filter((k) => k !== 'cut'));
+  // A carry is a deliberate handoff of one element, not a fourth way to cut.
+  const kinds = new Set(doc.scenes.slice(1).map((S) => S.transition.kind).filter((k) => k !== 'cut' && k !== 'carry'));
   if (kinds.size > 3) add('warn', 'transition-mix', `The film uses ${kinds.size} kinds of transition. Two or three, used consistently, read as designed.`, {}, { kind: 'unify-transitions' });
 
   // The first frame should already be moving.
@@ -348,7 +349,7 @@ export function autofix(doc, issues) {
       applied.push(`Added a slow camera push to scene ${d.scenes.indexOf(S) + 1}.`);
     } else if (f.kind === 'unify-transitions') {
       const pack = STYLE_PACKS[d.style] || STYLE_PACKS.studio;
-      d.scenes.slice(1).forEach((S, i) => { if (S.transition.kind !== 'cut') S.transition.kind = pack.transitions[i % pack.transitions.length]; });
+      d.scenes.slice(1).forEach((S, i) => { if (S.transition.kind !== 'cut' && S.transition.kind !== 'carry') S.transition.kind = pack.transitions[i % pack.transitions.length]; });
       applied.push('Brought the transitions down to the style\'s own two or three.');
     }
   }
