@@ -67,6 +67,7 @@ svg { display: block; flex: none; }
   transition: transform 0.35s var(--ease), background-color 0.3s;
 }
 .header-progress.fail .hp-fill { background: var(--danger); }
+.header-status.has-details { cursor: help; text-decoration: underline dotted var(--faint); text-underline-offset: 3px; }
 .header-status {
   max-width: 34vw;
   overflow: hidden;
@@ -155,7 +156,6 @@ svg { display: block; flex: none; }
 }
 .dir-block { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .dir-block + .dir-block { border-top: 1px solid var(--line); }
-.dir-block.grow { flex: 1; min-height: 96px; gap: 8px; }
 
 .brief { min-height: 72px; resize: none; line-height: 1.45; }
 
@@ -179,28 +179,6 @@ svg { display: block; flex: none; }
 .model-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .model-where { color: var(--muted); font-size: var(--text-s); white-space: nowrap; }
 
-.dir-log-head {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.dir-log {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  overflow: auto;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.dir-note { color: var(--muted); font-size: var(--text-s); line-height: 1.4; list-style: none; }
-.dir-note.fail { color: var(--danger); }
-.dir-note.look { color: var(--ink-2); }
-.dir-note.quiet { color: var(--faint); }
 
 .dir-ask {
   display: flex;

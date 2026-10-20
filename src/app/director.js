@@ -1,6 +1,8 @@
-// The director panel: the brief, the few choices that shape the film, notes
-// on the film once it is made, and a box to ask for a change afterwards. Each
-// step of the making shows on the loading bar under the top bar.
+// The director panel: the brief, the few choices that shape the film, and a
+// box to ask for a change afterwards. Each step of the making shows on the
+// loading bar under the top bar, and what is worth knowing about the result
+// (what the checks fixed, what is left to look at, where the model ran) is
+// kept with the bar's last message, shown when the pointer rests on it.
 //
 // It runs src/core/director/pipeline.js with the real model and a render host
 // of its own, so checking stills never disturbs the preview. Stop aborts the
@@ -50,7 +52,6 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
   const modelLine = h('button', { class: 'model-line', type: 'button', title: 'Choose the model in Settings', onclick: () => openSettings('model') });
   const tierHelp = h('div', { class: 'field-hint' });
   const makeBtn = h('button', { class: 'primary-btn wide', type: 'button' });
-  const notesList = h('ul', { class: 'dir-log', 'aria-live': 'polite' });
   const askBox = h('textarea', { class: 'input textarea ask', rows: '2', maxlength: '1000', placeholder: 'Ask for a change', 'aria-label': 'Ask for a change' });
   const askBtn = iconButton(ICONS.send, 'Send the change', () => change(), 'send-btn');
   askBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); change(); } });
@@ -58,8 +59,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
   const el = h('aside', { class: 'director', 'aria-label': 'Director' },
     h('div', { class: 'panel-head' }, h('span', { class: 'panel-title', text: 'Director' })),
     h('div', { class: 'dir-body' },
-      h('div', { class: 'dir-block' }, brief, options, modelLine, tierHelp, makeBtn),
-      h('div', { class: 'dir-block grow' }, h('div', { class: 'dir-log-head', text: 'Notes' }), notesList)),
+      h('div', { class: 'dir-block' }, brief, options, modelLine, tierHelp, makeBtn)),
     h('div', { class: 'dir-ask' }, askBox, askBtn));
 
   let running = null; // AbortController while the model works
@@ -110,15 +110,10 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     brief.disabled = busy;
   }
 
-  // ---- notes and progress ------------------------------------------------------
-  function note(text, cls = '') {
-    notesList.append(h('li', { class: `dir-note ${cls}`.trim(), text }));
-    notesList.scrollTop = notesList.scrollHeight;
-  }
-  function resetNotes(first) {
-    clear(notesList);
-    if (first) note(first, 'quiet');
-  }
+  // ---- progress and what is worth knowing ---------------------------------------
+  let notes = [];
+  function note(text) { notes.push(text); progress.details(notes); }
+  function resetNotes() { notes = []; progress.details(notes); }
   // What the director says as it works: steps move the bar, notes land here.
   function onLog({ id, title, status, detail }) {
     if (status === 'run') progress.step(id, title);
@@ -161,7 +156,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     // graphics chip is free again.
     const done = async () => {
       host.dispose();
-      if (await session.release()) note('The model was unloaded to free the graphics chip.', 'quiet');
+      if (await session.release()) note('The model was unloaded to free the graphics chip.');
     };
     return { director, session, done };
   }
@@ -198,14 +193,14 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
       store.select(null);
       store.setTime(0);
       const left = out.issues.filter((i) => i.level !== 'info');
-      for (const i of left.slice(0, 6)) note(i.message, 'look');
+      for (const i of left.slice(0, 6)) note(i.message);
       const fit = await session.fitNote();
-      if (fit) note(fit, 'quiet');
-      progress.finish(left.length ? 'Made, with a few things to look at in Notes' : 'Made');
+      if (fit) note(fit);
+      progress.finish(left.length ? 'Made, with a few things to look at' : 'Made');
     } catch (err) {
       if (!err.stopped) toast(err.message || String(err), 'error');
       progress.finish(err.stopped ? 'Stopped' : 'Could not finish', false);
-      if (!err.stopped) note(err.message || String(err), 'fail');
+      if (!err.stopped) note(err.message || String(err));
     } finally {
       running = null;
       paintButtons();
@@ -222,7 +217,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     const s = settings.get();
     running = new AbortController();
     paintButtons();
-    resetNotes(`Change: ${text}`);
+    resetNotes();
     progress.start(PLANS.edit.map(([id, weight]) => ({ id, weight })), 'Starting the change');
     const { director, done } = makeDirector(running.signal);
     try {
@@ -233,7 +228,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     } catch (err) {
       if (!err.stopped) toast(err.message || String(err), 'error');
       progress.finish(err.stopped ? 'Stopped' : 'Nothing was changed', false);
-      if (!err.stopped) note(err.message || String(err), 'fail');
+      if (!err.stopped) note(err.message || String(err));
     } finally {
       running = null;
       paintButtons();
@@ -247,6 +242,5 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
 
   paintOptions();
   paintButtons();
-  resetNotes('Write a brief, choose a model, and make the film. Notes on the film appear here.');
   return { el, busy: () => Boolean(running) };
 }

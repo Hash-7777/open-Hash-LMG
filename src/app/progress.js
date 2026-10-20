@@ -33,6 +33,8 @@ export function createProgress() {
     // steps: [{ id, weight }]; weights need not add up to one.
     start(steps, text) {
       clearTimeout(hideTimer);
+      label.title = '';
+      label.classList.remove('has-details');
       const total = steps.reduce((n, s) => n + s.weight, 0) || 1;
       let at = 0;
       plan = steps.map((s) => { const p = { id: s.id, base: at / total, span: s.weight / total }; at += s.weight; return p; });
@@ -58,12 +60,19 @@ export function createProgress() {
       if (text) label.textContent = text;
     },
     say(text) { label.textContent = text; },
+    // What is worth knowing about the result, shown when the pointer rests on
+    // the last message.
+    details(list) {
+      label.title = list.join('\n');
+      label.classList.toggle('has-details', list.length > 0);
+    },
     finish(text, ok = true) {
       set(1);
       bar.classList.add(ok ? 'done' : 'fail');
       label.textContent = text;
       clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => { bar.hidden = true; label.hidden = true; }, ok ? 2600 : 7000);
+      // The message stays while it has something to say; the bar leaves.
+      hideTimer = setTimeout(() => { bar.hidden = true; if (!label.title) label.hidden = true; }, ok ? 2600 : 7000);
     },
   };
 }
