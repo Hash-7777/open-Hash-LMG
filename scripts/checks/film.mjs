@@ -13,6 +13,7 @@ import { EXAMPLES } from '../../src/core/scene/examples.js';
 import { STORYBOARD, measure } from './lib/fixtures.mjs';
 import { statUnits, normalizeStoryboard } from '../../src/core/scene/storyboard.js';
 import { autofix } from '../../src/core/scene/lint.js';
+import { resizeScene } from '../../src/core/scene/edit.js';
 
 section('Every beat kind, in every style and frame shape, compiles clean');
 for (const style of STYLE_NAMES) {
@@ -41,6 +42,17 @@ ok('the example that opens a new project does too', measure(normalizeScene(EXAMP
   const fixed = autofix(plain, [hit]).scene;
   ok('and repaired so frame one draws', measure(fixed, [0])[0].boxes.some((b) => b.tag));
   ok('and the repair holds through normalising', JSON.stringify(normalizeScene(fixed).scene) === JSON.stringify(fixed));
+}
+
+section('A scene that changes length keeps its layers whole');
+{
+  const S = { duration: 3, layers: [{ id: 'a', at: 0, until: 3, out: { preset: 'fade', at: 2.5 } }, { id: 'b', at: 0.5, until: 1.5 }, { id: 'g', at: 0, until: 3, layers: [{ id: 'c', at: 0, until: 3 }] }] };
+  resizeScene(S, 5);
+  ok('a layer that ran to the end still does, its exit moved with it', S.layers[0].until === 5 && S.layers[0].out.at === 4.5);
+  ok('a layer that ended earlier keeps its time', S.layers[1].until === 1.5);
+  ok('inside a group too', S.layers[2].layers[0].until === 5);
+  resizeScene(S, 1);
+  ok('shorter, nothing outlives its scene', S.layers.every((L) => L.until <= 1 && L.at < 1));
 }
 
 section('A storyboard longer than the length asked for');

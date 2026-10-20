@@ -16,6 +16,7 @@ import {
   TRANSITIONS, DIRECTIONS, BACKGROUNDS, SCORES, SHAPES, LIMITS, PALETTE_TOKENS,
 } from '../core/scene/format.js';
 import { toHex } from '../core/util/color.js';
+import { resizeScene } from '../core/scene/edit.js';
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ');
 const labelled = (list) => list.map((v) => [v, cap(v)]);
@@ -119,7 +120,7 @@ export function createInspector({ store }) {
     return [
       section('Scene',
         field('Name', textInput(S.name, (v) => inScene(S.id, (T) => { T.name = v; }), { placeholder: S.id, max: 60 })),
-        field('Length', numberInput(S.duration, (v) => inScene(S.id, (T) => { T.duration = v; }), { min: LIMITS.minSceneDuration, max: LIMITS.maxSceneDuration, step: 0.1, unit: 's' })),
+        field('Length', numberInput(S.duration, (v) => inScene(S.id, (T) => { resizeScene(T, v); }), { min: LIMITS.minSceneDuration, max: LIMITS.maxSceneDuration, step: 0.1, unit: 's' })),
         field('Background', colourInput(S.background, s.palette, (v) => inScene(S.id, (T) => { T.background = v; }), { allowNone: true }), 'None uses the film’s background.')),
       index > 0 ? section('Enters with',
         pair(

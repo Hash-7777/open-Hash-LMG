@@ -12,6 +12,7 @@ import { estimateSpeech, wordCount, LIMITS } from '../core/scene/format.js';
 import { entranceSpan } from '../core/engine/motion.js';
 import { scorePlan } from '../core/audio/score.js';
 import { soundtrackFor } from './soundtrack.js';
+import { resizeScene } from '../core/scene/edit.js';
 
 const LABEL_W = 148;
 const PAD_R = 80;
@@ -161,7 +162,7 @@ export function createTimeline({ store, player, prefs }) {
           onMove: (dx) => {
             const end = snapTime(start + d0 + dx / pps);
             const dur = Math.min(LIMITS.maxSceneDuration, Math.max(LIMITS.minSceneDuration, end - start));
-            store.edit((doc) => { const T = doc.scenes.find((x) => x.id === S.id); if (!T) return false; T.duration = +dur.toFixed(3); }, { live: true });
+            store.edit((doc) => { const T = doc.scenes.find((x) => x.id === S.id); if (!T) return false; resizeScene(T, +dur.toFixed(3)); }, { live: true });
           },
           onEnd: () => store.commit(),
         });
