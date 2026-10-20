@@ -57,6 +57,33 @@ await claim('an empty brief is refused before any model is asked', async () => {
   assert.equal(asked.length, 0);
 });
 
+section('Guided: several storyboards, the cleanest kept');
+const LONG = { title: 'Lumen', beats: Array.from({ length: 12 }, (_, i) => ({ kind: i === 0 ? 'hook' : i === 11 ? 'end' : 'statement', text: 'This line runs on with far too many words for anyone to read in time ' + i })) };
+const SHORT = { title: 'Lumen', beats: [{ kind: 'hook', text: 'Your desk is loud.' }, { kind: 'title', text: 'Lumen', sub: 'The quiet lamp' }, { kind: 'stat', value: 38, suffix: '%', sub: 'fewer interruptions' }, { kind: 'end', text: 'Lumen', sub: 'lumen.example' }] };
+await claim('of two storyboards, the one nearer the length with fewer problems is kept', async () => {
+  const { d, asked, log } = director({ storyboard: [LONG, SHORT] });
+  const out = await d.make({ ...opts, seconds: 15, tier: 'guided', drafts: 2 });
+  assert.deepEqual(asked, ['storyboard', 'storyboard']);
+  assert.equal(out.storyboard.beats.length, 4);
+  assert.ok(log.some((e) => e.status === 'note' && /kept the cleanest, storyboard 2/.test(e.detail)));
+});
+await claim('a draft that cannot be read is set aside, not fatal', async () => {
+  const { d, log } = director({ storyboard: ['nope', 'still nope', SHORT] });
+  const out = await d.make({ ...opts, seconds: 15, tier: 'guided', drafts: 2 });
+  assert.equal(out.storyboard.beats.length, 4);
+  assert.ok(log.some((e) => e.status === 'note' && /set aside/.test(e.detail)));
+});
+await claim('stopping while drafting stops at once', async () => {
+  const d = createDirector({ ask: async () => { throw Object.assign(new Error('Stopped.'), { stopped: true }); }, measure: async () => [], trial: async () => ({ ok: true }), sheet: async () => null });
+  await assert.rejects(d.make({ ...opts, tier: 'guided', drafts: 3 }), (e) => e.stopped === true);
+});
+await claim('only the guided way writes several', async () => {
+  const draft = compileStoryboard(STORYBOARD, { style: 'studio', targetDuration: 30 }).scene;
+  const { d, asked } = director({ storyboard: [STORYBOARD, STORYBOARD], plan: sceneForModel(draft) });
+  await d.make({ ...opts, tier: 'plan', drafts: 2, rounds: 0 });
+  assert.equal(asked.filter((p) => p === 'storyboard').length, 1);
+});
+
 section('Plan: the model redesigns the rule-made draft');
 await claim('a redesign is used, normalised', async () => {
   const draft = compileStoryboard(STORYBOARD, { style: 'studio', targetDuration: 30 }).scene;

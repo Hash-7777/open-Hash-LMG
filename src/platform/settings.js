@@ -66,6 +66,9 @@ export function normalizeSettings(input) {
       // A model that can see pictures reviews a contact sheet of stills; it can
       // be turned off to save time and tokens.
       review: model.review === undefined ? true : Boolean(model.review),
+      // Guided films: how many storyboards the model writes for the app to
+      // choose the cleanest from.
+      drafts: int(model.drafts, 2, 1, 3),
     },
     local: {
       ports,

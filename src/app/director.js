@@ -130,7 +130,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     let first = true;
     const prep = async ({ scene, code }) => { await host.setScene(scene); await host.setCode(code || null); };
     const director = createDirector({
-      ask: async ({ system, messages, json, schema, purpose }) => {
+      ask: async ({ system, messages, json, schema, purpose, part, temperature }) => {
         // The first question to a model on this computer waits while it loads.
         progress.say(first && session.local ? 'Loading the model' : 'Waiting for the model');
         first = false;
@@ -138,11 +138,12 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
         const extra = await session.options(purpose, { system, messages });
         const text = await ask({
           provider: m.provider, model: m.model, key: settings.key(m.provider), base: settings.base(m.provider),
-          device: s.local.device, system, messages, json, schema, ...extra,
+          device: s.local.device, system, messages, json, schema, ...extra, ...(temperature !== undefined ? { temperature } : {}),
         }, {
           fetch: (u, i) => fetch(u, i), signal,
           onThinking: () => progress.say('The model is thinking'),
-          onText: (_, all) => progress.within(all.length / typical, `The model is writing the ${purpose || 'answer'}`),
+          onText: (_, all) => progress.within(part ? (part.index + Math.min(1, all.length / typical)) / part.of : all.length / typical,
+            part ? `The model is writing storyboard ${part.index + 1} of ${part.of}` : `The model is writing the ${purpose || 'answer'}`),
           onStats: (st) => session.onStats(st),
         });
         return text;
@@ -187,7 +188,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
       const vision = typeof caps.vision === 'boolean' && session.local ? caps.vision : Boolean(p?.vision);
       const out = await director.make({
         brief: text, tier: way, style: s.film.style, aspect: s.film.aspect, seconds: s.film.seconds, fps: s.film.fps,
-        narration: s.film.narration, vision: vision && s.model.review,
+        narration: s.film.narration, vision: vision && s.model.review, drafts: s.model.drafts,
       });
       store.patch({ brief: text, storyboard: out.storyboard, scene: out.scene, code: out.code, tier: out.tier, edited: false });
       store.select(null);

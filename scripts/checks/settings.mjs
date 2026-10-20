@@ -14,6 +14,11 @@ await claim('the defaults are sane', () => {
   assert.deepEqual(d.local.ports, { ollama: 11434, lmstudio: 1234, llamacpp: 8080 });
   assert.equal(d.film.style, 'studio');
 });
+await claim('guided films choose from two storyboards unless told otherwise, never more than three', () => {
+  assert.equal(normalizeSettings({}).model.drafts, 2);
+  assert.equal(normalizeSettings({ model: { drafts: 9 } }).model.drafts, 2);
+  assert.equal(normalizeSettings({ model: { drafts: 3 } }).model.drafts, 3);
+});
 await claim('normalising twice changes nothing', () => { const d = normalizeSettings({ film: { style: 'paper' } }); assert.deepEqual(normalizeSettings(d), d); });
 await claim('unknown or out-of-range values come back valid', () => {
   const s = normalizeSettings({ model: { provider: 'nope', tier: 'x' }, film: { fps: 61, style: 'zzz', seconds: 2 }, local: { ports: { ollama: '99999' }, device: 'gpu' }, voice: { speed: 9 }, extra: 1 });

@@ -12,7 +12,8 @@
 // itself. Everything outside is passed in, so the checks run it end to end
 // with a scripted model and the stand-in canvas.
 //
-//   deps.ask({ system, messages, json, schema, purpose })  -> the model's text
+//   deps.ask({ system, messages, json, schema, purpose, part, temperature }) -> the model's text
+//                                                           part: { index, of } when one of several drafts
 //   deps.measure({ scene, code }, times)                    -> [{ t, boxes }]
 //   deps.trial({ scene, code })                             -> { ok, error }
 //   deps.sheet({ scene, code }, times)                      -> image data URL or null
@@ -58,6 +59,15 @@ function restore(next, prev) {
   return doc;
 }
 
+// How far a laid-out storyboard is from good: its problems by weight, and how
+// far it runs from the length asked for. Lower is better.
+export function draftScore(scene, issues, seconds) {
+  const weight = { error: 10, warn: 3, info: 1 };
+  let s = issues.reduce((n, i) => n + (weight[i.level] || 0), 0);
+  if (seconds) s += (Math.abs(scene.duration - seconds) / seconds) * 10;
+  return s;
+}
+
 export function createDirector(deps) {
   const log = deps.log || (() => {});
   const step = async (id, title, fn) => {
@@ -73,23 +83,47 @@ export function createDirector(deps) {
   };
   const note = (id, detail) => log({ id, status: 'note', detail });
 
-  async function askJson(system, content, { schema = null, purpose, images = null }) {
-    const text = await deps.ask({ system, messages: [{ role: 'user', content, ...(images ? { images } : {}) }], json: true, schema, purpose });
+  async function askJson(system, content, { schema = null, purpose, images = null, part = null, temperature }) {
+    const text = await deps.ask({ system, messages: [{ role: 'user', content, ...(images ? { images } : {}) }], json: true, schema, purpose, part, temperature });
     return extractJson(text).value;
   }
 
-  async function writeStoryboard(brief, opts) {
+  async function writeStoryboard(brief, opts, part = null, temperature) {
     const system = storyboardPrompt({ seconds: opts.seconds, narration: opts.narration });
-    let raw = await askJson(system, `Brief:\n${brief}`, { schema: STORYBOARD_SCHEMA, purpose: 'storyboard' });
+    let raw = await askJson(system, `Brief:\n${brief}`, { schema: STORYBOARD_SCHEMA, purpose: 'storyboard', part, temperature });
     let { storyboard, notes } = normalizeStoryboard(raw || {});
     if (!storyboard.beats.length) {
       note('story', 'The first answer had no usable beats; asking again.');
-      raw = await askJson(system, `Brief:\n${brief}\n\nYour last answer could not be read as a storyboard. Reply with JSON only, exactly like {"title": "...", "beats": [{"kind": "hook", "text": "..."}]}.`, { schema: STORYBOARD_SCHEMA, purpose: 'storyboard' });
+      raw = await askJson(system, `Brief:\n${brief}\n\nYour last answer could not be read as a storyboard. Reply with JSON only, exactly like {"title": "...", "beats": [{"kind": "hook", "text": "..."}]}.`, { schema: STORYBOARD_SCHEMA, purpose: 'storyboard', part, temperature });
       ({ storyboard, notes } = normalizeStoryboard(raw || {}));
     }
     if (!storyboard.beats.length) throw new Error('The model did not write a storyboard the app could read. A different model, or a shorter brief, usually helps.');
     for (const n of notes) note('story', n);
     return storyboard;
+  }
+
+  // A small model writes better by choosing than by trying once: several
+  // storyboards at rising temperatures, each laid out and measured, and the
+  // one with the fewest problems nearest the length asked for is kept.
+  const DRAFT_HEAT = [0.4, 0.75, 0.95];
+  async function bestStoryboard(brief, opts, drafts) {
+    if (drafts <= 1) return writeStoryboard(brief, opts);
+    let best = null;
+    for (let i = 0; i < drafts; i++) {
+      let sb;
+      try {
+        sb = await writeStoryboard(brief, opts, { index: i, of: drafts }, DRAFT_HEAT[i % DRAFT_HEAT.length]);
+      } catch (err) {
+        if (err?.stopped || (i === drafts - 1 && !best)) throw err;
+        note('story', `Storyboard ${i + 1} could not be read and was set aside.`);
+        continue;
+      }
+      const { scene } = compile(sb, opts);
+      const score = draftScore(scene, lintScene(scene, { ...(await measured(scene)), targetDuration: opts.seconds }), opts.seconds);
+      if (!best || score < best.score) best = { sb, score, i };
+    }
+    note('story', `Wrote ${drafts} storyboards and kept the cleanest, storyboard ${best.i + 1}.`);
+    return best.sb;
   }
 
   function compile(storyboard, opts) {
@@ -175,14 +209,15 @@ export function createDirector(deps) {
     return notes;
   }
 
-  // opts: { brief, tier, style, aspect, seconds, fps, narration, voice, vision, rounds, assets, palette, score }
+  // opts: { brief, tier, style, aspect, seconds, fps, narration, voice, vision, rounds, assets, palette, score, drafts }
   async function make(opts) {
     const brief = String(opts.brief || '').trim();
     if (!brief) throw new Error('Describe the film first.');
     const tier = opts.tier || 'guided';
     const rounds = opts.rounds ?? (tier === 'guided' ? 0 : 2);
 
-    const storyboard = await step('story', 'Writing the storyboard', () => writeStoryboard(brief, opts));
+    const drafts = tier === 'guided' ? Math.max(1, Math.min(3, opts.drafts || 1)) : 1;
+    const storyboard = await step('story', drafts > 1 ? 'Writing storyboards' : 'Writing the storyboard', () => bestStoryboard(brief, opts, drafts));
     let { scene, notes: laid } = await step('layout', 'Laying it out and timing it to the music', async () => compile(storyboard, opts));
     for (const n of laid || []) note('layout', n);
     let code = null;
