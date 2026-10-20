@@ -163,11 +163,3 @@ export function openExternal(url) {
   if (isApp) invoke('plugin:opener|open_url', { url: u.href }).catch(() => {});
   else window.open(u.href, '_blank', 'noopener');
 }
-
-// Narration through the person's own Chatterbox or Kokoro install. Returns WAV
-// bytes. Only the desktop app can run a program on the computer.
-export async function speakLocal({ engine, text, voice, speed, device, python, folder }) {
-  if (!isApp) throw new Error('Voices on this computer need the desktop app. Choose a speech server or a cloud voice here.');
-  const out = await invoke('voice_speak', { request: { engine, text, voice, speed, device, python, folder } });
-  return new Uint8Array(out);
-}

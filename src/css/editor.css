@@ -34,10 +34,7 @@ svg { display: block; flex: none; }
   padding: 0 10px 0 14px;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
-  -webkit-app-region: drag;
 }
-.topbar > * { -webkit-app-region: no-drag; }
-.topbar .spacer { -webkit-app-region: drag; }
 .in-app .topbar { padding-left: 84px; }
 
 .brand-name {

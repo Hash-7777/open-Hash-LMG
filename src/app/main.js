@@ -104,11 +104,12 @@ async function boot() {
     } catch (err) { toast(err.message || String(err), 'error'); }
   };
 
-  const topbar = h('header', { class: 'topbar' },
-    h('div', { class: 'brand' }, h('span', { class: 'brand-name', text: 'Hash LMG' })),
+  // The bar drags the window in the desktop app, wherever it has no control.
+  const topbar = h('header', { class: 'topbar', 'data-tauri-drag-region': true },
+    h('div', { class: 'brand', 'data-tauri-drag-region': true }, h('span', { class: 'brand-name', text: 'Hash LMG', 'data-tauri-drag-region': true })),
     iconButton(ICONS.open, 'Films', () => openProjectsDialog({ currentId: store.get().project.id, onOpen: openFilm, onNew: startFresh })),
     titleInput,
-    h('span', { class: 'spacer' }),
+    h('span', { class: 'spacer', 'data-tauri-drag-region': true }),
     undoBtn, redoBtn,
     h('span', { class: 'divider' }),
     iconButton(ICONS.settings, 'Settings', openSettings),

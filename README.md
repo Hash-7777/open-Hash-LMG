@@ -92,16 +92,17 @@ Hash LMG is being built in the open. This is exactly what exists today:
 
 | Works today | Written, not yet run | Next |
 |---|---|---|
-| Scene format and its repair | Requests to every model service | The desktop app itself (Tauri) |
-| The engine: type, shapes, charts, transitions | Motion blur, and MOV export | Voices through Chatterbox and Kokoro |
-| Film checks and automatic fixes | Sound through the system's own encoder | The automated check suite |
-| The storyboard compiler, in all six styles | Narration mix, word timing and captions | First release for macOS and Windows |
-| The director, with a scripted model | Processor or graphics-chip choice for Ollama | |
-| Score and mastering | | |
+| Scene format and its repair | Requests to every model service | Voices through Chatterbox and Kokoro |
+| The engine: type, shapes, charts, transitions | Motion blur, and MOV export | The automated check suite |
+| Film checks and automatic fixes | Films and exports kept by the desktop app | First release for macOS and Windows |
+| The storyboard compiler, in all six styles | Sound through the system's own encoder | |
+| The director, with a scripted model | Narration mix, word timing and captions | |
+| Score and mastering | Processor or graphics-chip choice for Ollama | |
 | The editor: preview, timeline, inspector, director, settings | | |
 | Rendering in a background worker, and MP4 export | | |
+| The macOS app: it builds and opens the editor | | |
 
-"Works today" means exercised in Node with a stand-in canvas and a scripted model, or, for the editor and MP4 export, in headless Chrome with a scripted model. Nothing has been run as an app yet, and nothing has been released.
+"Works today" means exercised in Node with a stand-in canvas and a scripted model, or, for the editor and MP4 export, in headless Chrome with a scripted model. The macOS app has been built and opened; nothing in it has been run end to end yet, and nothing has been released.
 
 <br>
 
@@ -132,6 +133,7 @@ src/
   render/          the locked-down render worker, its host, video export
   platform/        the desktop app or a browser: projects, files, settings and keys
   app/             the editor window: its state, panels and dialogs
+src-tauri/         the desktop side: films, exports, sound, the window's walls
 ```
 
 <br>

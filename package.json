@@ -4,5 +4,11 @@
   "version": "0.1.0",
   "description": "Hash LMG: local motion graphics, made with local and cloud models",
   "license": "GPL-3.0-or-later",
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.1"
+  }
 }

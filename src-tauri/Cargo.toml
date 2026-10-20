@@ -1,0 +1,30 @@
+[package]
+name = "hash-lmg"
+version = "0.1.0"
+description = "Hash LMG: local motion graphics, made with local and cloud models"
+authors = ["Hash LMG"]
+license = "GPL-3.0-or-later"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "hash_lmg_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# The window, the web view and the bridge between the page and these commands.
+tauri = { version = "2", features = [] }
+# Web links open in the system browser, never in the app's window.
+tauri-plugin-opener = "2"
+# The system's own save dialog, which is the only way an export picks a place.
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
