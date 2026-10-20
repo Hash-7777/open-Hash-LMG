@@ -1,5 +1,6 @@
-// The director panel: the brief, the few choices that shape the film, the
-// model's progress step by step, and a box to ask for a change afterwards.
+// The director panel: the brief, the few choices that shape the film, notes
+// on the film once it is made, and a box to ask for a change afterwards. Each
+// step of the making shows on the loading bar under the top bar.
 //
 // It runs src/core/director/pipeline.js with the real model and a render host
 // of its own, so checking stills never disturbs the preview. Stop aborts the
@@ -18,6 +19,18 @@ import { select, toggle, ASPECT_SHORT } from './fields.js';
 import { createModelSession } from './model-session.js';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120];
+
+// The share of the bar each step takes, by way of working: the model writing
+// is most of the wait.
+const PLANS = {
+  guided: [['story', 6], ['layout', 1], ['check', 3]],
+  plan: [['story', 3], ['layout', 1], ['design', 5], ['check', 2], ['revise', 2], ['review', 1]],
+  code: [['story', 3], ['layout', 1], ['design', 6], ['check', 1], ['revise', 2], ['review', 1]],
+  edit: [['edit', 7], ['check', 3]],
+};
+// About how long a typical answer of each kind is, in characters, so the bar
+// can fill while the model writes.
+const TYPICAL = { storyboard: 1400, plan: 9000, revise: 9000, edit: 5000, code: 7000, 'revise code': 7000, review: 500, 'apply review': 8000 };
 const TIER_SHORT = { guided: 'Guided', plan: 'Plan', code: 'Code' };
 const TIER_HELP = {
   guided: 'The model writes the story; the app designs, times and scores it.',
@@ -25,7 +38,7 @@ const TIER_HELP = {
   code: 'The model writes its own animation code, run with no network or storage.',
 };
 
-export function createDirectorPanel({ store, settings, openSettings }) {
+export function createDirectorPanel({ store, settings, openSettings, progress }) {
   const brief = h('textarea', { class: 'input textarea brief', rows: '3', maxlength: '4000', placeholder: 'Describe the film: what it is for, who will watch it, and what it must say.', 'aria-label': 'Brief' });
   brief.value = store.get().project.brief;
   const keepBrief = () => { if (brief.value !== store.get().project.brief) store.patch({ brief: brief.value }, { record: false }); };
@@ -37,8 +50,7 @@ export function createDirectorPanel({ store, settings, openSettings }) {
   const modelLine = h('button', { class: 'model-line', type: 'button', title: 'Choose the model in Settings', onclick: () => openSettings('model') });
   const tierHelp = h('div', { class: 'field-hint' });
   const makeBtn = h('button', { class: 'primary-btn wide', type: 'button' });
-  const log = h('ol', { class: 'dir-log', 'aria-live': 'polite' });
-  const live = h('div', { class: 'dir-live' });
+  const notesList = h('ul', { class: 'dir-log', 'aria-live': 'polite' });
   const askBox = h('textarea', { class: 'input textarea ask', rows: '2', maxlength: '1000', placeholder: 'Ask for a change', 'aria-label': 'Ask for a change' });
   const askBtn = iconButton(ICONS.send, 'Send the change', () => change(), 'send-btn');
   askBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); change(); } });
@@ -47,7 +59,7 @@ export function createDirectorPanel({ store, settings, openSettings }) {
     h('div', { class: 'panel-head' }, h('span', { class: 'panel-title', text: 'Director' })),
     h('div', { class: 'dir-body' },
       h('div', { class: 'dir-block' }, brief, options, modelLine, tierHelp, makeBtn),
-      h('div', { class: 'dir-block grow' }, h('div', { class: 'dir-log-head', text: 'Progress' }), log, live)),
+      h('div', { class: 'dir-block grow' }, h('div', { class: 'dir-log-head', text: 'Notes' }), notesList)),
     h('div', { class: 'dir-ask' }, askBox, askBtn));
 
   let running = null; // AbortController while the model works
@@ -98,37 +110,20 @@ export function createDirectorPanel({ store, settings, openSettings }) {
     brief.disabled = busy;
   }
 
-  // ---- the log ----------------------------------------------------------------
-  const rows = new Map();
-  function logEntry({ id, title, status, detail }) {
-    if (status === 'note') {
-      const host = rows.get(id)?.notes || log;
-      host.append(h('li', { class: 'dir-note', text: detail }));
-      log.scrollTop = log.scrollHeight;
-      return;
-    }
-    let r = rows.get(id);
-    if (!r || (status === 'run' && r.status !== 'run')) {
-      const notes = h('ul', { class: 'dir-notes' });
-      const icon = h('span', { class: 'dir-icon' });
-      const text = h('span', { class: 'dir-title', text: title });
-      const li = h('li', { class: 'dir-step' }, icon, text, notes);
-      log.append(li);
-      r = { li, icon, text, notes, status };
-      rows.set(id, r);
-    }
-    r.status = status;
-    r.li.dataset.status = status;
-    r.icon.innerHTML = status === 'done' ? ICONS.check : status === 'fail' ? ICONS.cross : ICONS.ring;
-    if (status === 'fail' && detail) r.notes.append(h('li', { class: 'dir-note fail', text: detail }));
-    log.scrollTop = log.scrollHeight;
+  // ---- notes and progress ------------------------------------------------------
+  function note(text, cls = '') {
+    notesList.append(h('li', { class: `dir-note ${cls}`.trim(), text }));
+    notesList.scrollTop = notesList.scrollHeight;
   }
-
-  function resetLog(first) {
-    rows.clear();
-    clear(log);
-    live.textContent = '';
-    if (first) log.append(h('li', { class: 'dir-note', text: first }));
+  function resetNotes(first) {
+    clear(notesList);
+    if (first) note(first, 'quiet');
+  }
+  // What the director says as it works: steps move the bar, notes land here.
+  function onLog({ id, title, status, detail }) {
+    if (status === 'run') progress.step(id, title);
+    else if (status === 'note' && detail) note(detail);
+    else if (status === 'fail' && detail) note(detail, 'fail');
   }
 
   // ---- running the model ------------------------------------------------------
@@ -137,33 +132,36 @@ export function createDirectorPanel({ store, settings, openSettings }) {
     const m = s.model;
     const host = createHost();
     const session = createModelSession(settings, (u, i) => fetch(u, i));
+    let first = true;
     const prep = async ({ scene, code }) => { await host.setScene(scene); await host.setCode(code || null); };
     const director = createDirector({
       ask: async ({ system, messages, json, schema, purpose }) => {
-        live.textContent = 'Waiting for the model';
+        // The first question to a model on this computer waits while it loads.
+        progress.say(first && session.local ? 'Loading the model' : 'Waiting for the model');
+        first = false;
+        const typical = TYPICAL[purpose] || 4000;
         const extra = await session.options(purpose, { system, messages });
         const text = await ask({
           provider: m.provider, model: m.model, key: settings.key(m.provider), base: settings.base(m.provider),
           device: s.local.device, system, messages, json, schema, ...extra,
         }, {
           fetch: (u, i) => fetch(u, i), signal,
-          onThinking: () => { live.textContent = 'The model is thinking'; },
-          onText: (_, all) => { live.textContent = `Receiving the ${purpose || 'answer'}: ${all.length.toLocaleString()} characters`; },
+          onThinking: () => progress.say('The model is thinking'),
+          onText: (_, all) => progress.within(all.length / typical, `The model is writing the ${purpose || 'answer'}`),
           onStats: (st) => session.onStats(st),
         });
-        live.textContent = '';
         return text;
       },
       measure: async (target, times) => { await prep(target); return host.measure(times); },
       trial: async ({ scene, code }) => { await host.setScene(scene); return host.trial(code, sampleTimes(scene).slice(0, 4)); },
       sheet: async (target, times) => { await prep(target); return contactSheet(host, target.scene, times); },
-      log: logEntry,
+      log: onLog,
     });
     // Ends a run: the render host goes, and a local model is unloaded so the
     // graphics chip is free again.
     const done = async () => {
       host.dispose();
-      if (await session.release()) logEntry({ id: 'end', status: 'note', detail: 'The model was unloaded to free the graphics chip.' });
+      if (await session.release()) note('The model was unloaded to free the graphics chip.', 'quiet');
     };
     return { director, session, done };
   }
@@ -184,30 +182,32 @@ export function createDirectorPanel({ store, settings, openSettings }) {
     const p = profile();
     running = new AbortController();
     paintButtons();
-    resetLog();
+    resetNotes();
+    const way = tier();
+    progress.start(PLANS[way].map(([id, weight]) => ({ id, weight })), 'Starting');
     const { director, session, done } = makeDirector(running.signal);
     try {
       // Ollama says itself whether a model can see pictures; its name is the fallback.
       const caps = await session.describe();
       const vision = typeof caps.vision === 'boolean' && session.local ? caps.vision : Boolean(p?.vision);
       const out = await director.make({
-        brief: text, tier: tier(), style: s.film.style, aspect: s.film.aspect, seconds: s.film.seconds, fps: s.film.fps,
+        brief: text, tier: way, style: s.film.style, aspect: s.film.aspect, seconds: s.film.seconds, fps: s.film.fps,
         narration: s.film.narration, vision: vision && s.model.review,
       });
       store.patch({ brief: text, storyboard: out.storyboard, scene: out.scene, code: out.code, tier: out.tier, edited: false });
       store.select(null);
       store.setTime(0);
       const left = out.issues.filter((i) => i.level !== 'info');
-      logEntry({ id: 'end', title: left.length ? 'Made, with a few things to look at' : 'Made', status: 'done' });
-      for (const i of left.slice(0, 6)) logEntry({ id: 'end', status: 'note', detail: i.message });
+      for (const i of left.slice(0, 6)) note(i.message, 'look');
       const fit = await session.fitNote();
-      if (fit) logEntry({ id: 'end', status: 'note', detail: fit });
+      if (fit) note(fit, 'quiet');
+      progress.finish(left.length ? 'Made, with a few things to look at in Notes' : 'Made');
     } catch (err) {
       if (!err.stopped) toast(err.message || String(err), 'error');
-      logEntry({ id: 'end', title: err.stopped ? 'Stopped' : 'Could not finish', status: 'fail', detail: err.stopped ? '' : err.message });
+      progress.finish(err.stopped ? 'Stopped' : 'Could not finish', false);
+      if (!err.stopped) note(err.message || String(err), 'fail');
     } finally {
       running = null;
-      live.textContent = '';
       paintButtons();
       await done();
     }
@@ -222,16 +222,18 @@ export function createDirectorPanel({ store, settings, openSettings }) {
     const s = settings.get();
     running = new AbortController();
     paintButtons();
-    resetLog(`Change: ${text}`);
+    resetNotes(`Change: ${text}`);
+    progress.start(PLANS.edit.map(([id, weight]) => ({ id, weight })), 'Starting the change');
     const { director, done } = makeDirector(running.signal);
     try {
       const out = await director.edit(project, text, { seconds: s.film.seconds, narration: s.film.narration });
       store.patch({ storyboard: out.storyboard, scene: out.scene, code: out.code });
       askBox.value = '';
-      logEntry({ id: 'end', title: 'Changed', status: 'done' });
+      progress.finish('Changed');
     } catch (err) {
       if (!err.stopped) toast(err.message || String(err), 'error');
-      logEntry({ id: 'end', title: err.stopped ? 'Stopped' : 'Nothing was changed', status: 'fail', detail: err.stopped ? '' : err.message });
+      progress.finish(err.stopped ? 'Stopped' : 'Nothing was changed', false);
+      if (!err.stopped) note(err.message || String(err), 'fail');
     } finally {
       running = null;
       paintButtons();
@@ -245,6 +247,6 @@ export function createDirectorPanel({ store, settings, openSettings }) {
 
   paintOptions();
   paintButtons();
-  resetLog('Write a brief, choose a model, and make the film. Every step shows here.');
+  resetNotes('Write a brief, choose a model, and make the film. Notes on the film appear here.');
   return { el, busy: () => Boolean(running) };
 }

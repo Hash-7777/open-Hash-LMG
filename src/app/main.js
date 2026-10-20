@@ -22,6 +22,7 @@ import { createSettingsStore } from '../platform/settings.js';
 import { storage, projects, newProjectId, isApp, invoke } from '../platform/index.js';
 import { initWindow } from '../platform/window.js';
 import { makeVersion } from './versions.js';
+import { createProgress } from './progress.js';
 import { createHost } from '../render/host.js';
 
 const LAST_KEY = 'lmg.last-project';
@@ -94,7 +95,8 @@ async function boot() {
     } catch (err) { toast(err.message || String(err), 'error'); }
   };
   const inspector = createInspector({ store, onVersion });
-  const director = createDirectorPanel({ store, settings, openSettings });
+  const progress = createProgress();
+  const director = createDirectorPanel({ store, settings, openSettings, progress });
 
   const titleInput = h('input', { class: 'film-title', type: 'text', maxlength: '120', 'aria-label': 'Film title', spellcheck: 'false' });
   titleInput.value = store.get().project.scene.title;
@@ -124,11 +126,13 @@ async function boot() {
     h('div', { class: 'brand', 'data-tauri-drag-region': true }, h('span', { class: 'brand-name', text: 'Hash LMG', 'data-tauri-drag-region': true })),
     iconButton(ICONS.open, 'Films', () => openProjectsDialog({ currentId: store.get().project.id, onOpen: openFilm, onNew: startFresh })),
     titleInput,
+    progress.label,
     h('span', { class: 'spacer', 'data-tauri-drag-region': true }),
     undoBtn, redoBtn,
     h('span', { class: 'divider' }),
     iconButton(ICONS.settings, 'Settings', openSettings),
-    h('button', { class: 'primary-btn', type: 'button', onclick: () => openExportDialog({ store, settings }) }, h('span', { html: ICONS.export }), h('span', { text: 'Export' })));
+    h('button', { class: 'primary-btn', type: 'button', onclick: () => openExportDialog({ store, settings }) }, h('span', { html: ICONS.export }), h('span', { text: 'Export' })),
+    progress.bar);
 
   const workspace = h('main', { class: 'workspace' }, director.el, player.el, inspector.el, timeline.el);
   document.body.append(topbar, workspace);

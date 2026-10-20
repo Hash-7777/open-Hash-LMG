@@ -45,6 +45,37 @@ svg { display: block; flex: none; }
 }
 .in-app .topbar { padding-left: 84px; }
 
+.topbar { position: relative; }
+
+/* The loading bar under the top bar while a film is made, and its step. */
+.header-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  z-index: 20;
+  background: var(--line);
+  overflow: hidden;
+  pointer-events: none;
+}
+.hp-fill {
+  height: 100%;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.35s var(--ease), background-color 0.3s;
+}
+.header-progress.fail .hp-fill { background: var(--danger); }
+.header-status {
+  max-width: 34vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-s);
+  color: var(--muted);
+}
+
 .brand-name {
   font-size: var(--text-m);
   font-weight: 600;
@@ -166,17 +197,10 @@ svg { display: block; flex: none; }
   flex-direction: column;
   gap: 6px;
 }
-.dir-step { display: grid; grid-template-columns: 16px 1fr; column-gap: 8px; align-items: start; }
-.dir-icon { color: var(--faint); padding-top: 1px; }
-.dir-step[data-status="run"] .dir-icon { color: var(--accent); }
-.dir-step[data-status="done"] .dir-icon { color: var(--ok); }
-.dir-step[data-status="fail"] .dir-icon { color: var(--danger); }
-.dir-step[data-status="run"] .dir-title { color: var(--ink); }
-.dir-title { color: var(--ink-2); }
-.dir-notes { grid-column: 2; list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .dir-note { color: var(--muted); font-size: var(--text-s); line-height: 1.4; list-style: none; }
 .dir-note.fail { color: var(--danger); }
-.dir-live { min-height: 16px; color: var(--muted); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.dir-note.look { color: var(--ink-2); }
+.dir-note.quiet { color: var(--faint); }
 
 .dir-ask {
   display: flex;
