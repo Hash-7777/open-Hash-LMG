@@ -20,7 +20,8 @@
         "hiddenTitle": true,
         "acceptFirstMouse": true,
         "dragDropEnabled": false,
-        "center": true
+        "center": true,
+        "visible": false
       }
     ],
     "security": {

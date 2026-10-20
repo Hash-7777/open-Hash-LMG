@@ -19,7 +19,8 @@ import { openSettingsDialog } from './settings-dialog.js';
 import { openExportDialog } from './export-dialog.js';
 import { openProjectsDialog } from './projects-dialog.js';
 import { createSettingsStore } from '../platform/settings.js';
-import { storage, projects, newProjectId, isApp } from '../platform/index.js';
+import { storage, projects, newProjectId, isApp, invoke } from '../platform/index.js';
+import { initWindow } from '../platform/window.js';
 import { createHost } from '../render/host.js';
 
 const LAST_KEY = 'lmg.last-project';
@@ -40,6 +41,8 @@ async function openLast() {
 }
 
 async function boot() {
+  // Placed and shown while the editor builds itself.
+  if (isApp) initWindow(invoke, storage);
   const settings = createSettingsStore(storage);
   const applyTheme = () => {
     const t = settings.get().appearance.theme;

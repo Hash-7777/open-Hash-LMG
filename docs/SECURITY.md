@@ -45,8 +45,11 @@ The page reaches the computer only through the commands in
   the page sends, through temporary files that are removed straight after.
 
 The window holds only the permissions the page uses
-(`src-tauri/capabilities/default.json`), and the check above keeps the page's
-commands and the Rust side's in step.
+(`src-tauri/capabilities/default.json`): placing, sizing and showing its own
+window, which opens hidden so it can be placed before it is seen
+(`src/platform/window.js`), dragging it by its top bar, and opening a web
+link in the system browser. The check above keeps the page's commands and
+the Rust side's in step.
 
 ## Code written by a model
 

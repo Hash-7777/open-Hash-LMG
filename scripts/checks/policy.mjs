@@ -71,7 +71,16 @@ for (const cmd of registered) ok(`Rust registers ${cmd} because the page calls i
 
 section('The window is given only the permissions the page uses');
 const caps = JSON.parse(readFileSync(join(root, 'src-tauri', 'capabilities', 'default.json'), 'utf8'));
-const allowed = new Set(['core:default', 'core:window:allow-start-dragging', 'opener:allow-open-url', 'opener:allow-default-urls']);
+const allowed = new Set(['core:default', 'core:window:allow-start-dragging', 'opener:allow-open-url', 'opener:allow-default-urls',
+  // src/platform/window.js places, sizes and shows the window it opens hidden.
+  'core:window:allow-outer-position', 'core:window:allow-inner-size', 'core:window:allow-set-position', 'core:window:allow-set-size', 'core:window:allow-center', 'core:window:allow-maximize', 'core:window:allow-show']);
+const windowJs = readFileSync(join(root, 'src', 'platform', 'window.js'), 'utf8');
+for (const p of [...allowed].filter((x) => x.startsWith('core:window:allow-') && x !== 'core:window:allow-start-dragging')) {
+  const cmd = p.replace('core:window:allow-', '').replace(/-/g, '_');
+  ok(`window permission ${p} is used by the window module`, windowJs.includes(`'plugin:window|${cmd}'`));
+}
+ok('the window starts hidden, so it is placed before it is seen', conf.app.windows[0].visible === false);
+ok('a broken start still shows the window', readFileSync(join(root, 'src', 'index.html'), 'utf8').includes('platform/reveal.js'));
 for (const p of caps.permissions) ok(`permission ${p} is accounted for`, allowed.has(p));
 ok('the page opens links through the opener', platform.includes("'plugin:opener|open_url'"));
 const mainJs = readFileSync(join(root, 'src', 'app', 'main.js'), 'utf8');
