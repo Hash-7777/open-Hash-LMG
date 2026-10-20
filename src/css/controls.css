@@ -1,0 +1,185 @@
+/* Buttons and form controls: flat, hairline borders, one accent. */
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-s);
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.icon-btn:hover { background: var(--panel-2); color: var(--ink); }
+.icon-btn.on { color: var(--accent); }
+.icon-btn:disabled { color: var(--faint); background: transparent; cursor: default; }
+
+.primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-m);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.primary-btn:hover { filter: brightness(1.06); }
+.primary-btn:disabled { opacity: 0.45; cursor: default; filter: none; }
+.primary-btn.wide { width: 100%; height: 36px; }
+.primary-btn.stop { background: var(--raised); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-strong); }
+
+.text-btn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  background: var(--panel-2);
+  color: var(--ink-2);
+  font-size: var(--text-s);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.text-btn:hover { border-color: var(--line-strong); color: var(--ink); }
+.text-btn:disabled { color: var(--faint); border-color: var(--line); cursor: default; }
+.text-btn.danger { color: var(--danger); }
+.text-btn.primary-text { color: var(--accent); }
+
+.button-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.row { display: flex; gap: 6px; }
+.row > .input { flex: 1; min-width: 0; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---- fields ------------------------------------------------------------- */
+
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field-label { font-size: var(--text-s); color: var(--muted); }
+.field-hint { font-size: var(--text-xs); color: var(--muted); line-height: 1.45; }
+.field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.readout { height: 28px; display: flex; align-items: center; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+.input {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  background: var(--field);
+  color: var(--ink);
+  outline: none;
+}
+.input:hover { border-color: var(--line-strong); }
+.input:focus { border-color: var(--accent); }
+.input:disabled { color: var(--faint); }
+.input::placeholder { color: var(--faint); }
+.textarea { height: auto; padding: 7px 8px; line-height: 1.45; resize: vertical; }
+.num { font-variant-numeric: tabular-nums; }
+
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' width='12' height='12' fill='none' stroke='%2385847f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  text-overflow: ellipsis;
+}
+/* Open lists are drawn by the system; on some systems over white, so they
+   get the panel's own colours rather than inheriting a see-through field. */
+select option, select optgroup { background: var(--raised); color: var(--ink); }
+
+.num-wrap { position: relative; }
+.num-wrap .input { padding-right: 30px; }
+.unit {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  pointer-events: none;
+}
+input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; }
+
+.segmented {
+  display: flex;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  background: var(--field);
+}
+.segmented button {
+  flex: 1;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--text-s);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.segmented button:hover { color: var(--ink); }
+.segmented button.on { background: var(--raised); color: var(--ink); box-shadow: 0 0 0 1px var(--line-strong); }
+
+.switch { display: flex; align-items: center; gap: 9px; cursor: pointer; font-size: var(--text-s); color: var(--ink-2); }
+.switch-input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch-track {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  flex: none;
+  border-radius: 8px;
+  background: var(--line-strong);
+  transition: background 0.2s var(--ease);
+}
+.switch-track::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ink);
+  transition: transform 0.2s var(--ease);
+}
+.switch-input:checked + .switch-track { background: var(--accent); }
+.switch-input:checked + .switch-track::after { transform: translateX(12px); background: var(--accent-ink); }
+.switch-input:focus-visible + .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.colour-input { display: flex; align-items: center; gap: 6px; }
+.colour-input .select { flex: 1; min-width: 0; }
+.swatch {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.swatch.none {
+  background: linear-gradient(135deg, transparent 45%, var(--danger) 45%, var(--danger) 55%, transparent 55%);
+}
+.colour-picker { width: 0; height: 0; padding: 0; border: 0; opacity: 0; position: absolute; }
+input[type="color"] {
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  background: var(--field);
+  cursor: pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 3px; }
+
+.progress { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.progress-fill { height: 100%; width: 0; background: var(--accent); transition: width 0.2s linear; }

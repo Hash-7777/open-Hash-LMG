@@ -1,0 +1,150 @@
+// The editor window: wires the panels to one store and one preview host.
+//
+//   left    the director: brief, choices, progress, ask for a change
+//   centre  the preview and its transport
+//   right   the inspector, for hand edits
+//   bottom  the timeline
+//
+// The open film is saved a moment after every change, and when the window is
+// hidden or closed.
+
+import { h, iconButton, toast, debounce } from './dom.js';
+import { ICONS } from './icons.js';
+import { createStore, normalizeProject } from './store.js';
+import { createPlayer } from './player.js';
+import { createTimeline } from './timeline.js';
+import { createInspector } from './inspector.js';
+import { createDirectorPanel } from './director.js';
+import { openSettingsDialog } from './settings-dialog.js';
+import { openExportDialog } from './export-dialog.js';
+import { openProjectsDialog } from './projects-dialog.js';
+import { createSettingsStore } from '../platform/settings.js';
+import { storage, projects, newProjectId, isApp } from '../platform/index.js';
+import { createHost } from '../render/host.js';
+
+const LAST_KEY = 'lmg.last-project';
+const UI_KEY = 'lmg.ui.v1';
+
+function readPrefs() {
+  let p = {};
+  try { p = JSON.parse(storage.getItem(UI_KEY) || '{}') || {}; } catch { p = {}; }
+  return { loop: Boolean(p.loop), sound: p.sound !== false, safe: Boolean(p.safe), snap: p.snap !== false };
+}
+
+async function openLast() {
+  const id = storage.getItem(LAST_KEY);
+  if (id) {
+    try { return normalizeProject(JSON.parse(await projects.read(id)), newProjectId); } catch { /* start a new one */ }
+  }
+  return normalizeProject({}, newProjectId);
+}
+
+async function boot() {
+  const settings = createSettingsStore(storage);
+  const applyTheme = () => {
+    const t = settings.get().appearance.theme;
+    if (t === 'system') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.dataset.theme = t;
+  };
+  settings.subscribe(applyTheme);
+  applyTheme();
+  document.documentElement.classList.toggle('in-app', isApp);
+
+  const store = createStore(await openLast());
+  const host = createHost();
+  const rawPrefs = readPrefs();
+  const prefs = new Proxy(rawPrefs, {
+    set(target, k, v) { target[k] = v; try { storage.setItem(UI_KEY, JSON.stringify(target)); } catch { /* a convenience only */ } return true; },
+  });
+
+  // ---- saving ------------------------------------------------------------------
+  let savedAt = 0;
+  const save = debounce(async () => {
+    const { project } = store.get();
+    if (project.updated <= savedAt) return;
+    try {
+      await projects.write(project.id, project.scene.title, JSON.stringify(project));
+      savedAt = project.updated;
+      storage.setItem(LAST_KEY, project.id);
+    } catch (err) {
+      toast(`The film could not be saved: ${err.message || err}`, 'error');
+    }
+  }, 1200);
+  store.on('project', () => save());
+  document.addEventListener('visibilitychange', () => { if (document.hidden) save.flush(); });
+  window.addEventListener('pagehide', () => save.flush());
+
+  // ---- panels --------------------------------------------------------------------
+  const openSettings = () => openSettingsDialog({ settings });
+  const player = createPlayer({ store, host, prefs });
+  const timeline = createTimeline({ store, player, prefs });
+  const inspector = createInspector({ store });
+  const director = createDirectorPanel({ store, settings, openSettings });
+
+  const titleInput = h('input', { class: 'film-title', type: 'text', maxlength: '120', 'aria-label': 'Film title', spellcheck: 'false' });
+  titleInput.value = store.get().project.scene.title;
+  titleInput.addEventListener('change', () => store.edit((doc) => { doc.title = titleInput.value.trim() || 'Untitled film'; }));
+  titleInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') titleInput.blur(); });
+
+  const undoBtn = iconButton(ICONS.undo, 'Undo', () => store.undo());
+  const redoBtn = iconButton(ICONS.redo, 'Redo', () => store.redo());
+  const paintHistory = () => { undoBtn.disabled = !store.canUndo(); redoBtn.disabled = !store.canRedo(); };
+
+  // A film just deleted is not saved again on the way out.
+  const startFresh = ({ discard = false } = {}) => {
+    if (!discard) save.flush();
+    store.load(normalizeProject({}, newProjectId));
+    storage.setItem(LAST_KEY, store.get().project.id);
+  };
+  const openFilm = async (id) => {
+    save.flush();
+    try {
+      store.load(normalizeProject(JSON.parse(await projects.read(id)), newProjectId));
+      storage.setItem(LAST_KEY, id);
+    } catch (err) { toast(err.message || String(err), 'error'); }
+  };
+
+  const topbar = h('header', { class: 'topbar' },
+    h('div', { class: 'brand' }, h('span', { class: 'brand-name', text: 'Hash LMG' })),
+    iconButton(ICONS.open, 'Films', () => openProjectsDialog({ currentId: store.get().project.id, onOpen: openFilm, onNew: startFresh })),
+    titleInput,
+    h('span', { class: 'spacer' }),
+    undoBtn, redoBtn,
+    h('span', { class: 'divider' }),
+    iconButton(ICONS.settings, 'Settings', openSettings),
+    h('button', { class: 'primary-btn', type: 'button', onclick: () => openExportDialog({ store, settings }) }, h('span', { html: ICONS.export }), h('span', { text: 'Export' })));
+
+  const workspace = h('main', { class: 'workspace' }, director.el, player.el, inspector.el, timeline.el);
+  document.body.append(topbar, workspace);
+
+  store.on('history', paintHistory);
+  store.on('project', () => {
+    if (document.activeElement !== titleInput) titleInput.value = store.get().project.scene.title;
+  });
+  paintHistory();
+
+  // ---- keys ------------------------------------------------------------------------
+  window.addEventListener('keydown', (e) => {
+    const typing = e.target.closest && e.target.closest('input, textarea, select, [contenteditable]');
+    const mod = e.metaKey || e.ctrlKey;
+    if (mod && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); if (e.shiftKey) store.redo(); else store.undo(); return; }
+    if (mod && e.key.toLowerCase() === 'y' && !typing) { e.preventDefault(); store.redo(); return; }
+    if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); save.flush(); toast('Saved'); return; }
+    if (typing || mod || e.altKey) return;
+    if (e.target.closest && e.target.closest('.scrim')) return;
+    if (e.key === ' ') { e.preventDefault(); player.toggle(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); player.step(e.shiftKey ? -10 : -1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); player.step(e.shiftKey ? 10 : 1); }
+    else if (e.key === 'Home') { e.preventDefault(); player.seek(0); }
+    else if (e.key === 'End') { e.preventDefault(); player.seek(store.get().project.scene.duration); }
+    else if (e.key === 'Escape') store.select(null);
+    else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); inspector.deleteSelected(); }
+  });
+
+  if (!settings.get().model.model) setTimeout(() => toast('Choose a model in Settings to make a film.'), 600);
+}
+
+boot().catch((err) => {
+  document.body.textContent = '';
+  document.body.append(h('div', { class: 'boot-error' }, h('h1', { text: 'Hash LMG could not start' }), h('p', { text: err.message || String(err) })));
+});

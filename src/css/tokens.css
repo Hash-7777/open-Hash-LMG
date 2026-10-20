@@ -1,0 +1,111 @@
+/* The editor's colours, type and spacing, in dark and light.
+   One accent, used sparingly: the selection, the playhead, the main button.
+   Everything else is greys, hairlines and type. */
+
+:root {
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --text-xs: 11px;
+  --text-s: 12px;
+  --text-m: 13px;
+  --text-l: 15px;
+
+  --r-s: 5px;
+  --r-m: 7px;
+  --r-l: 10px;
+
+  --topbar-h: 44px;
+  --side-w: 296px;
+  --timeline-h: 252px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* dark, the default */
+  --bg: #0d0e11;
+  --panel: #131418;
+  --panel-2: #191a1f;
+  --raised: #1f2026;
+  --field: #0f1013;
+  --line: rgba(255, 255, 255, 0.075);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --ink: #ebe9e4;
+  --ink-2: #b9b7b1;
+  --muted: #85847f;
+  --faint: #5a5a57;
+  --accent: #d9b46c;
+  --accent-ink: #17140d;
+  --accent-soft: rgba(217, 180, 108, 0.16);
+  --danger: #e2735e;
+  --ok: #86b894;
+  --stage: #08090b;
+  --scene-block: #262830;
+  --scene-block-2: #2c2e37;
+  --layer-bar: #2a3242;
+  --layer-in: rgba(255, 255, 255, 0.08);
+  --clip: #25352f;
+  --wave: rgba(235, 233, 228, 0.32);
+  --scrim: rgba(4, 5, 7, 0.62);
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #eeede9;
+  --panel: #f8f7f4;
+  --panel-2: #f1f0ec;
+  --raised: #ffffff;
+  --field: #ffffff;
+  --line: rgba(20, 20, 24, 0.09);
+  --line-strong: rgba(20, 20, 24, 0.17);
+  --ink: #18181b;
+  --ink-2: #3c3c40;
+  --muted: #6c6b67;
+  --faint: #9a9994;
+  --accent: #9a7228;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(154, 114, 40, 0.13);
+  --danger: #b4432c;
+  --ok: #3f7f53;
+  --stage: #dcdad5;
+  --scene-block: #e2e0da;
+  --scene-block-2: #d9d7d0;
+  --layer-bar: #d5dbe6;
+  --layer-in: rgba(20, 20, 24, 0.07);
+  --clip: #d3e3da;
+  --wave: rgba(24, 24, 27, 0.32);
+  --scrim: rgba(30, 30, 34, 0.32);
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.16);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #eeede9;
+    --panel: #f8f7f4;
+    --panel-2: #f1f0ec;
+    --raised: #ffffff;
+    --field: #ffffff;
+    --line: rgba(20, 20, 24, 0.09);
+    --line-strong: rgba(20, 20, 24, 0.17);
+    --ink: #18181b;
+    --ink-2: #3c3c40;
+    --muted: #6c6b67;
+    --faint: #9a9994;
+    --accent: #9a7228;
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(154, 114, 40, 0.13);
+    --danger: #b4432c;
+    --ok: #3f7f53;
+    --stage: #dcdad5;
+    --scene-block: #e2e0da;
+    --scene-block-2: #d9d7d0;
+    --layer-bar: #d5dbe6;
+    --layer-in: rgba(20, 20, 24, 0.07);
+    --clip: #d3e3da;
+    --wave: rgba(24, 24, 27, 0.32);
+    --scrim: rgba(30, 30, 34, 0.32);
+    --shadow: 0 18px 48px rgba(0, 0, 0, 0.16);
+    color-scheme: light;
+  }
+}

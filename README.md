@@ -92,14 +92,16 @@ Hash LMG is being built in the open. This is exactly what exists today:
 
 | Works today | Written, not yet run | Next |
 |---|---|---|
-| Scene format and its repair | Requests to every model service | The editor window: preview, timeline, inspector |
-| The engine: type, shapes, charts, transitions | Rendering in a background worker, with motion blur | The desktop app itself (Tauri) |
-| Film checks and automatic fixes | MP4 and MOV export through the system encoder | Voices through Chatterbox and Kokoro |
-| The storyboard compiler, in all six styles | Narration mix, word timing and captions | The automated check suite |
-| The director, with a scripted model | Processor or graphics-chip choice for Ollama | First release for macOS and Windows |
+| Scene format and its repair | Requests to every model service | The desktop app itself (Tauri) |
+| The engine: type, shapes, charts, transitions | Motion blur, and MOV export | Voices through Chatterbox and Kokoro |
+| Film checks and automatic fixes | Sound through the system's own encoder | The automated check suite |
+| The storyboard compiler, in all six styles | Narration mix, word timing and captions | First release for macOS and Windows |
+| The director, with a scripted model | Processor or graphics-chip choice for Ollama | |
 | Score and mastering | | |
+| The editor: preview, timeline, inspector, director, settings | | |
+| Rendering in a background worker, and MP4 export | | |
 
-"Works today" means exercised in Node with a stand-in canvas and a scripted model. Nothing has been run as an app yet, and nothing has been released.
+"Works today" means exercised in Node with a stand-in canvas and a scripted model, or, for the editor and MP4 export, in headless Chrome with a scripted model. Nothing has been run as an app yet, and nothing has been released.
 
 <br>
 
@@ -118,6 +120,8 @@ Hash LMG is designed so that:
 
 ```
 src/
+  index.html       the editor window
+  css/             the editor's colours, type and layout, dark and light
   core/            pure modules, no page access: the checks run them in Node
     scene/         format, normaliser, film checks, storyboard, compiler, examples
     engine/        easing, keyframes, paths, the drawing kit, motion, the renderer
