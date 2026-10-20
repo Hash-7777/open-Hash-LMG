@@ -239,7 +239,8 @@ export function createDirector(deps) {
       }
     }
 
-    return { storyboard, scene, code, issues, tier: code ? 'code' : tier };
+    // Code that never ran falls back to the scene plan, and the film says so.
+    return { storyboard, scene, code, issues, tier: code ? 'code' : tier === 'code' ? 'plan' : tier };
   }
 
   // project: { tier, storyboard, scene, code, edited }
