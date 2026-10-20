@@ -52,7 +52,7 @@ export function compileStoryboard(input, opts = {}) {
   const ease = pack.ease;
   const T = pack.transitions;
 
-  // Vertical: the middle of the area Reels and Shorts leave clear.
+  // Vertical: the middle of the area phone video apps leave clear.
   // The clear area's centre is left of the frame's, because the right edge
   // carries the like and share buttons.
   const cy = vertical ? 0.44 : 0.5;

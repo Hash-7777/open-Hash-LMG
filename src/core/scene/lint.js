@@ -60,7 +60,7 @@ export function sampleTimes(doc) {
 // Safe areas, as fractions of the frame: titles stay inside these.
 export function safeArea(doc) {
   if (doc.height > doc.width) {
-    // Reels and Shorts cover the top, the bottom and the right edge with their own buttons.
+    // Phone video apps cover the top, the bottom and the right edge with their own buttons.
     return { left: 60 / 1080, right: 1 - 140 / 1080, top: 250 / 1920, bottom: 1 - 450 / 1920 };
   }
   return { left: 0.05, right: 0.95, top: 0.06, bottom: 0.94 };

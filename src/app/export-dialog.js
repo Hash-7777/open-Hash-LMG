@@ -35,7 +35,7 @@ export function openExportDialog({ store, settings }) {
     const set = (patch) => { settings.update({ export: patch }); paint(); };
     clear(form).append(
       h('p', { class: 'insp-note', text: `${scene.width} × ${scene.height}, ${scene.fps} frames a second, ${scene.duration.toFixed(1)} seconds.` }),
-      field('File', segmented(s.container, [['mp4', 'MP4'], ['mov', 'MOV']], (v) => set({ container: v })), s.container === 'mov' ? 'For editing apps such as Final Cut Pro and Premiere.' : 'Plays everywhere and uploads to every platform.'),
+      field('File', segmented(s.container, [['mp4', 'MP4'], ['mov', 'MOV']], (v) => set({ container: v })), s.container === 'mov' ? 'For video editing apps.' : 'Plays everywhere and uploads to every platform.'),
       pair(
         field('Quality', select(s.quality, QUALITY, (v) => set({ quality: v }))),
         field('Motion blur', select(String(s.blur), BLUR, (v) => set({ blur: Number(v) })))),

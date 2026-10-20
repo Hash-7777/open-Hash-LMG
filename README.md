@@ -35,7 +35,7 @@ Made by the model on your own computer, or by any cloud model on your own key.
 | **02 Storyboard** | The model writes only the words and numbers, beat by beat: a hook, a statement, a stat, a list, a quote, an end card. |
 | **03 Design** | The app lays the beats out in a style, times every line to how long it takes to read, and starts every scene on the beat of the music. |
 | **04 Check** | Key moments are rendered and measured: text off the frame, outside a phone's safe area, too small, too faint, too fast to read, or a scene that sits still too long. What rules can fix, they fix. The rest goes back to the model. |
-| **05 Film** | An original score fitted to the cuts, narration if you want it, mastered to the loudness YouTube and Instagram play at, written to MP4 or MOV. |
+| **05 Film** | An original score fitted to the cuts, narration if you want it, mastered to the loudness video platforms play at, written to MP4 or MOV. |
 
 <br>
 
@@ -103,7 +103,7 @@ Hash LMG is being built in the open. This is exactly what exists today:
 | The macOS app: it builds and opens the editor | | |
 | The check suite, `npm run check`, run on every push | | |
 
-"Works today" means exercised in Node with a stand-in canvas and a scripted model, or, for the editor and MP4 export, in headless Chrome with a scripted model. The macOS app has been built and opened; nothing in it has been run end to end yet, and nothing has been released.
+"Works today" means exercised in Node with a stand-in canvas and a scripted model, or, for the editor and MP4 export, in a headless browser with a scripted model. The macOS app has been built and opened; nothing in it has been run end to end yet, and nothing has been released.
 
 <br>
 

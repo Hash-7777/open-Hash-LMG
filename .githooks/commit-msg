@@ -55,4 +55,22 @@ if [ -n "$found" ]; then
   exit 1
 fi
 
+# No other app, platform, product or skill named in the message either. The
+# list lives in scripts/checks/lib/barred-names.mjs, the one place it is written.
+named="$(printf '%s' "$body" | node --input-type=module -e "
+import { findNames } from '$(git rev-parse --show-toplevel)/scripts/checks/lib/barred-names.mjs';
+let text = '';
+process.stdin.on('data', (d) => { text += d; });
+process.stdin.on('end', () => { for (const f of findNames(text)) console.log('line ' + f.line + ': ' + f.name); });
+" 2>/dev/null)"
+
+if [ -n "$named" ]; then
+  {
+    printf '\nThis commit was refused. The message names another app, platform or skill:\n\n'
+    printf '%s\n' "$named" | sed 's/^/  /'
+    printf '\nDescribe it instead. Nothing has been committed.\n'
+  } >&2
+  exit 1
+fi
+
 exit 0

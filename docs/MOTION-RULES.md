@@ -35,19 +35,19 @@ rules when it lays a storyboard out, so a guided film starts out passing them.
 | Rule | In the code | Source | Weight |
 |---|---|---|---|
 | Words stay inside the frame. | `off-frame` from the measured boxes; fixed by shrinking and moving the line inside. | | |
-| Words stay inside the title-safe area, and in a vertical frame clear of where phone apps draw their own buttons and captions. | `safe-area` with `safeArea()`; fixed the same way. | Platform safe-zone guidance for Reels and Shorts. | Fair |
+| Words stay inside the title-safe area, and in a vertical frame clear of where phone apps draw their own buttons and captions. | `safe-area` with `safeArea()`; fixed the same way. | Safe-zone guidance from vertical video platforms. | Fair |
 | Lines do not cover each other. | `overlap` from the measured boxes; fixed by moving one line away. | | |
 
 ## Motion
 
 | Rule | In the code | Source | Weight |
 |---|---|---|---|
-| No bounce: things arrive and settle without overshooting. | `overshoot` on easings that overshoot; fixed by an exponential ease out. | Rejected cuts recorded in the motion-graphics work this app grew out of. | Lore |
+| No bounce: things arrive and settle without overshooting. | `overshoot` on easings that overshoot; fixed by an exponential ease out. | Bounce and springy pop-ins read as cheap in premium motion. | Lore |
 | Something new begins every few seconds; reading time counts as time well spent. | `dead-time`, scaled to the words on screen; fixed by a slow camera push. | Onset of motion captures attention and steady motion stops holding it. | Strong (inferred) |
 | Four or more things never arrive in the same instant. | `crowded-entrance`; fixed by a short stagger. | Signalling: one cue at a time (Mayer). | Strong |
 | Two or three kinds of transition, used consistently. | `transition-mix`; fixed by the style's own transitions; the compiler cycles only those. | Consistency reads as designed. | Lore |
 | A transition arrives in about half a second. | `slow-transition` above 1.2 s. | | Lore |
-| A slow push on text scenes, so nothing is ever fully still. | The compiler's scene cameras. | Keynote films keep the camera drifting. | Lore |
+| A slow push on text scenes, so nothing is ever fully still. | The compiler's scene cameras. | Product launch films keep the camera drifting. | Lore |
 
 ## Time and sound
 

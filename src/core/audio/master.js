@@ -1,6 +1,6 @@
 // Mastering to the loudness the platforms play at.
 //
-// YouTube and the other platforms turn louder uploads down to about -14 LUFS
+// Video platforms turn louder uploads down to about -14 LUFS
 // integrated, so a louder master only loses its dynamics. master() measures
 // integrated loudness the ITU-R BS.1770 way (K weighting, 400 ms blocks with
 // 75 percent overlap, an absolute gate at -70 LUFS and a relative gate 10 LU
