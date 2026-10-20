@@ -163,3 +163,9 @@ export function openExternal(url) {
   if (isApp) invoke('plugin:opener|open_url', { url: u.href }).catch(() => {});
   else window.open(u.href, '_blank', 'noopener');
 }
+
+// The app's version, from the desktop side; null in a browser.
+export async function appVersion() {
+  if (!isApp) return null;
+  try { return await invoke('plugin:app|version'); } catch { return null; }
+}

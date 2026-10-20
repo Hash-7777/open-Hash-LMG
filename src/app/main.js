@@ -78,7 +78,7 @@ async function boot() {
   window.addEventListener('pagehide', () => save.flush());
 
   // ---- panels --------------------------------------------------------------------
-  const openSettings = () => openSettingsDialog({ settings });
+  const openSettings = (section) => openSettingsDialog({ settings, section: typeof section === 'string' ? section : 'model' });
   const player = createPlayer({ store, host, prefs });
   const timeline = createTimeline({ store, player, prefs });
   const inspector = createInspector({ store });

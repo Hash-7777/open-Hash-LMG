@@ -1,90 +1,118 @@
-// Settings: which model makes the film, where it runs, and how the editor
-// looks. Every change is saved as it is made.
+// Settings: which model makes the film, the model servers on this computer,
+// the keys for cloud services, and how the editor looks. A rail of sections
+// on the left; every change is saved as it is made.
+//
+// "This computer" walks through running a model locally and checks each step
+// for real: a step reads done only because Ollama answered at the configured
+// address. Nothing here installs or downloads; commands are shown for the
+// person to run, with a button to copy them.
 
 import { h, clear, dialog, toast } from './dom.js';
+import { ICONS } from './icons.js';
 import { field, section, select, segmented, toggle, textButton } from './fields.js';
 import { PROVIDERS, LOCAL_IDS, CLOUD_IDS } from '../core/providers/catalog.js';
-import { modelProfile } from '../core/providers/models.js';
+import { modelProfile, parseModelList } from '../core/providers/models.js';
 import { listModels } from '../core/providers/client.js';
+import { KEEP_CHOICES, probeLocal, sizeText } from '../core/providers/local.js';
+import { appVersion, openExternal } from '../platform/index.js';
 
 const SIZE_WORDS = { small: 'small', medium: 'mid-size', large: 'large', frontier: 'frontier' };
 const TIER_WORDS = { guided: 'Guided', plan: 'Plan', code: 'Code' };
+const SECTIONS = [['model', 'Model'], ['local', 'This computer'], ['keys', 'Keys'], ['look', 'Appearance'], ['about', 'About']];
+// Models worth starting with on Ollama, smallest first.
+const STARTERS = [
+  ['qwen2.5:3b', 'Small and quick, about 2 GB'],
+  ['gemma3:4b', 'Small, and can see pictures, about 3 GB'],
+  ['qwen2.5:7b', 'Better writing, about 5 GB'],
+];
 
-export function openSettingsDialog({ settings }) {
+const fetchIt = (u, i) => fetch(u, i);
+
+function copyButton(text) {
+  return textButton('Copy', async (e) => {
+    try { await navigator.clipboard.writeText(text); toast('Copied'); } catch {
+      const code = e.target.closest('.command')?.querySelector('code');
+      if (code) { const r = document.createRange(); r.selectNodeContents(code); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+      toast('Selected. Copy it with your keyboard.');
+    }
+  });
+}
+const command = (text) => h('div', { class: 'command' }, h('code', { text }), copyButton(text));
+const statusDot = (state) => h('span', { class: `status ${state}`, html: state === 'ok' ? ICONS.check : state === 'bad' ? ICONS.cross : ICONS.ring });
+
+export function openSettingsDialog({ settings, section: start = 'model' }) {
   const d = dialog({ title: 'Settings', wide: true });
-  const modelBox = h('div');
-  const lookBox = h('div');
-  d.body.append(modelBox, lookBox);
+  d.el.classList.add('settings');
+  const rail = h('nav', { class: 'settings-rail', 'aria-label': 'Settings sections' });
+  const pane = h('div', { class: 'settings-pane' });
+  d.body.append(h('div', { class: 'settings-layout' }, rail, pane));
+  let current = SECTIONS.some(([k]) => k === start) ? start : 'model';
   let models = [];
   let loading = null;
+  const probes = {};
 
-  function paintModel() {
+  function paintRail() {
+    clear(rail).append(...SECTIONS.map(([k, label]) => {
+      const b = h('button', { type: 'button', class: k === current ? 'on' : '', text: label, 'aria-current': k === current ? 'page' : null });
+      b.addEventListener('click', () => { current = k; paint(); if (k === 'local') probeAll(); });
+      return b;
+    }));
+  }
+
+  function paint() {
+    paintRail();
     const s = settings.get();
+    clear(pane).append(...({ model: modelPane, local: localPane, keys: keysPane, look: lookPane, about: aboutPane }[current])(s));
+  }
+
+  // ---- model ------------------------------------------------------------------
+  function modelPane(s) {
     const id = s.model.provider;
     const p = PROVIDERS[id];
-
     const service = h('select', { class: 'input select' });
-    const group = (label, ids) => h('optgroup', { label }, ...ids.map((x) => {
-      const o = h('option', { value: x, text: PROVIDERS[x].label });
-      if (x === id) o.selected = true;
-      return o;
-    }));
+    const group = (label, ids) => h('optgroup', { label }, ...ids.map((x) => { const o = h('option', { value: x, text: PROVIDERS[x].label }); if (x === id) o.selected = true; return o; }));
     service.append(group('On this computer', LOCAL_IDS), group('In the cloud, with your own key', CLOUD_IDS));
-    service.addEventListener('change', () => {
-      models = [];
-      settings.update({ model: { provider: service.value, model: '' } });
-      paintModel();
-      refresh();
-    });
-
-    const where = [];
-    if (p.kind === 'local') {
-      const port = h('input', { class: 'input num', type: 'number', min: '1', max: '65535', value: String(s.local.ports[id]) });
-      port.addEventListener('change', () => { settings.update({ local: { ports: { ...settings.get().local.ports, [id]: Number(port.value) } } }); refresh(); });
-      where.push(field('Port', port, p.help));
-      where.push(field('Runs on', id === 'ollama'
-        ? segmented(s.local.device, [['auto', 'Automatic'], ['cpu', 'Processor'], ['gpu', 'Graphics chip']], (v) => { settings.update({ local: { device: v } }); paintModel(); })
-        : h('div', { class: 'readout', text: 'Chosen in the app when the model is loaded' }),
-      id === 'ollama' ? 'The processor leaves the graphics chip free for other work; the graphics chip is faster when the model fits in its memory.' : null));
-    } else {
-      const key = h('input', { class: 'input', type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: settings.hasKey(id) ? 'Saved. Type to replace it.' : 'Paste your key' });
-      key.addEventListener('change', () => {
-        if (!key.value.trim()) return;
-        settings.setKey(id, key.value.trim());
-        key.value = '';
-        key.placeholder = 'Saved. Type to replace it.';
-        refresh();
-      });
-      const forget = settings.hasKey(id) ? textButton('Forget the key', () => { settings.setKey(id, ''); paintModel(); }) : null;
-      where.push(field('Key', key, `Get one at ${p.keyHint}. It is kept on this computer, not encrypted, and sent only to ${p.label}.`));
-      if (forget) where.push(forget);
-    }
+    service.addEventListener('change', () => { models = []; settings.update({ model: { provider: service.value, model: '' } }); paint(); refresh(); });
 
     const listId = `models-${id}`;
     const modelInput = h('input', { class: 'input', type: 'text', list: listId, value: s.model.model, placeholder: 'Model name', spellcheck: 'false' });
-    modelInput.addEventListener('change', () => { settings.update({ model: { model: modelInput.value.trim() } }); paintModel(); });
-    const options = h('datalist', { id: listId }, ...models.map((m) => h('option', { value: m.id, text: m.label !== m.id ? m.label : '' })));
-    const status = h('span', { class: 'field-hint', text: loading ? 'Looking for models' : models.length ? `${models.length} available` : '' });
-    const prof = s.model.model ? modelProfile(id, s.model.model, (models.find((m) => m.id === s.model.model) || {}).meta || {}) : null;
-    const about = prof ? `${prof.params ? `About ${prof.params < 1 ? prof.params.toFixed(1) : Math.round(prof.params)}B parameters, ` : ''}${SIZE_WORDS[prof.size]}. Suggested way of working: ${TIER_WORDS[prof.tier]}.${prof.vision ? ' It can see pictures, so it can review stills.' : ''}` : 'Choose a model, or type its name.';
+    modelInput.addEventListener('change', () => { settings.update({ model: { model: modelInput.value.trim() } }); paint(); });
+    const options = h('datalist', { id: listId }, ...models.map((m) => h('option', { value: m.id, text: describeModel(m) })));
+    const meta = (models.find((m) => m.id === s.model.model) || {}).meta || {};
+    const prof = s.model.model ? modelProfile(id, s.model.model, meta) : null;
+    const about = prof
+      ? `${prof.params ? `About ${prof.params < 1 ? prof.params.toFixed(1) : Math.round(prof.params)}B parameters, ` : ''}${SIZE_WORDS[prof.size]}. Suggested way of working: ${TIER_WORDS[prof.tier]}.${prof.vision ? ' It can see pictures, so it can review stills.' : ''}`
+      : 'Choose a model, or type its name.';
+    const keyLine = p.kind === 'cloud'
+      ? h('div', { class: 'field-hint' }, settings.hasKey(id) ? `Your ${p.label} key is saved. ` : `Add your ${p.label} key under Keys first. `, textButton('Keys', () => { current = 'keys'; paint(); }))
+      : h('div', { class: 'field-hint' }, 'Runs on this computer. Set it up under This computer. ', textButton('This computer', () => { current = 'local'; paint(); probeAll(); }));
 
-    clear(modelBox).append(section('Model',
+    return [section('Model',
       field('Service', service),
-      ...where,
-      field('Model', h('div', { class: 'row' }, modelInput, textButton('Refresh', () => refresh())), about),
+      keyLine,
+      field('Model', h('div', { class: 'row' }, modelInput, textButton(loading ? 'Looking' : 'Refresh', () => refresh())), about),
       options,
-      status,
-      field('Review', toggle(s.model.review, (v) => settings.update({ model: { review: v } }), 'Let a model that can see review stills and ask for changes once'))));
+      models.length ? h('ul', { class: 'model-list' }, ...models.slice(0, 40).map((m) => {
+        const b = h('button', { type: 'button', class: m.id === s.model.model ? 'on' : '' }, h('span', { class: 'model-id', text: m.id }), h('span', { class: 'model-meta', text: describeModel(m) }));
+        b.addEventListener('click', () => { settings.update({ model: { model: m.id } }); paint(); });
+        return h('li', {}, b);
+      })) : null,
+      field('Review', toggle(s.model.review, (v) => settings.update({ model: { review: v } }), 'Let a model that can see review stills and ask for changes once')))];
+  }
+
+  function describeModel(m) {
+    const bits = [m.meta?.parameterSize, m.meta?.quantization, sizeText(m.meta?.bytes)].filter(Boolean);
+    return bits.join(', ');
   }
 
   async function refresh() {
     const s = settings.get();
     const id = s.model.provider;
-    if (PROVIDERS[id].kind === 'cloud' && !settings.hasKey(id)) { models = []; paintModel(); return; }
+    if (PROVIDERS[id].kind === 'cloud' && !settings.hasKey(id)) { models = []; if (current === 'model') paint(); return; }
     const mine = loading = {};
-    paintModel();
+    if (current === 'model') paint();
     try {
-      const list = await listModels(id, { key: settings.key(id), base: settings.base(id), fetch: (u, i) => fetch(u, i) });
+      const list = await listModels(id, { key: settings.key(id), base: settings.base(id), fetch: fetchIt });
       if (loading !== mine || settings.get().model.provider !== id) return;
       models = list;
       if (!settings.get().model.model && list.length) settings.update({ model: { model: list[0].id } });
@@ -92,18 +120,102 @@ export function openSettingsDialog({ settings }) {
       if (loading === mine) toast(err.message || String(err), 'error');
       models = [];
     } finally {
-      if (loading === mine) { loading = null; paintModel(); }
+      if (loading === mine) { loading = null; if (current === 'model') paint(); }
     }
   }
 
-  function paintLook() {
-    const s = settings.get();
-    clear(lookBox).append(section('Appearance',
-      field('Theme', segmented(s.appearance.theme, [['system', 'Match the system'], ['dark', 'Dark'], ['light', 'Light']], (v) => { settings.update({ appearance: { theme: v } }); paintLook(); }))));
+  // ---- this computer -----------------------------------------------------------
+  async function probeAll() {
+    await Promise.all(LOCAL_IDS.map(async (id) => {
+      const p = PROVIDERS[id];
+      const r = await probeLocal(settings.base(id) + p.modelsPath, fetchIt);
+      probes[id] = { ...r, models: r.ok ? parseModelList(id, r.json) : [] };
+    }));
+    if (current === 'local') paint();
   }
 
-  paintModel();
-  paintLook();
+  function localPane(s) {
+    const ol = probes.ollama;
+    const running = ol?.running && ol.ok;
+    const hasModels = running && ol.models.length > 0;
+    const chosen = s.model.provider === 'ollama' && hasModels && ol.models.some((m) => m.id === s.model.model);
+    const step = (state, title, body) => h('li', { class: 'step' }, statusDot(state), h('div', {}, h('div', { class: 'step-title', text: title }), body));
+    const port = (id) => {
+      const input = h('input', { class: 'input num', type: 'number', min: '1', max: '65535', value: String(s.local.ports[id]) });
+      input.addEventListener('change', () => { settings.update({ local: { ports: { ...settings.get().local.ports, [id]: Number(input.value) } } }); probeAll(); });
+      return input;
+    };
+    const ollamaSteps = h('ol', { class: 'steps' },
+      step(running ? 'ok' : ol ? 'bad' : 'wait', 'Install Ollama', h('div', { class: 'field-hint' }, 'Free, from ollama.com, for macOS, Windows and Linux. ', textButton('Open ollama.com', () => openExternal('https://ollama.com/download')))),
+      step(running ? 'ok' : ol ? 'bad' : 'wait', 'Start it', h('div', { class: 'field-hint', text: running ? `Ollama is answering on port ${s.local.ports.ollama}.` : ol ? `Nothing answered on port ${s.local.ports.ollama}. Open the Ollama app, or run "ollama serve".` : 'Checking.' })),
+      step(hasModels ? 'ok' : running ? 'bad' : 'wait', 'Download a model', h('div', {},
+        h('div', { class: 'field-hint', text: hasModels ? `${ol.models.length} model${ol.models.length === 1 ? '' : 's'} ready.` : 'Run one of these in Terminal:' }),
+        ...(hasModels ? [] : STARTERS.map(([m, note]) => h('div', { class: 'starter' }, command(`ollama pull ${m}`), h('span', { class: 'field-hint', text: note })))))),
+      step(chosen ? 'ok' : hasModels ? 'bad' : 'wait', 'Choose it', h('div', { class: 'field-hint' },
+        chosen ? `Using ${s.model.model}.` : 'Pick one of your models. ',
+        chosen ? null : textButton('Use Ollama', () => { settings.update({ model: { provider: 'ollama', model: ol?.models[0]?.id || '' } }); current = 'model'; models = ol?.models || []; paint(); }))));
+
+    const others = LOCAL_IDS.filter((id) => id !== 'ollama').map((id) => {
+      const pr = probes[id];
+      const state = pr ? (pr.ok ? 'ok' : 'bad') : 'wait';
+      const text = pr ? (pr.ok ? `Answering, ${pr.models.length} model${pr.models.length === 1 ? '' : 's'}.` : pr.running ? 'Answering, but would not list its models.' : 'Not running.') : 'Checking.';
+      return h('div', { class: 'local-row' }, statusDot(state), h('div', { class: 'local-name', text: PROVIDERS[id].label }), h('div', { class: 'field-hint', text }), port(id));
+    });
+
+    return [
+      section('Ollama', ollamaSteps, h('div', { class: 'button-row' }, textButton('Check again', () => probeAll()))),
+      section('How Ollama runs the model',
+        field('Port', port('ollama')),
+        field('Runs on', segmented(s.local.device, [['auto', 'Automatic'], ['cpu', 'Processor'], ['gpu', 'Graphics chip']], (v) => { settings.update({ local: { device: v } }); paint(); }),
+          'Automatic puts as much as fits on the graphics chip. Processor leaves the graphics chip free for other work. Graphics chip is fastest when the model fits. A change reloads the model on its next answer.'),
+        field('Keep it loaded', select(s.local.keep, KEEP_CHOICES, (v) => settings.update({ local: { keep: v } })),
+          'After each answer. Longer answers the next question sooner; shorter gives memory back to other apps sooner.')),
+      section('Other model apps on this computer', ...others,
+        h('div', { class: 'field-hint', text: 'LM Studio: start its local server, and turn on Enable CORS in its server settings so the app may ask it. They choose the processor or graphics chip themselves when a model is loaded.' })),
+    ];
+  }
+
+  // ---- keys ---------------------------------------------------------------------------
+  function keysPane() {
+    const rows = CLOUD_IDS.map((id) => {
+      const p = PROVIDERS[id];
+      const saved = settings.hasKey(id);
+      const input = h('input', { class: 'input', type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: saved ? 'Saved. Paste to replace it.' : 'Paste your key', 'aria-label': `${p.label} key` });
+      input.addEventListener('change', () => {
+        if (!input.value.trim()) return;
+        settings.setKey(id, input.value.trim());
+        input.value = '';
+        toast(`${p.label} key saved`);
+        paint();
+      });
+      return h('div', { class: 'key-row' },
+        statusDot(saved ? 'ok' : 'wait'),
+        h('div', { class: 'key-name' }, h('div', { text: p.label }), h('div', { class: 'field-hint', text: p.keyHint })),
+        input,
+        saved ? textButton('Forget', () => { settings.setKey(id, ''); paint(); }, 'danger') : h('span'));
+    });
+    return [section('Keys for cloud services',
+      h('p', { class: 'insp-note', text: 'Each key is kept on this computer, in the app’s own storage, apart from your other settings. It is not encrypted. It is sent only to the service it belongs to.' }),
+      h('div', { class: 'key-list' }, ...rows))];
+  }
+
+  // ---- appearance and about ------------------------------------------------------------
+  function lookPane(s) {
+    return [section('Appearance',
+      field('Theme', segmented(s.appearance.theme, [['system', 'Match the system'], ['dark', 'Dark'], ['light', 'Light']], (v) => { settings.update({ appearance: { theme: v } }); paint(); })))];
+  }
+
+  function aboutPane() {
+    const version = h('span', { text: '' });
+    appVersion().then((v) => { if (v) version.textContent = ` ${v}`; });
+    return [section('About',
+      h('p', { class: 'insp-note' }, h('strong', { text: 'Hash LMG' }), version, ', Hash Local Motion Graphics.'),
+      h('p', { class: 'insp-note', text: 'Motion graphics from a sentence, made with a model on your own computer or a cloud model on your own key. There is no account and no server of ours: requests go from your computer to the service you chose.' }),
+      h('p', { class: 'insp-note', text: 'Free software under the GNU General Public License, version 3 or later.' }))];
+  }
+
+  paint();
   refresh();
+  if (current === 'local') probeAll();
   return d;
 }
