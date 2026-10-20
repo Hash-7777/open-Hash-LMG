@@ -37,6 +37,7 @@ rules when it lays a storyboard out, so a guided film starts out passing them.
 | Words stay inside the frame. | `off-frame` from the measured boxes; fixed by shrinking and moving the line inside. | | |
 | Words stay inside the title-safe area, and in a vertical frame clear of where phone apps draw their own buttons and captions. | `safe-area` with `safeArea()`; fixed the same way. | Safe-zone guidance from vertical video platforms. | Fair |
 | Lines do not cover each other. | `overlap` from the measured boxes; fixed by moving one line away. | | |
+| Words never cross other words while they move, not only at rest. | `collide-in-motion`, from frames measured a quarter, half and three quarters through each transition and half way through each line's entrance (`motionTimes`); across a scene change fixed by a dip through the background, within a scene by moving one line aside. The compiler makes every fade and zoom a handoff: the new scene's words arrive as the old ones leave. | Research on generated animation: layout faults appear mid-transition that resting frames never show (2026 preprint). | Fair |
 
 ## Motion
 

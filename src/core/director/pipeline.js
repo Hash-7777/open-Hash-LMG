@@ -21,7 +21,7 @@
 import { normalizeStoryboard } from '../scene/storyboard.js';
 import { compileStoryboard } from '../scene/compile.js';
 import { normalizeScene } from '../scene/normalize.js';
-import { lintScene, autofix, sampleTimes } from '../scene/lint.js';
+import { lintScene, autofix, sampleTimes, motionTimes } from '../scene/lint.js';
 import { extractJson, extractCode } from '../util/json.js';
 import { checkCode, asModule } from './code-check.js';
 import {
@@ -100,17 +100,22 @@ export function createDirector(deps) {
   }
 
   // Measures, repairs by rule, and returns what is left.
+  // Measures frames at rest and in the middle of moves, so words that only
+  // collide while moving are caught too.
+  async function measured(scene) {
+    const rest = sampleTimes(scene);
+    const all = await deps.measure({ scene }, [...rest, ...motionTimes(scene)]);
+    return { samples: all.slice(0, rest.length), moving: all.slice(rest.length) };
+  }
+
   async function checkScene(scene, opts) {
-    const times = sampleTimes(scene);
-    const samples = await deps.measure({ scene }, times);
-    let issues = lintScene(scene, { samples, targetDuration: opts.seconds });
+    let issues = lintScene(scene, { ...(await measured(scene)), targetDuration: opts.seconds });
     const fixable = issues.filter((i) => i.fix);
     if (fixable.length) {
       const fixed = autofix(scene, fixable);
       scene = fixed.scene;
       for (const a of fixed.applied) note('check', a);
-      const samples2 = await deps.measure({ scene }, sampleTimes(scene));
-      issues = lintScene(scene, { samples: samples2, targetDuration: opts.seconds });
+      issues = lintScene(scene, { ...(await measured(scene)), targetDuration: opts.seconds });
     }
     return { scene, issues };
   }

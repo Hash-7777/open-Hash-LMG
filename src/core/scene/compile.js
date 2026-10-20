@@ -29,6 +29,9 @@ function lineSize(words, big, vertical) {
   return Math.max(vertical ? 36 : 28, Math.round(vertical ? base * 0.92 : base));
 }
 
+// Transitions in which both scenes share the frame for a moment.
+const HANDOFF = new Set(['fade', 'zoom']);
+
 // How much each kind of beat is worth keeping when a storyboard runs long.
 // Ties go to the earlier beat: a later one of the same kind is dropped first.
 const KEEP = { hook: 9, end: 9, title: 8, logo: 8, stat: 6, statement: 5, list: 5, steps: 4, words: 4, chart: 4, compare: 3, quote: 2 };
@@ -266,6 +269,20 @@ export function compileStoryboard(input, opts = {}) {
       camera,
       layers,
     });
+  });
+
+  // A handoff, not a pile-up: after a fade or a zoom, where both scenes share
+  // the frame, the new scene's words arrive as the old ones leave instead of
+  // crossing them.
+  scenes.forEach((S, i) => {
+    if (i === 0 || !HANDOFF.has(S.transition.kind)) return;
+    const by = +(S.transition.duration * 0.85).toFixed(3);
+    for (const L of S.layers) {
+      L.at = +((L.at || 0) + by).toFixed(3);
+      if (L.in && typeof L.in === 'object' && Number.isFinite(L.in.at)) L.in.at = +(L.in.at + by).toFixed(3);
+    }
+    S.length += by;
+    S.settled += by;
   });
 
   // A storyboard far longer than the length asked for loses its least

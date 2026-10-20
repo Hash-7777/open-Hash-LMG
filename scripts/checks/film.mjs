@@ -12,7 +12,7 @@ import { STYLE_NAMES, ASPECTS, LAYER_TYPES } from '../../src/core/scene/format.j
 import { EXAMPLES } from '../../src/core/scene/examples.js';
 import { STORYBOARD, measure } from './lib/fixtures.mjs';
 import { statUnits, normalizeStoryboard } from '../../src/core/scene/storyboard.js';
-import { autofix } from '../../src/core/scene/lint.js';
+import { autofix, motionTimes } from '../../src/core/scene/lint.js';
 import { resizeScene } from '../../src/core/scene/edit.js';
 
 section('Every beat kind, in every style and frame shape, compiles clean');
@@ -42,6 +42,27 @@ ok('the example that opens a new project does too', measure(normalizeScene(EXAMP
   const fixed = autofix(plain, [hit]).scene;
   ok('and repaired so frame one draws', measure(fixed, [0])[0].boxes.some((b) => b.tag));
   ok('and the repair holds through normalising', JSON.stringify(normalizeScene(fixed).scene) === JSON.stringify(fixed));
+}
+
+section('Words never cross words while they move');
+for (const style of STYLE_NAMES) {
+  for (const aspect of Object.keys(ASPECTS)) {
+    const { scene } = compileStoryboard(normalizeStoryboard(STORYBOARD).storyboard, { style, aspect, targetDuration: 40 });
+    const hits = lintScene(scene, { moving: measure(scene, motionTimes(scene)) }).filter((i) => i.code === 'collide-in-motion');
+    ok(`${style} ${aspect}: a handoff at every shared-frame transition`, hits.length === 0, hits.slice(0, 2).map((i) => i.message).join(' / '));
+  }
+}
+{
+  // Two lines in the same place, joined by a crossfade with the new one arriving at once.
+  const pile = normalizeScene({ scenes: [
+    { duration: 3, layers: [{ id: 'old', type: 'text', text: 'Leaving now', size: 90 }] },
+    { duration: 3, transition: { kind: 'fade', duration: 0.6 }, layers: [{ id: 'new', type: 'text', text: 'Arriving now', size: 90, in: { preset: 'fade', duration: 0.3 } }] },
+  ] }).scene;
+  const hit = lintScene(pile, { moving: measure(pile, motionTimes(pile)) }).find((i) => i.code === 'collide-in-motion');
+  ok('a crossfade that piles words on words is caught', Boolean(hit));
+  const fixed = autofix(pile, [hit]).scene;
+  ok('and repaired with a dip through the background', fixed.scenes[1].transition.kind === 'dip');
+  ok('after which nothing crosses', !lintScene(fixed, { moving: measure(fixed, motionTimes(fixed)) }).some((i) => i.code === 'collide-in-motion'));
 }
 
 section('A scene that changes length keeps its layers whole');

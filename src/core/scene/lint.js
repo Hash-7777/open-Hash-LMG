@@ -57,6 +57,25 @@ export function sampleTimes(doc) {
   return [...new Set(times)].filter((t) => t <= doc.duration);
 }
 
+// Moments in the middle of moves: a quarter, half and three quarters of the
+// way through each transition, and half way through the entrance of each
+// line of text. Words that cross other words here read as a collision even
+// when every resting frame is clean.
+export function motionTimes(doc) {
+  const out = [];
+  doc.scenes.forEach((S, si) => {
+    if (si > 0 && S.transition.kind !== 'cut' && S.transition.duration > 0) {
+      for (const u of [0.25, 0.5, 0.75]) out.push(S.start + S.transition.duration * u);
+    }
+    for (const L of allLayers(S.layers)) {
+      if (L.type !== 'text') continue;
+      const e = entranceSpan(L);
+      if (e.end > e.start) out.push(S.start + (Math.max(0, e.start) + e.end) / 2);
+    }
+  });
+  return [...new Set(out.map((t) => +t.toFixed(3)))].filter((t) => t > 0 && t < doc.duration).sort((a, b) => a - b);
+}
+
 // Safe areas, as fractions of the frame: titles stay inside these.
 export function safeArea(doc) {
   if (doc.height > doc.width) {
@@ -209,6 +228,32 @@ export function lintScene(doc, opts = {}) {
     }
   }
 
+  // Words crossing words while they move, from samples taken mid-move.
+  const sceneIndex = (id) => doc.scenes.findIndex((S) => S.id === id);
+  for (const sample of opts.moving || []) {
+    const texts = sample.boxes.filter((b) => b.kind === 'text' && b.alpha > 0.3 && b.tag);
+    for (let i = 0; i < texts.length; i++) for (let j = i + 1; j < texts.length; j++) {
+      const a = texts[i], c = texts[j];
+      if (a.tag === c.tag) continue;
+      const ix = Math.max(0, Math.min(a.x + a.w, c.x + c.w) - Math.max(a.x, c.x));
+      const iy = Math.max(0, Math.min(a.y + a.h, c.y + c.h) - Math.max(a.y, c.y));
+      const small = Math.min(a.w * a.h, c.w * c.h) || 1;
+      const k = `moving:${[a.tag, c.tag].sort().join('+')}`;
+      if ((ix * iy) / small <= 0.12 || seen.has(k)) continue;
+      seen.add(k);
+      const sa = where.get(a.tag), sc = where.get(c.tag);
+      // A wipe, push or slide keeps the two scenes apart on the frame; only
+      // transitions that lay one over the other can make words cross.
+      if (sa !== sc && !['fade', 'zoom'].includes(doc.scenes[Math.max(sceneIndex(sa), sceneIndex(sc))]?.transition.kind)) continue;
+      // Across a scene change the cure is a dip through the background; within
+      // a scene, moving one line aside.
+      const fix = sa !== sc
+        ? { kind: 'dip', scene: sceneIndex(sa) > sceneIndex(sc) ? sa : sc }
+        : { kind: 'separate', layer: c.tag, other: a.tag, scene: sc };
+      add('warn', 'collide-in-motion', `"${(a.text || a.tag).slice(0, 30)}" crosses "${(c.text || c.tag).slice(0, 30)}" at ${sample.t.toFixed(1)} s while they move.`, { scene: fix.scene, layer: c.tag, t: sample.t }, fix);
+    }
+  }
+
   if (opts.targetDuration && doc.duration > 0) {
     const r = doc.duration / opts.targetDuration;
     if (r > 1.25 || r < 0.75) add('info', 'length', `The film runs ${doc.duration.toFixed(1)} s against the ${opts.targetDuration} s asked for.`);
@@ -268,6 +313,11 @@ export function autofix(doc, issues) {
       if (!S) continue;
       for (const L of S.layers) if (L.at <= 0 && L.in.preset !== 'none' && !(L.in.at < 0)) L.in.at = -PREROLL;
       applied.push('Opened the film on a picture already forming instead of an empty frame.');
+    } else if (f.kind === 'dip') {
+      const S = byScene(f.scene);
+      if (!S || S.transition.kind === 'dip' || S.transition.kind === 'cut') continue;
+      S.transition.kind = 'dip';
+      applied.push(`Scene ${d.scenes.indexOf(S) + 1} now arrives through the background, so its words never cross the words leaving.`);
     } else if (f.kind === 'stagger') {
       const S = byScene(f.scene);
       if (!S) continue;
