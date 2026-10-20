@@ -95,9 +95,9 @@ Hash LMG is being built in the open. This is exactly what exists today:
 | Scene format and its repair | Requests to every model service | The editor window: preview, timeline, inspector |
 | The engine: type, shapes, charts, transitions | Rendering in a background worker, with motion blur | The desktop app itself (Tauri) |
 | Film checks and automatic fixes | MP4 and MOV export through the system encoder | Voices through Chatterbox and Kokoro |
-| The storyboard compiler, in all six styles | Narration mix, word timing and captions | Processor or graphics-chip choice for local models |
-| The director, with a scripted model | | The automated check suite |
-| Score and mastering | | First release for macOS and Windows |
+| The storyboard compiler, in all six styles | Narration mix, word timing and captions | The automated check suite |
+| The director, with a scripted model | Processor or graphics-chip choice for Ollama | First release for macOS and Windows |
+| Score and mastering | | |
 
 "Works today" means exercised in Node with a stand-in canvas and a scripted model. Nothing has been run as an app yet, and nothing has been released.
 

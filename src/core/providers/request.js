@@ -19,7 +19,7 @@ const dataUrlParts = (url) => {
 const NO_TEMPERATURE = /^(o\d|gpt-5)/i;
 
 // req: { provider, model, key, base, system, messages: [{ role, content, images: [dataUrl] }],
-//        json: boolean, schema: object|null, temperature, maxTokens, stream }
+//        json: boolean, schema: object|null, temperature, maxTokens, stream, numCtx, numGpu, keepAlive }
 export function buildRequest(req) {
   const p = PROVIDERS[req.provider];
   if (!p) throw new Error(`Unknown model service: ${req.provider}`);
@@ -41,7 +41,15 @@ export function buildRequest(req) {
           ...(m.images?.length ? { images: m.images.map((u) => dataUrlParts(u)?.data).filter(Boolean) } : {}),
         })),
       ],
-      options: { temperature, num_predict: maxTokens, ...(req.numCtx ? { num_ctx: req.numCtx } : {}) },
+      options: {
+        temperature,
+        num_predict: maxTokens,
+        ...(req.numCtx ? { num_ctx: req.numCtx } : {}),
+        // Where the model runs: 0 layers on the graphics chip is the processor
+        // alone, a number past the model's layer count is all of it on the chip,
+        // and leaving it out lets Ollama decide.
+        ...(Number.isInteger(req.numGpu) ? { num_gpu: req.numGpu } : {}),
+      },
       ...(req.keepAlive !== undefined ? { keep_alive: req.keepAlive } : {}),
     };
     if (req.json) body.format = req.schema && p.json === 'schema' ? req.schema : 'json';
