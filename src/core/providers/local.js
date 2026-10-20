@@ -150,3 +150,14 @@ export function sizeText(bytes) {
   if (!(bytes > 0)) return '';
   return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.round(bytes / 1e6)} MB`;
 }
+
+// ---- giving the memory back ---------------------------------------------------
+
+// Asks Ollama to unload a model now, so the graphics chip and the memory are
+// free for everything else the moment a film is made. True when Ollama said yes.
+export async function unloadModel(base, model, fetch) {
+  try {
+    const res = await fetch(`${base}/api/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model, keep_alive: 0 }) });
+    return res.ok;
+  } catch { return false; }
+}

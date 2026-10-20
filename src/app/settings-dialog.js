@@ -168,8 +168,9 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
         field('Port', port('ollama')),
         field('Runs on', segmented(s.local.device, [['auto', 'Automatic'], ['cpu', 'Processor'], ['gpu', 'Graphics chip']], (v) => { settings.update({ local: { device: v } }); paint(); }),
           'Automatic puts as much as fits on the graphics chip. Processor leaves the graphics chip free for other work. Graphics chip is fastest when the model fits. A change reloads the model on its next answer.'),
-        field('Keep it loaded', select(s.local.keep, KEEP_CHOICES, (v) => settings.update({ local: { keep: v } })),
-          'After each answer. Longer answers the next question sooner; shorter gives memory back to other apps sooner.')),
+        field('When the film is made', toggle(s.local.unload, (v) => { settings.update({ local: { unload: v } }); paint(); }, 'Unload the model to free the graphics chip and memory')),
+        field('While a film is being made', select(s.local.keep, KEEP_CHOICES, (v) => settings.update({ local: { keep: v } })),
+          'How long the model stays loaded between its answers. Longer answers the next question sooner.')),
       section('Other model apps on this computer', ...others,
         h('div', { class: 'field-hint', text: 'LM Studio: start its local server, and turn on Enable CORS in its server settings so the app may ask it. They choose the processor or graphics chip themselves when a model is loaded.' })),
     ];

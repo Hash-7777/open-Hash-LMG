@@ -159,7 +159,13 @@ export function createDirectorPanel({ store, settings, openSettings }) {
       sheet: async (target, times) => { await prep(target); return contactSheet(host, target.scene, times); },
       log: logEntry,
     });
-    return { director, session, done: () => host.dispose() };
+    // Ends a run: the render host goes, and a local model is unloaded so the
+    // graphics chip is free again.
+    const done = async () => {
+      host.dispose();
+      if (await session.release()) logEntry({ id: 'end', status: 'note', detail: 'The model was unloaded to free the graphics chip.' });
+    };
+    return { director, session, done };
   }
 
   function ready() {
@@ -200,10 +206,10 @@ export function createDirectorPanel({ store, settings, openSettings }) {
       if (!err.stopped) toast(err.message || String(err), 'error');
       logEntry({ id: 'end', title: err.stopped ? 'Stopped' : 'Could not finish', status: 'fail', detail: err.stopped ? '' : err.message });
     } finally {
-      done();
       running = null;
       live.textContent = '';
       paintButtons();
+      await done();
     }
   }
 
@@ -227,9 +233,9 @@ export function createDirectorPanel({ store, settings, openSettings }) {
       if (!err.stopped) toast(err.message || String(err), 'error');
       logEntry({ id: 'end', title: err.stopped ? 'Stopped' : 'Nothing was changed', status: 'fail', detail: err.stopped ? '' : err.message });
     } finally {
-      done();
       running = null;
       paintButtons();
+      await done();
     }
   }
 

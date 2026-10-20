@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
-import { windowFor, requestTokens, answerTokens, readShow, stripThinking, speedOf, fitOf, fitSentence, KEEP_VALUES, WINDOW_STEPS } from '../../src/core/providers/local.js';
+import { windowFor, requestTokens, answerTokens, readShow, stripThinking, speedOf, fitOf, fitSentence, KEEP_VALUES, WINDOW_STEPS, unloadModel } from '../../src/core/providers/local.js';
 import { ask } from '../../src/core/providers/client.js';
 import { buildRequest } from '../../src/core/providers/request.js';
 import { normalizeSettings } from '../../src/platform/settings.js';
@@ -62,6 +62,18 @@ await claim('all on the chip, all on the processor, and a spill read differently
   assert.match(fitSentence({ share: 1 }), /entirely on the graphics chip/);
   assert.match(fitSentence({ share: 0 }), /on the processor/);
   assert.match(fitSentence({ share: 0.6 }, 12), /About 40% .* processor.*12 tokens a second/);
+});
+
+section('The graphics chip is freed when a film is made');
+await claim('unloading asks Ollama to drop the model now', async () => {
+  let sent = null;
+  const okay = await unloadModel('http://127.0.0.1:11434', 'q:3b', async (u, init) => { sent = { u, body: JSON.parse(init.body) }; return new Response('{}'); });
+  assert.equal(okay, true); assert.match(sent.u, /\/api\/generate$/); assert.deepEqual(sent.body, { model: 'q:3b', keep_alive: 0 });
+});
+await claim('a service that does not answer is not an error', async () => assert.equal(await unloadModel('x', 'm', async () => { throw new TypeError('down'); }), false));
+await claim('unloading after a film is on unless turned off', () => {
+  assert.equal(normalizeSettings({}).local.unload, true);
+  assert.equal(normalizeSettings({ local: { unload: false } }).local.unload, false);
 });
 
 section('A model that does not fit on the graphics chip');

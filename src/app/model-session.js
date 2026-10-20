@@ -8,7 +8,7 @@
 // Cloud services get only the longest answer each kind of question needs.
 
 import { PROVIDERS } from '../core/providers/catalog.js';
-import { showModel, requestTokens, windowFor, answerTokens, loadedFit, fitSentence } from '../core/providers/local.js';
+import { showModel, requestTokens, windowFor, answerTokens, loadedFit, fitSentence, unloadModel } from '../core/providers/local.js';
 
 const known = new Map(); // what Ollama said about each model, kept while the app runs
 const windows = new Map(); // the window each model was last loaded with
@@ -42,6 +42,13 @@ export function createModelSession(settings, fetchFn) {
     },
     onStats(stats) { if (stats && stats.speed) speed = stats.speed; },
     speed: () => speed,
+    // Unloads the model when the person has asked for that (the default), so
+    // the graphics chip is free the moment the film is made. True if unloaded.
+    async release() {
+      if (!local || settings.get().local.unload === false) return false;
+      windows.delete(key);
+      return unloadModel(base, m.model, fetchFn);
+    },
     // One sentence on where the model ran, read after it has answered.
     async fitNote() {
       if (!local) return null;

@@ -73,6 +73,9 @@ export function normalizeSettings(input) {
       // How long Ollama keeps the model loaded after an answer; empty is
       // Ollama's own choice.
       keep: pick(local.keep, KEEP_VALUES, ''),
+      // Unload the model the moment a film is made, so the graphics chip and
+      // the memory are free again.
+      unload: local.unload === undefined ? true : Boolean(local.unload),
     },
     voice: {
       engine: pick(voice.engine, ['none', ...Object.keys(VOICE_ENGINES_INFO)], 'none'),
