@@ -296,7 +296,9 @@ export function renderPlan(kit, doc, t, opts = {}) {
   ctx.fillStyle = kit.color(doc.background.color || 'bg');
   ctx.fillRect(0, 0, W, H);
 
-  const alive = activeScenes(doc, Math.min(t, doc.duration));
+  // The last moment of the film holds its last frame instead of falling
+  // past the end of the final scene.
+  const alive = activeScenes(doc, Math.min(t, doc.duration - 1e-4));
   for (const A of alive) {
     const S = A.scene;
     ctx.save();
