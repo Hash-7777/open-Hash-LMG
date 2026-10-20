@@ -21,6 +21,7 @@ import {
   PRESET_ALIASES, STYLE_PACKS, LIMITS, VOICE_ENGINES,
 } from './format.js';
 import { EASE_NAMES } from '../engine/ease.js';
+import { REPEAT_LAYOUTS } from '../engine/repeat.js';
 import { isColor } from '../util/color.js';
 
 const KEYABLE = ['x', 'y', 'scale', 'rotate', 'opacity', 'color', 'size', 'w', 'h', 'progress', 'fill', 'stroke'];
@@ -182,6 +183,20 @@ function normKeys(k, notes) {
   return out;
 }
 
+function normRepeat(r) {
+  if (!isObj(r)) return null;
+  const count = Math.round(num(r.count, 1, 1, 200));
+  if (count < 2) return null;
+  return {
+    count,
+    layout: oneOf(r.layout, REPEAT_LAYOUTS, 'row'),
+    cols: Math.round(num(r.cols, Math.ceil(Math.sqrt(count)), 1, 50)),
+    gap: num(r.gap ?? r.spacing, 60, 0, 2000),
+    radius: num(r.radius, 200, 0, 2000),
+    stagger: num(r.stagger, 0.04, 0, 1),
+  };
+}
+
 function normLayer(L, ctx, depth = 0) {
   const { notes, pack, W, H, sceneDur } = ctx;
   if (!isObj(L)) return null;
@@ -226,6 +241,8 @@ function normLayer(L, ctx, depth = 0) {
     hold: oneOf(L.hold ?? L.emphasis, HOLD_PRESETS, 'none'),
     keys: normKeys(L.keys ?? L.keyframes, notes),
     z: num(L.z, 0, -100, 100),
+    // The layer repeated by a rule (src/core/engine/repeat.js), or null.
+    repeat: normRepeat(L.repeat),
   };
 
   if (type === 'text') {

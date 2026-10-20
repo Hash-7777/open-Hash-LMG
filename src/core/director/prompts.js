@@ -125,6 +125,7 @@ export function planFormatReference() {
      "color": a palette name (ink, muted, accent ...) or a CSS colour,
      "opacity", "scale", "rotate" (degrees),
      "keys": {"x": [[t, value, ease], ...], "y": ..., "scale": ..., "opacity": ..., "rotate": ...} for custom moves (t in scene seconds)
+     "repeat": {"count": 2 to 200, "layout": row | column | grid | circle, "cols" (grid), "gap" (pixels between copies), "radius" (circle), "stagger": seconds between copies} draws the layer many times by a rule
      text:    "text", "size" (pixels on a 1080-high frame: 96 to 160 for headlines, 40 to 56 for lines, never under 28),
               "weight" (100 to 900), "font" (${FONT_NAMES.join(', ')}), "align", "tracking" (em), "maxWidth" (fraction),
               "highlight": [words in the accent colour], "upper": true for small caps labels

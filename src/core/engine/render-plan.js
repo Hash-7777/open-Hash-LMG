@@ -8,6 +8,7 @@
 
 import { drawOdometer } from './odometer.js';
 import { carryPair, drawCarrier, arrived } from './carry.js';
+import { drawRepeated } from './repeat.js';
 import { resolveEase } from './ease.js';
 import { clamp, mix, noise } from './math.js';
 import { layerState } from './motion.js';
@@ -100,6 +101,7 @@ function anchorOffset(anchor, w, h) {
 }
 
 function drawLayer(kit, doc, L, t) {
+  if (L.repeat && L.repeat.count > 1) { drawRepeated(kit, L, t, (one, tt) => drawLayer(kit, doc, one, tt)); return; }
   const { W, H, u } = kit;
   const s = layerState(L, t, u);
   if (!s.visible) return;

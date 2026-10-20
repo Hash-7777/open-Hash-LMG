@@ -102,6 +102,11 @@ export function compileStoryboard(input, opts = {}) {
         break;
       }
       case 'title': {
+        // A field of dots filling in behind the name: one rule, many shapes.
+        if (style === 'tech' || style === 'stage') {
+          layers.push({ type: 'shape', shape: 'circle', x: X, y: cy, w: 6, fill: muted, opacity: 0.35, z: -1, in: { preset: 'scale', duration: 0.4, ease },
+            repeat: { count: vertical ? 54 : 105, layout: 'grid', cols: vertical ? 6 : 15, gap: 90, stagger: 0.012 } });
+        }
         layers.push({ type: 'text', text: b.text, x: X, y: cy - 0.05, size: lineSize(wordCount(b.text), 150, vertical), weight: Math.min(900, pack.fonts.weight + 100), color: ink, highlight: accentWords, highlightColor: accent, in: { preset: pack.enter.title, duration: 0.8, ease }, hold: style === 'studio' || style === 'tech' ? 'shimmer' : hold });
         layers.push({ type: 'shape', shape: 'line', x: X, y: cy + 0.055, w: vertical ? 140 : 120, h: 0, strokeWidth: 6, color: accent, at: 0.35, in: { preset: 'draw', duration: 0.6, ease: 'inOutCubic' } });
         if (b.sub) layers.push({ type: 'text', text: b.sub, x: X, y: cy + 0.13, size: vertical ? 46 : 44, weight: 500, color: muted, at: 0.6, maxWidth: MW, in: { preset: pack.enter.small, duration: 0.7, ease } });

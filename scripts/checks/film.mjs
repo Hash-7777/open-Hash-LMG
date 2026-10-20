@@ -106,7 +106,7 @@ for (const [name, ex] of Object.entries(EXAMPLES)) {
 }
 
 section('No layer field is dropped (the field guard)');
-const COMMON = { name: 'n', x: 0.3, y: 0.4, anchor: 'top-left', rotate: 5, scale: 1.1, opacity: 0.9, color: 'accent2', at: 0.2, until: 2.5, in: { preset: 'rise', at: 0.1, duration: 0.6, ease: 'outQuint', stagger: 0.05, distance: 30 }, out: { preset: 'fade', duration: 0.4, ease: 'inCubic', stagger: 0, distance: 20 }, hold: 'float', keys: { x: [[0, 0.3], [1, 0.4]] }, z: 2 };
+const COMMON = { name: 'n', x: 0.3, y: 0.4, anchor: 'top-left', rotate: 5, scale: 1.1, opacity: 0.9, color: 'accent2', at: 0.2, until: 2.5, in: { preset: 'rise', at: 0.1, duration: 0.6, ease: 'outQuint', stagger: 0.05, distance: 30 }, out: { preset: 'fade', duration: 0.4, ease: 'inCubic', stagger: 0, distance: 20 }, hold: 'float', keys: { x: [[0, 0.3], [1, 0.4]] }, z: 2, repeat: { count: 12, layout: 'grid', cols: 4, gap: 40, radius: 100, stagger: 0.05 } };
 const FULL = {
   text: { ...COMMON, type: 'text', text: 'Every field', size: 80, weight: 600, font: 'serif', align: 'left', tracking: 0.01, leading: 1.2, maxWidth: 0.7, upper: true, highlight: ['field'], highlightColor: 'accent', plate: { color: 'surface', padX: 20, padY: 10, radius: 8 } },
   shape: { ...COMMON, type: 'shape', shape: 'polygon', w: 200, h: 120, radius: 4, fill: 'accent', stroke: 'ink', strokeWidth: 3, d: '', points: [[0, 0], [1, 1], [0, 1]], sides: 5, arc: [0, 0.75], cap: 'butt' },

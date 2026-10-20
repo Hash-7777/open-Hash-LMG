@@ -17,6 +17,7 @@ import {
 } from '../core/scene/format.js';
 import { toHex } from '../core/util/color.js';
 import { resizeScene } from '../core/scene/edit.js';
+import { repeatSection } from './repeat-fields.js';
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ');
 const labelled = (list) => list.map((v) => [v, cap(v)]);
@@ -287,6 +288,8 @@ export function createInspector({ store, onVersion }) {
           field('Width', numberInput(L.w, (v) => set((M) => { M.w = v; }), { min: 1, max: 8000, step: 10, unit: 'pt', digits: 0 })),
           field('Height', numberInput(L.h, (v) => set((M) => { M.h = v; }), { min: 1, max: 8000, step: 10, unit: 'pt', digits: 0 })))));
     }
+
+    if (L.type === 'shape' || L.type === 'text') parts.push(repeatSection(L, set));
 
     parts.push(section('Place',
       pair(
