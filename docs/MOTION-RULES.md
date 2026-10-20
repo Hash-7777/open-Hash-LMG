@@ -1,0 +1,73 @@
+# Motion rules
+
+The rules Hash LMG lays out, times and checks a film by, each with where it
+lives in the code and where it comes from. A source carries a weight:
+
+- **Strong**: peer-reviewed research, or a broadcast or accessibility standard.
+- **Fair**: a platform's or vendor's own documentation, or a pattern repeated
+  across many independent sources.
+- **Lore**: practitioner advice with no study behind it, followed as a habit.
+
+Every rule below is in the code today. The film checks
+(`src/core/scene/lint.js`) report each one with a level (error, warn, info)
+and, where a rule can repair it, a fix the director applies by itself
+(`autofix`). The compiler (`src/core/scene/compile.js`) follows the same
+rules when it lays a storyboard out, so a guided film starts out passing them.
+
+## Opening
+
+| Rule | In the code | Source | Weight |
+|---|---|---|---|
+| Frame one is a picture already forming, never an empty frame. | `empty-open`, fixed by starting the opening line's entrance before the film does; the compiler does it for every film. | Short-video retention is settled in the first one or two seconds; creator briefs ask that frame one be a finished picture. | Fair |
+| Something moves in the first moment. | `slow-open`, fixed by starting the first motion at once. | Onset of motion captures attention (Abrams and Christ, 2003). | Strong |
+
+## Reading
+
+| Rule | In the code | Source | Weight |
+|---|---|---|---|
+| A line holds for 0.8 s plus 2.5 words a second, never under 1.2 s; one or two words for 0.9 s. | `readingTime` in `format.js`; `read-time`, fixed by holding the scene longer; the compiler times every beat by it. | Subtitle and broadcast reading-speed practice. | Strong |
+| At most about seven words on screen at once. | `long-text` above sixteen words. | Multimedia learning: short text beside the picture (Mayer). | Strong |
+| Text is large enough to read on a phone. | `small-text`: at least 26, or 34 in a vertical frame, on the 1080 scale; fixed by enlarging. | Platform readability guidance. | Fair |
+| Text stands out from what is behind it. | `contrast`: 4.5 to 1, or 3 to 1 for large text; fixed by choosing the palette colour with the most contrast. | WCAG 2 contrast minimums. | Strong |
+
+## Place
+
+| Rule | In the code | Source | Weight |
+|---|---|---|---|
+| Words stay inside the frame. | `off-frame` from the measured boxes; fixed by shrinking and moving the line inside. | | |
+| Words stay inside the title-safe area, and in a vertical frame clear of where phone apps draw their own buttons and captions. | `safe-area` with `safeArea()`; fixed the same way. | Platform safe-zone guidance for Reels and Shorts. | Fair |
+| Lines do not cover each other. | `overlap` from the measured boxes; fixed by moving one line away. | | |
+
+## Motion
+
+| Rule | In the code | Source | Weight |
+|---|---|---|---|
+| No bounce: things arrive and settle without overshooting. | `overshoot` on easings that overshoot; fixed by an exponential ease out. | Rejected cuts recorded in the motion-graphics work this app grew out of. | Lore |
+| Something new begins every few seconds; reading time counts as time well spent. | `dead-time`, scaled to the words on screen; fixed by a slow camera push. | Onset of motion captures attention and steady motion stops holding it. | Strong (inferred) |
+| Four or more things never arrive in the same instant. | `crowded-entrance`; fixed by a short stagger. | Signalling: one cue at a time (Mayer). | Strong |
+| Two or three kinds of transition, used consistently. | `transition-mix`; fixed by the style's own transitions; the compiler cycles only those. | Consistency reads as designed. | Lore |
+| A transition arrives in about half a second. | `slow-transition` above 1.2 s. | | Lore |
+| A slow push on text scenes, so nothing is ever fully still. | The compiler's scene cameras. | Keynote films keep the camera drifting. | Lore |
+
+## Time and sound
+
+| Rule | In the code | Source | Weight |
+|---|---|---|---|
+| Scenes start on the beat, so cuts land with the music. | The compiler rounds every scene to the beat grid; the score (`src/core/audio/score.js`) lands its drop on the reveal. | A cut that lands with a sound reads as one event (audiovisual synchrony). | Strong |
+| A line of narration ends before its scene hands over. | `voice-overrun`; fixed by holding the scene longer. | | |
+| A film comes out near the length asked for. | The compiler stretches holds when there is room and leaves out the least important beats when the words need far more time, keeping the opening, the name and the end; `length` reports what is left over. | One idea a shot. | Lore |
+| Loudness near -14 LUFS with true peaks under -1 dBTP. | `master()` in `src/core/audio/master.js`. | Platforms turn louder uploads down to about -14 LUFS (ITU-R BS.1770 measurement). | Fair |
+
+## Editing
+
+| Rule | In the code | Source | Weight |
+|---|---|---|---|
+| When a scene gets longer or shorter, what ran to its end still does, exits move with it, and entrances keep their time. | `resizeScene` in `src/core/scene/edit.js`, used by the timeline and the inspector. | How motion templates protect their intro and outro when their length changes. | Fair |
+| A version for another screen is laid out again for it, never cropped. | `src/app/versions.js`. | Responsive layouts in motion tools; recompose rather than crop. | Fair |
+
+## Sources
+
+- Abrams, R. A. and Christ, S. E. (2003). Motion onset captures attention. *Psychological Science* 14(5).
+- Mayer, R. E. *Multimedia Learning* (principles of signalling, segmenting, coherence and redundancy).
+- W3C, Web Content Accessibility Guidelines 2, contrast minimum.
+- ITU-R BS.1770, algorithms to measure audio programme loudness and true-peak level.
