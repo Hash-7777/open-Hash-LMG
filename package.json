@@ -6,7 +6,8 @@
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "check": "node scripts/checks/run.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "2.11.1"

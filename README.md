@@ -93,14 +93,15 @@ Hash LMG is being built in the open. This is exactly what exists today:
 | Works today | Written, not yet run | Next |
 |---|---|---|
 | Scene format and its repair | Requests to every model service | Voices through Chatterbox and Kokoro |
-| The engine: type, shapes, charts, transitions | Motion blur, and MOV export | The automated check suite |
-| Film checks and automatic fixes | Films and exports kept by the desktop app | First release for macOS and Windows |
+| The engine: type, shapes, charts, transitions | Motion blur, and MOV export | First release for macOS and Windows |
+| Film checks and automatic fixes | Films and exports kept by the desktop app | |
 | The storyboard compiler, in all six styles | Sound through the system's own encoder | |
 | The director, with a scripted model | Narration mix, word timing and captions | |
 | Score and mastering | Processor or graphics-chip choice for Ollama | |
 | The editor: preview, timeline, inspector, director, settings | | |
 | Rendering in a background worker, and MP4 export | | |
 | The macOS app: it builds and opens the editor | | |
+| The check suite, `npm run check`, run on every push | | |
 
 "Works today" means exercised in Node with a stand-in canvas and a scripted model, or, for the editor and MP4 export, in headless Chrome with a scripted model. The macOS app has been built and opened; nothing in it has been run end to end yet, and nothing has been released.
 
@@ -134,6 +135,7 @@ src/
   platform/        the desktop app or a browser: projects, files, settings and keys
   app/             the editor window: its state, panels and dialogs
 src-tauri/         the desktop side: films, exports, sound, the window's walls
+scripts/checks/    the check suite: every script under it runs on npm run check
 ```
 
 <br>

@@ -1,0 +1,64 @@
+# Hash LMG: continuous integration
+#
+# src/ is served without a bundler, so nothing else catches a broken import
+# or a syntax error before it reaches someone: the browser stops loading that
+# module and every panel that depends on it silently disappears. The gate is
+# every check the repository has, plus the Rust compile and tests.
+#
+# What this proves: the source holds the properties the checks describe. It
+# does not prove the app works; only running it does.
+#
+# The Rust side runs on Linux, which also compiles the parts written for
+# systems other than macOS. The macOS parts are compiled and tested before
+# every push from a Mac.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # The runner finds every check in scripts/checks by itself, so a check
+      # added to the folder gates a push from the moment it exists.
+      - name: npm run check
+        run: npm run check
+
+  rust:
+    name: Rust
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+      - name: Linux system libraries for the web view
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
+      - name: cargo check
+        run: cargo check --manifest-path src-tauri/Cargo.toml --all-targets
+      - name: cargo test
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+      - name: cargo clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
