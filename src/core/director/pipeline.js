@@ -178,7 +178,8 @@ export function createDirector(deps) {
     const rounds = opts.rounds ?? (tier === 'guided' ? 0 : 2);
 
     const storyboard = await step('story', 'Writing the storyboard', () => writeStoryboard(brief, opts));
-    let { scene } = await step('layout', 'Laying it out and timing it to the music', async () => compile(storyboard, opts));
+    let { scene, notes: laid } = await step('layout', 'Laying it out and timing it to the music', async () => compile(storyboard, opts));
+    for (const n of laid || []) note('layout', n);
     let code = null;
 
     if (tier === 'plan') {

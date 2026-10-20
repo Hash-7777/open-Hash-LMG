@@ -28,6 +28,10 @@ function lineSize(words, big, vertical) {
   return Math.max(vertical ? 36 : 28, Math.round(vertical ? base * 0.92 : base));
 }
 
+// How much each kind of beat is worth keeping when a storyboard runs long.
+// Ties go to the earlier beat: a later one of the same kind is dropped first.
+const KEEP = { hook: 9, end: 9, title: 8, logo: 8, stat: 6, statement: 5, list: 5, steps: 4, words: 4, chart: 4, compare: 3, quote: 2 };
+
 // The vivid style changes the field colour scene by scene.
 function vividBackground(i, palette) {
   const cycle = ['bg', 'accent2', 'surface'];
@@ -262,6 +266,26 @@ export function compileStoryboard(input, opts = {}) {
       layers,
     });
   });
+
+  // A storyboard far longer than the length asked for loses its least
+  // important beats rather than running long: one idea a shot, and only the
+  // ideas that fit. The opening, the first name and the end are always kept.
+  if (opts.targetDuration) {
+    const total = () => scenes.reduce((n, S) => n + S.length, 0);
+    const dropped = [];
+    const named = scenes.find((S) => S.name === 'title' || S.name === 'logo');
+    while (total() > opts.targetDuration * 1.2 && scenes.length > 3) {
+      let worst = -1;
+      scenes.forEach((S, i) => {
+        if (i === 0 || i === scenes.length - 1 || S === named) return;
+        if (worst < 0 || (KEEP[S.name] ?? 5) <= (KEEP[scenes[worst].name] ?? 5)) worst = i;
+      });
+      if (worst < 0) break;
+      dropped.push(scenes[worst].name);
+      scenes.splice(worst, 1);
+    }
+    if (dropped.length) notes.push(`To fit the length asked for, ${dropped.length === 1 ? 'one beat was' : `${dropped.length} beats were`} left out: ${dropped.join(', ')}.`);
+  }
 
   // A requested length stretches the holds, never shortens them below reading
   // time, and never holds a scene still for longer than its words deserve.

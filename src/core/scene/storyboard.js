@@ -31,6 +31,30 @@ const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const s = (v, max = 160) => (typeof v === 'number' ? String(v) : typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
 
 // "*too*" marks an accent word. Returns the clean text and the accented words.
+// A stat's number carries a symbol or a short unit beside it; a word like
+// "percent" becomes its sign, and a phrase written as a unit ("of focus")
+// moves to the line under the number, where it reads.
+const UNIT_WORDS = { percent: '%', 'per cent': '%', pct: '%', percentage: '%', percentages: '%', times: '\u00d7', x: '\u00d7' };
+const SHORT_PREFIX = /^([$£€¥₹+~\u2212-]|[A-Z]{1,3}[$£€¥]|[<>]=?)$/;
+export function statUnits(prefix, suffix) {
+  let pre = String(prefix || '').trim();
+  let suf = String(suffix || '').trim();
+  const rest = [];
+  const preWord = UNIT_WORDS[pre.toLowerCase()];
+  if (preWord) { if (!suf || UNIT_WORDS[suf.toLowerCase()]) suf = preWord; else suf = `${preWord} ${suf}`; pre = ''; }
+  if (pre && !SHORT_PREFIX.test(pre)) { rest.push(pre); pre = ''; }
+  const sufWord = UNIT_WORDS[suf.toLowerCase()];
+  if (sufWord) suf = sufWord;
+  else if (suf) {
+    const [head, ...tail] = suf.split(/\s+/);
+    const headUnit = UNIT_WORDS[head.toLowerCase()] || (/^(%|[\u00d7x]|[kKMBT]|\+|h|s|ms|fps|k\+)$/.test(head) ? head : null);
+    if (headUnit) { suf = headUnit; if (tail.length) rest.push(tail.join(' ')); }
+    else if (tail.length === 0 && /^[A-Za-z]{2,10}$/.test(head)) suf = ` ${head}`;
+    else { rest.push(suf); suf = ''; }
+  }
+  return { prefix: pre, suffix: suf, rest: rest.join(' ') };
+}
+
 export function splitAccents(text) {
   const accents = [];
   const clean = String(text || '').replace(/\*{1,2}([^*]+)\*{1,2}/g, (_, w) => { accents.push(...w.trim().split(/\s+/)); return w; });
@@ -73,8 +97,10 @@ function normBeat(b, notes) {
       if (v === null) { notes.add('A stat beat without a number became a statement.'); return { ...out, kind: 'statement' }; }
       const raw = String(b.value ?? b.number ?? '');
       out.value = v;
-      out.prefix = s(b.prefix, 8) || (/^\s*[$£€¥]/.test(raw) ? raw.trim()[0] : '');
-      out.suffix = s(b.suffix ?? b.unit, 20) || (/%\s*$/.test(raw) ? '%' : '');
+      const units = statUnits(s(b.prefix, 40) || (/^\s*[$£€¥]/.test(raw) ? raw.trim()[0] : ''), s(b.suffix ?? b.unit, 60) || (/%\s*$/.test(raw) ? '%' : ''));
+      out.prefix = units.prefix;
+      out.suffix = units.suffix;
+      if (units.rest) out.sub = [units.rest, out.sub].filter(Boolean).join(' ');
       out.decimals = Number.isInteger(v) ? 0 : Math.min(2, String(v).split('.')[1]?.length || 1);
       out.sub = out.sub || (text && num(text) === null ? text : '');
       break;

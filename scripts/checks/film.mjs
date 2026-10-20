@@ -11,6 +11,7 @@ import { lintScene, sampleTimes } from '../../src/core/scene/lint.js';
 import { STYLE_NAMES, ASPECTS, LAYER_TYPES } from '../../src/core/scene/format.js';
 import { EXAMPLES } from '../../src/core/scene/examples.js';
 import { STORYBOARD, measure } from './lib/fixtures.mjs';
+import { statUnits, normalizeStoryboard } from '../../src/core/scene/storyboard.js';
 
 section('Every beat kind, in every style and frame shape, compiles clean');
 for (const style of STYLE_NAMES) {
@@ -24,6 +25,24 @@ for (const style of STYLE_NAMES) {
     });
   }
 }
+
+section('A storyboard longer than the length asked for');
+{
+  const { scene, notes } = compileStoryboard(STORYBOARD, { style: 'studio', targetDuration: 15 });
+  const kinds = scene.scenes.map((S) => S.name);
+  ok('it is cut to about the length asked for', scene.duration <= 15 * 1.25, `${scene.duration.toFixed(1)} s`);
+  ok('the opening, the name and the end are kept', kinds[0] === 'hook' && kinds.includes('title') && kinds[kinds.length - 1] === 'end');
+  ok('the quote goes before the stat', !kinds.includes('quote') || kinds.includes('stat'));
+  ok('it says which beats were left out', notes.some((n) => /left out/.test(n)));
+}
+
+section('A stat reads its unit sensibly');
+const units = (p, s) => JSON.stringify(statUnits(p, s));
+ok('a word for percent becomes the sign, and a phrase moves under the number', units('percent', 'of focus') === JSON.stringify({ prefix: '', suffix: '%', rest: 'of focus' }));
+ok('a short unit word keeps a space before it', statUnits('', 'hours').suffix === ' hours');
+ok('a currency sign stays in front', statUnits('$', '').prefix === '$');
+ok('"times" becomes a multiplication sign', statUnits('', 'times faster').suffix === '\u00d7');
+ok('through the storyboard', (() => { const b = normalizeStoryboard({ beats: [{ kind: 'stat', value: 86, prefix: 'percent', suffix: 'of focus' }] }).storyboard.beats[0]; return b.suffix === '%' && b.prefix === '' && /of focus/.test(b.sub); })());
 
 section('Normalising is idempotent');
 for (const [name, ex] of Object.entries(EXAMPLES)) {
