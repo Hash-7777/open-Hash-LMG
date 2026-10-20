@@ -62,7 +62,7 @@
 .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .field-label { font-size: var(--text-s); color: var(--muted); }
 .field-hint { font-size: var(--text-xs); color: var(--muted); line-height: 1.45; }
-.field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
 .readout { height: 28px; display: flex; align-items: center; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
 .input {

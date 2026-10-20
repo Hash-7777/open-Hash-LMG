@@ -25,7 +25,7 @@ const TIER_HELP = {
 };
 
 export function createDirectorPanel({ store, settings, openSettings }) {
-  const brief = h('textarea', { class: 'input textarea brief', rows: '5', maxlength: '4000', placeholder: 'Describe the film: what it is for, who will watch it, and what it must say.', 'aria-label': 'Brief' });
+  const brief = h('textarea', { class: 'input textarea brief', rows: '3', maxlength: '4000', placeholder: 'Describe the film: what it is for, who will watch it, and what it must say.', 'aria-label': 'Brief' });
   brief.value = store.get().project.brief;
   const keepBrief = () => { if (brief.value !== store.get().project.brief) store.patch({ brief: brief.value }, { record: false }); };
   let briefTimer = 0;
@@ -74,7 +74,7 @@ export function createDirectorPanel({ store, settings, openSettings }) {
       h('div', { class: 'field-pair' },
         labelled('Look', select(f.style, STYLE_NAMES.map((k) => [k, STYLE_PACKS[k].label]), (v) => setFilm({ style: v }))),
         labelled('Way of working', select(m.tier, [['auto', p ? `Suggested: ${TIER_SHORT[p.tier]}` : 'Suggested'], ['guided', 'Guided'], ['plan', 'Plan'], ['code', 'Code']], (v) => settings.update({ model: { tier: v } })))),
-      toggle(f.narration, (v) => setFilm({ narration: v }), 'Write a narration line for each scene'));
+      toggle(f.narration, (v) => setFilm({ narration: v }), 'Narration for each scene'));
     const prov = PROVIDERS[m.provider];
     clear(modelLine).append(
       h('span', { class: 'model-dot', html: ICONS.dot }),
