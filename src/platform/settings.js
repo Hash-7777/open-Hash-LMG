@@ -69,6 +69,8 @@ export function normalizeSettings(input) {
       // Guided films: how many storyboards the model writes for the app to
       // choose the cleanest from.
       drafts: int(model.drafts, 2, 1, 3),
+      // Hold the finished film to what the brief asks to see.
+      verify: model.verify === undefined ? true : Boolean(model.verify),
     },
     local: {
       ports,

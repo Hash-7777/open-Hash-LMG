@@ -99,6 +99,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
       })) : null,
       field('Storyboards to choose from', segmented(String(s.model.drafts), [['1', 'One'], ['2', 'Two'], ['3', 'Three']], (v) => { settings.update({ model: { drafts: Number(v) } }); paint(); }),
         'Guided way of working. The model writes this many storyboards and the app keeps the cleanest; each takes about as long as one.'),
+      field('Brief', toggle(s.model.verify, (v) => settings.update({ model: { verify: v } }), 'Check the finished film against what the brief asks to see, and fix what is missing once')),
       field('Review', toggle(s.model.review, (v) => settings.update({ model: { review: v } }), 'Let a model that can see review stills and ask for changes once')))];
   }
 

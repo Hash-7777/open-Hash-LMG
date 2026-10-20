@@ -25,6 +25,7 @@ import { normalizeScene } from '../scene/normalize.js';
 import { lintScene, autofix, sampleTimes, motionTimes } from '../scene/lint.js';
 import { extractJson, extractCode } from '../util/json.js';
 import { checkCode, asModule } from './code-check.js';
+import { INTENT_SCHEMA, intentPrompt, normalizeIntent, intentTimes, verifyIntent, intentFailures } from './intent.js';
 import {
   STORYBOARD_SCHEMA, storyboardPrompt, planPrompt, planFromDraftMessage, codePrompt,
   revisePlanMessage, reviseCodeMessage, CRITIC_PROMPT, criticMessage, applyCritiqueMessage, editMessage,
@@ -126,6 +127,18 @@ export function createDirector(deps) {
     return best.sb;
   }
 
+  // ---- the brief, checked on the finished film ---------------------------------
+  async function listIntent(brief) {
+    return normalizeIntent(await askJson(intentPrompt(), `Brief:\n${brief}`, { schema: INTENT_SCHEMA, purpose: 'intent' }));
+  }
+
+  async function checkBrief(intent, scene, code) {
+    const samples = await deps.measure({ scene, code }, intentTimes(scene.duration));
+    const flat = (list) => list.flatMap((L) => [L, ...flat(L.layers || [])]);
+    const counters = code ? [] : scene.scenes.flatMap((S) => flat(S.layers)).filter((L) => L.type === 'counter');
+    return verifyIntent(intent, samples, { duration: scene.duration, width: scene.width, counters });
+  }
+
   function compile(storyboard, opts) {
     return compileStoryboard(storyboard, {
       style: opts.style, aspect: opts.aspect, fps: opts.fps, targetDuration: opts.seconds,
@@ -209,7 +222,7 @@ export function createDirector(deps) {
     return notes;
   }
 
-  // opts: { brief, tier, style, aspect, seconds, fps, narration, voice, vision, rounds, assets, palette, score, drafts }
+  // opts: { brief, tier, style, aspect, seconds, fps, narration, voice, vision, rounds, assets, palette, score, drafts, verify }
   async function make(opts) {
     const brief = String(opts.brief || '').trim();
     if (!brief) throw new Error('Describe the film first.');
@@ -217,7 +230,17 @@ export function createDirector(deps) {
     const rounds = opts.rounds ?? (tier === 'guided' ? 0 : 2);
 
     const drafts = tier === 'guided' ? Math.max(1, Math.min(3, opts.drafts || 1)) : 1;
-    const storyboard = await step('story', drafts > 1 ? 'Writing storyboards' : 'Writing the storyboard', () => bestStoryboard(brief, opts, drafts));
+    let storyboard = await step('story', drafts > 1 ? 'Writing storyboards' : 'Writing the storyboard', () => bestStoryboard(brief, opts, drafts));
+    // What the brief asks to see, as statements the finished film is held to.
+    let intent = [];
+    if (opts.verify) {
+      try {
+        intent = await step('intent', 'Listing what the brief asks to see', () => listIntent(brief));
+      } catch (err) {
+        if (err?.stopped) throw err;
+        note('intent', 'The model\u2019s list of what the brief asks for could not be read, so the film is made without it.');
+      }
+    }
     let { scene, notes: laid } = await step('layout', 'Laying it out and timing it to the music', async () => compile(storyboard, opts));
     for (const n of laid || []) note('layout', n);
     let code = null;
@@ -256,6 +279,46 @@ export function createDirector(deps) {
       }
     }
 
+    let briefResults = null;
+    if (intent.length) {
+      briefResults = await step('verify', 'Checking the film against the brief', () => checkBrief(intent, scene, code));
+      let failed = intentFailures(briefResults);
+      // One round back to whatever made the film, kept only if it misses less.
+      if (failed.length) {
+        if (code) {
+          const next = await step('revise', 'Showing what the brief asks for', async () => {
+            const text = await deps.ask({ system: codePrompt({ seconds: scene.duration, aspect: scene.aspect, timing: timingText(scene) }), messages: [{ role: 'user', content: `${reviseCodeMessage(failed)}\n\n\`\`\`js\n${code}\n\`\`\`` }], purpose: 'revise code' });
+            const c2 = asModule(extractCode(text));
+            return !checkCode(c2).length && (await deps.trial({ scene, code: c2 })).ok ? c2 : null;
+          });
+          if (next) {
+            const again = await step('verify', 'Checking against the brief again', () => checkBrief(intent, scene, next));
+            if (intentFailures(again).length < failed.length) { code = next; briefResults = again; }
+          }
+        } else {
+          let candidate = null;
+          if (tier === 'guided') {
+            const sb2 = await step('revise', 'Rewriting the storyboard to show what the brief asks for', async () => {
+              const raw = await askJson(storyboardPrompt({ seconds: opts.seconds, narration: opts.narration }), `Brief:\n${brief}\n\nThe last storyboard missed these:\n${failed.join('\n')}\nWrite the whole storyboard again so the film shows all of them.`, { schema: STORYBOARD_SCHEMA, purpose: 'storyboard' });
+              const { storyboard: s2 } = normalizeStoryboard(raw || {});
+              return s2.beats.length ? s2 : null;
+            });
+            if (sb2) candidate = { storyboard: sb2, ...(await checkScene(compile(sb2, opts).scene, opts)) };
+          } else {
+            const s2 = await step('revise', 'Showing what the brief asks for', () => revisePlan(scene, failed.map((message) => ({ level: 'warn', message })), opts));
+            candidate = { storyboard, ...(await checkScene(s2, opts)) };
+          }
+          if (candidate) {
+            const again = await step('verify', 'Checking against the brief again', () => checkBrief(intent, candidate.scene, null));
+            if (intentFailures(again).length < failed.length) { ({ storyboard, scene, issues } = candidate); briefResults = again; }
+          }
+        }
+        failed = intentFailures(briefResults);
+      }
+      note('verify', failed.length ? 'Some of what the brief asks for is not in the film yet:' : 'The film shows everything the brief asked for.');
+      for (const f of failed) note('verify', f);
+    }
+
     if (opts.vision && rounds > 0) {
       const notes = await step('review', 'Reviewing stills like a creative director', () => review({ scene, code }, brief, tier, opts));
       if (notes) {
@@ -281,7 +344,7 @@ export function createDirector(deps) {
     }
 
     // Code that never ran falls back to the scene plan, and the film says so.
-    return { storyboard, scene, code, issues, tier: code ? 'code' : tier === 'code' ? 'plan' : tier };
+    return { storyboard, scene, code, issues, brief: briefResults, tier: code ? 'code' : tier === 'code' ? 'plan' : tier };
   }
 
   // project: { tier, storyboard, scene, code, edited }

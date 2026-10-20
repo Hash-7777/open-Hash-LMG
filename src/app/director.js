@@ -25,14 +25,16 @@ const LENGTHS = [15, 30, 45, 60, 90, 120];
 // The share of the bar each step takes, by way of working: the model writing
 // is most of the wait.
 const PLANS = {
-  guided: [['story', 6], ['layout', 1], ['check', 3]],
-  plan: [['story', 3], ['layout', 1], ['design', 5], ['check', 2], ['revise', 2], ['review', 1]],
-  code: [['story', 3], ['layout', 1], ['design', 6], ['check', 1], ['revise', 2], ['review', 1]],
+  guided: [['story', 6], ['intent', 1], ['layout', 1], ['check', 2], ['verify', 1]],
+  plan: [['story', 3], ['intent', 1], ['layout', 1], ['design', 5], ['check', 2], ['revise', 2], ['verify', 1], ['review', 1]],
+  code: [['story', 3], ['intent', 1], ['layout', 1], ['design', 6], ['check', 1], ['revise', 2], ['verify', 1], ['review', 1]],
   edit: [['edit', 7], ['check', 3]],
 };
 // About how long a typical answer of each kind is, in characters, so the bar
 // can fill while the model writes.
-const TYPICAL = { storyboard: 1400, plan: 9000, revise: 9000, edit: 5000, code: 7000, 'revise code': 7000, review: 500, 'apply review': 8000 };
+// What each kind of answer is called on the loading bar.
+const ANSWER_WORDS = { intent: 'list of what the brief asks for', storyboard: 'storyboard', plan: 'plan', revise: 'revised plan', edit: 'change', code: 'animation code', 'revise code': 'revised code', review: 'review', 'apply review': 'changes from the review' };
+const TYPICAL = { intent: 400, storyboard: 1400, plan: 9000, revise: 9000, edit: 5000, code: 7000, 'revise code': 7000, review: 500, 'apply review': 8000 };
 const TIER_SHORT = { guided: 'Guided', plan: 'Plan', code: 'Code' };
 const TIER_HELP = {
   guided: 'The model writes the story; the app designs, times and scores it.',
@@ -143,7 +145,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
           fetch: (u, i) => fetch(u, i), signal,
           onThinking: () => progress.say('The model is thinking'),
           onText: (_, all) => progress.within(part ? (part.index + Math.min(1, all.length / typical)) / part.of : all.length / typical,
-            part ? `The model is writing storyboard ${part.index + 1} of ${part.of}` : `The model is writing the ${purpose || 'answer'}`),
+            part ? `The model is writing storyboard ${part.index + 1} of ${part.of}` : `The model is writing the ${ANSWER_WORDS[purpose] || 'answer'}`),
           onStats: (st) => session.onStats(st),
         });
         return text;
@@ -188,16 +190,17 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
       const vision = typeof caps.vision === 'boolean' && session.local ? caps.vision : Boolean(p?.vision);
       const out = await director.make({
         brief: text, tier: way, style: s.film.style, aspect: s.film.aspect, seconds: s.film.seconds, fps: s.film.fps,
-        narration: s.film.narration, vision: vision && s.model.review, drafts: s.model.drafts,
+        narration: s.film.narration, vision: vision && s.model.review, drafts: s.model.drafts, verify: s.model.verify,
       });
       store.patch({ brief: text, storyboard: out.storyboard, scene: out.scene, code: out.code, tier: out.tier, edited: false });
       store.select(null);
       store.setTime(0);
       const left = out.issues.filter((i) => i.level !== 'info');
+      const missing = (out.brief || []).filter((r) => !r.ok).length;
       for (const i of left.slice(0, 6)) note(i.message);
       const fit = await session.fitNote();
       if (fit) note(fit);
-      progress.finish(left.length ? 'Made, with a few things to look at' : 'Made');
+      progress.finish(left.length || missing ? 'Made, with a few things to look at' : 'Made');
     } catch (err) {
       if (!err.stopped) toast(err.message || String(err), 'error');
       progress.finish(err.stopped ? 'Stopped' : 'Could not finish', false);
