@@ -40,6 +40,13 @@ export const ease = {
   inOutCirc: (t) => (t = c(t), t < 0.5
     ? (1 - Math.sqrt(1 - (2 * t) ** 2)) / 2
     : (Math.sqrt(1 - (-2 * t + 2) ** 2) + 1) / 2),
+  // A critically damped spring, 1 - (1 + w t) e^(-w t), scaled to land exactly
+  // on 1: it arrives fast and comes to rest without ever passing its target.
+  settle: (t) => {
+    const w = 8;
+    const f = (x) => 1 - (1 + w * x) * Math.exp(-w * x);
+    return f(c(t)) / f(1);
+  },
   // A gentle overshoot. Flagged by the linter; never chosen by the compiler.
   outBack: (t) => {
     t = c(t);

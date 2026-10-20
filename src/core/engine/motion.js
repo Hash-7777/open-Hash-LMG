@@ -72,6 +72,10 @@ export function layerState(L, t, u = 1) {
     case 'slide-right': st.opacity *= clamp(pin * 1.6); st.dx -= (1 - pin) * dist * 2.5; break;
     case 'scale': st.opacity *= clamp(pin * 1.5); st.scale *= 0.88 + 0.12 * pin; break;
     case 'focus': st.opacity *= pin; st.scale *= 1.07 - 0.07 * pin; break;
+    // A short rise out of nothing that settles: fades in a little ahead of
+    // its move, travels under half the usual distance, and grows the last
+    // percent and a half into place.
+    case 'soft': st.opacity *= clamp(pin * 1.25); st.dy += (1 - pin) * dist * 0.45; st.scale *= 0.985 + 0.015 * pin; break;
     case 'letters': case 'words': case 'type': case 'mask-up':
       if (L.type === 'text') st.reveal = { mode: inPreset, time: inLocal, duration: L.in.duration, stagger: L.in.stagger, ease: L.in.ease, distance: dist };
       else { st.opacity *= pin; st.dy += (1 - pin) * dist; }
@@ -101,6 +105,7 @@ export function layerState(L, t, u = 1) {
     switch (L.out.preset) {
       case 'fade': st.opacity *= 1 - pout; break;
       case 'rise': st.opacity *= 1 - pout; st.dy -= pout * od; break;
+      case 'soft': st.opacity *= 1 - pout; st.dy -= pout * od * 0.3; break;
       case 'fall': st.opacity *= 1 - pout; st.dy += pout * od; break;
       case 'slide-left': st.opacity *= 1 - pout; st.dx -= pout * od * 2.5; break;
       case 'slide-right': st.opacity *= 1 - pout; st.dx += pout * od * 2.5; break;

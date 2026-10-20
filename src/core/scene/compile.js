@@ -21,7 +21,7 @@ import { contrast } from '../util/color.js';
 import { PREROLL } from './lint.js';
 
 // Each style says how it marks an accent word while it holds.
-const ACCENT_HOLD = { studio: 'underline', paper: 'marker', mono: 'none', vivid: 'none', editorial: 'none', tech: 'underline' };
+const ACCENT_HOLD = { studio: 'underline', paper: 'marker', mono: 'none', vivid: 'none', editorial: 'none', tech: 'underline', stage: 'none' };
 
 // Text size for a line of n words, so long lines shrink before they wrap badly.
 function lineSize(words, big, vertical) {
@@ -106,7 +106,7 @@ export function compileStoryboard(input, opts = {}) {
         break;
       }
       case 'stat': {
-        layers.push({ type: 'counter', from: 0, to: b.value, prefix: b.prefix, suffix: b.suffix, decimals: b.decimals, x: X, y: cy - 0.06, size: vertical ? 190 : 210, weight: Math.min(900, pack.fonts.weight + 100), color: accent, count: 1.4, in: { preset: 'rise', duration: 0.6, ease } });
+        layers.push({ type: 'counter', from: 0, to: b.value, prefix: b.prefix, suffix: b.suffix, decimals: b.decimals, x: X, y: cy - 0.06, size: vertical ? 190 : 210, weight: Math.min(900, pack.fonts.weight + 100), color: accent, count: 1.4, roll: Boolean(pack.roll), in: { preset: pack.roll ? 'soft' : 'rise', duration: 0.6, ease } });
         if (b.sub) layers.push({ type: 'text', text: b.sub, x: X, y: cy + 0.12, size: lineSize(wordCount(b.sub), 56, vertical), weight: 500, color: muted, at: 0.5, maxWidth: MW, in: { preset: pack.enter.small, duration: 0.7, ease } });
         entrance = 1.6;
         camera = { zoom: [1.03, 1] };

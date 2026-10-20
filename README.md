@@ -53,14 +53,14 @@ The app suggests the way of working from the model's size, and you can always ch
 
 <br>
 
-## Six looks, built in
+## Seven looks, built in
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/assets/styles-light.svg">
   <img src="docs/assets/styles-dark.svg" width="100%" alt="Studio, Paper, Mono, Vivid, Editorial and Tech">
 </picture>
 
-Each style is a complete design: palette, type, background, and the two or three transitions it cuts with. **Studio** is near-black and quiet. **Paper** is a Swiss grid with a red mark. **Mono** types on and cuts on the beat. **Vivid** changes colour field scene by scene. **Editorial** sets serif headlines and holds long. **Tech** draws contour lines behind precise type.
+Each style is a complete design: palette, type, background, and the two or three transitions it cuts with. **Studio** is near-black and quiet. **Paper** is a Swiss grid with a red mark. **Mono** types on and cuts on the beat. **Vivid** changes colour field scene by scene. **Editorial** sets serif headlines and holds long. **Tech** draws contour lines behind precise type. **Stage**, not pictured above, sets medium-weight type rising softly into place on a black stage, with one lit colour and figures that roll in on an odometer.
 
 <br>
 
@@ -95,7 +95,7 @@ Hash LMG is being built in the open. This is exactly what exists today:
 | Scene format and its repair | Requests to every model service | Voices through Chatterbox and Kokoro |
 | The engine: type, shapes, charts, transitions | Motion blur, and MOV export | First release for macOS and Windows |
 | Film checks and automatic fixes | Films and exports kept by the desktop app | |
-| The storyboard compiler, in all six styles | Sound through the system's own encoder | |
+| The storyboard compiler, in every style | Sound through the system's own encoder | |
 | The director, with a scripted model | Narration mix, word timing and captions | |
 | Score and mastering | Processor or graphics-chip choice for Ollama | |
 | The editor: preview, timeline, inspector, director, settings | | |

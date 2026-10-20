@@ -232,6 +232,7 @@ export function createInspector({ store, onVersion }) {
         pair(
           field('Decimals', numberInput(L.decimals, (v) => set((M) => { M.decimals = Math.round(v); }), { min: 0, max: 6, digits: 0 })),
           field('Counts for', numberInput(L.count, (v) => set((M) => { M.count = v; }), { min: 0, max: 30, step: 0.1, unit: 's' }))),
+        field('Odometer', toggle(L.roll, (v) => set((M) => { M.roll = v; }), 'Roll the digits into place')),
         pair(
           field('Size', numberInput(L.size, (v) => set((M) => { M.size = v; }), { min: 8, max: 800, step: 2, unit: 'pt', digits: 0 })),
           field('Colour', colourInput(L.color, s.palette, (v) => set((M) => { M.color = v || 'ink'; }))))));

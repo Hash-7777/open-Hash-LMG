@@ -293,6 +293,8 @@ function normLayer(L, ctx, depth = 0) {
       align: oneOf(L.align, ALIGNS, 'center'),
       tracking: num(L.tracking, pack.tracking, -0.2, 1),
       count: num(L.count ?? L.countDuration, 1.4, 0, 30),
+      // Digits that roll into place on an odometer, rather than counting up.
+      roll: Boolean(L.roll ?? L.odometer),
     });
   } else if (type === 'bars' || type === 'line-chart') {
     const values = (Array.isArray(L.values) ? L.values : []).map((v) => num(v, 0)).slice(0, 48);

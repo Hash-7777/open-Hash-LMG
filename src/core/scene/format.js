@@ -43,11 +43,11 @@ export const ALIGNS = ['left', 'center', 'right'];
 
 // Entrances. Each is drawn by src/core/engine/motion.js.
 export const IN_PRESETS = [
-  'none', 'fade', 'rise', 'drop', 'slide-left', 'slide-right', 'scale', 'focus',
+  'none', 'fade', 'rise', 'soft', 'drop', 'slide-left', 'slide-right', 'scale', 'focus',
   'mask-up', 'letters', 'words', 'type', 'wipe', 'draw', 'grow',
 ];
 // Exits.
-export const OUT_PRESETS = ['none', 'fade', 'rise', 'fall', 'slide-left', 'slide-right', 'scale', 'mask-down', 'wipe', 'focus'];
+export const OUT_PRESETS = ['none', 'fade', 'rise', 'soft', 'fall', 'slide-left', 'slide-right', 'scale', 'mask-down', 'wipe', 'focus'];
 // What a layer does while it holds. No pulsing: a beat-pulsing frame reads as cheap.
 export const HOLD_PRESETS = ['none', 'float', 'drift', 'underline', 'marker', 'shimmer'];
 
@@ -71,6 +71,7 @@ export const estimateSpeech = (words) => 0.3 + words / 2.6;
 // "slideUp" or "typewriter" still moves the way it meant to.
 export const PRESET_ALIASES = {
   fadein: 'fade', 'fade-in': 'fade', fadeout: 'fade', 'fade-out': 'fade', appear: 'fade', opacity: 'fade',
+  'soft-rise': 'soft', 'blur-rise': 'soft', 'rise-blur': 'soft', gentle: 'soft', settle: 'soft',
   slideup: 'rise', 'slide-up': 'rise', 'move-up': 'rise', up: 'rise', 'fade-up': 'rise', 'rise-up': 'rise', 'float-up': 'rise',
   slidedown: 'drop', 'slide-down': 'drop', down: 'drop', 'fade-down': 'drop',
   slideleft: 'slide-left', left: 'slide-left', 'from-right': 'slide-left',
@@ -159,6 +160,21 @@ export const STYLE_PACKS = {
     ease: 'inOutSine',
     tracking: -0.01,
     score: 'cinematic',
+  },
+  stage: {
+    label: 'Stage',
+    blurb: 'A black stage, medium-weight type rising softly into place, one lit colour, figures that roll in.',
+    palette: { bg: '#000000', surface: '#101012', ink: '#f5f5f7', muted: '#8e8e93', accent: '#6fa8ff', accent2: '#c7a2ff' },
+    fonts: { display: 'display', text: 'sans', weight: 600 },
+    background: { kind: 'vignette', drift: 0.2 },
+    transitions: ['fade', 'zoom'],
+    enter: { title: 'soft', line: 'soft', small: 'soft', list: 'soft' },
+    exit: 'soft',
+    ease: 'settle',
+    tracking: -0.02,
+    score: 'soft',
+    // Figures on an odometer rather than counting up.
+    roll: true,
   },
   tech: {
     label: 'Tech',

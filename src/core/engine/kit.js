@@ -655,6 +655,7 @@ export function createKit(ctx, options = {}) {
     push, pop, clip, alpha,
     // checks: collect boxes drawn while fn runs, tagged with a layer id
     collectInto(list) { collect = list; },
+    mark: (kind, x, y, w, h, extra) => record(kind, x, y, w, h, extra),
     tag(id) { tag = id; },
   };
   return kit;

@@ -42,6 +42,8 @@ rules when it lays a storyboard out, so a guided film starts out passing them.
 
 | Rule | In the code | Source | Weight |
 |---|---|---|---|
+| Things that land do so on a critically damped spring: fast, then resting, never past the target. | The `settle` ease in `src/core/engine/ease.js`; the Stage style eases everything with it. | Creator briefs for directed motion ask for exactly this curve, 1 - (1 + w t) e^(-w t). | Lore |
+| Figures land harder rolling into place than counting up: every digit column spins and stops, left to right, the last as the count ends. | Counters with `roll` (`src/core/engine/odometer.js`); the Stage style rolls its stats. | Product launch films set figures on an odometer. | Lore |
 | No bounce: things arrive and settle without overshooting. | `overshoot` on easings that overshoot; fixed by an exponential ease out. | Bounce and springy pop-ins read as cheap in premium motion. | Lore |
 | Something new begins every few seconds; reading time counts as time well spent. | `dead-time`, scaled to the words on screen; fixed by a slow camera push. | Onset of motion captures attention and steady motion stops holding it. | Strong (inferred) |
 | Four or more things never arrive in the same instant. | `crowded-entrance`; fixed by a short stagger. | Signalling: one cue at a time (Mayer). | Strong |

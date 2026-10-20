@@ -89,7 +89,7 @@ const COMMON = { name: 'n', x: 0.3, y: 0.4, anchor: 'top-left', rotate: 5, scale
 const FULL = {
   text: { ...COMMON, type: 'text', text: 'Every field', size: 80, weight: 600, font: 'serif', align: 'left', tracking: 0.01, leading: 1.2, maxWidth: 0.7, upper: true, highlight: ['field'], highlightColor: 'accent', plate: { color: 'surface', padX: 20, padY: 10, radius: 8 } },
   shape: { ...COMMON, type: 'shape', shape: 'polygon', w: 200, h: 120, radius: 4, fill: 'accent', stroke: 'ink', strokeWidth: 3, d: '', points: [[0, 0], [1, 1], [0, 1]], sides: 5, arc: [0, 0.75], cap: 'butt' },
-  counter: { ...COMMON, type: 'counter', from: 1, to: 9, decimals: 1, prefix: '$', suffix: 'k', separator: false, size: 120, weight: 700, font: 'display', align: 'right', tracking: 0, count: 2 },
+  counter: { ...COMMON, type: 'counter', from: 1, to: 9, decimals: 1, prefix: '$', suffix: 'k', separator: false, size: 120, weight: 700, font: 'display', align: 'right', tracking: 0, count: 2, roll: true },
   bars: { ...COMMON, type: 'bars', values: [1, 2, 3], labels: ['a', 'b', 'c'], w: 600, h: 300, max: 5, min: 0, gap: 0.3, orientation: 'horizontal', showValues: false, labelSize: 22, track: 'surface', strokeWidth: 4, dots: false, area: true, decimals: 1, suffix: '%' },
   group: { ...COMMON, type: 'group', layers: [{ type: 'text', text: 'inside', id: 'inner' }] },
 };

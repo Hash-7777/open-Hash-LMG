@@ -6,6 +6,7 @@
 // state between frames, so frame 900 drawn alone is the same as frame 900
 // drawn after frame 899.
 
+import { drawOdometer } from './odometer.js';
 import { resolveEase } from './ease.js';
 import { clamp, mix, noise } from './math.js';
 import { layerState } from './motion.js';
@@ -128,6 +129,7 @@ function drawLayer(kit, doc, L, t) {
       break;
     }
     case 'counter': {
+      if (L.roll) { drawOdometer(kit, L, s, t, u); break; }
       const start = L.in.at ?? L.at;
       const p = resolveEase('outExpo')(clamp((t - start) / Math.max(0.001, L.count)));
       const v = mix(L.from, L.to, p);
