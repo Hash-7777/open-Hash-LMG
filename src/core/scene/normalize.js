@@ -147,7 +147,9 @@ function normMotion(m, kind, defs, notes, layerType) {
   const dur = num(m.duration ?? m.dur, defs.duration, 0, 10);
   return {
     preset,
-    at: m.at === undefined || m.at === null ? null : num(m.at, null, 0, LIMITS.maxSceneDuration),
+    // An entrance may begin before its layer's scene does, by up to two
+    // seconds, so a film can open on a picture already forming.
+    at: m.at === undefined || m.at === null ? null : num(m.at, null, -2, LIMITS.maxSceneDuration),
     duration: preset === 'none' ? 0 : dur,
     ease: easeName(m.ease, defs.ease),
     stagger: num(m.stagger, defs.stagger, 0, 1),

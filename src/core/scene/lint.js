@@ -38,6 +38,9 @@ function readableSpan(doc, si, L) {
 
 // The moments worth looking at: in each scene, just after the last entrance
 // settles, and in the middle of its hold.
+// How far into its entrance the opening line already is on the first frame.
+export const PREROLL = 0.4;
+
 export function sampleTimes(doc) {
   const times = [];
   doc.scenes.forEach((S, si) => {
@@ -79,6 +82,9 @@ export function lintScene(doc, opts = {}) {
   if (first) {
     const starts = allLayers(first.layers).map((L) => entranceSpan(L).start);
     if (starts.length && Math.min(...starts) > 0.4) add('warn', 'slow-open', 'Nothing moves in the opening moment. The first second decides whether people keep watching; start the first motion at once.', { scene: first.id }, { kind: 'open-at-zero', scene: first.id });
+    // Frame one is a picture, not black: something is already part way in.
+    const shown = allLayers(first.layers).some((L) => L.at <= 0 && (L.in.preset === 'none' || entranceSpan(L).start < 0));
+    if (starts.length && !shown) add('warn', 'empty-open', 'The film opens on an empty frame. Open on a picture already forming: start the first line\u2019s entrance a moment before the film does.', { scene: first.id }, { kind: 'preroll', scene: first.id });
   }
 
   doc.scenes.forEach((S, si) => {
@@ -257,6 +263,11 @@ export function autofix(doc, issues) {
       const firstStart = Math.min(...layers.map((L) => L.in.at ?? L.at));
       for (const L of layers) { L.at = Math.max(0, L.at - firstStart); if (L.in.at !== null && L.in.at !== undefined) L.in.at = Math.max(0, L.in.at - firstStart); }
       applied.push('Started the first motion on the first frame.');
+    } else if (f.kind === 'preroll') {
+      const S = byScene(f.scene);
+      if (!S) continue;
+      for (const L of S.layers) if (L.at <= 0 && L.in.preset !== 'none' && !(L.in.at < 0)) L.in.at = -PREROLL;
+      applied.push('Opened the film on a picture already forming instead of an empty frame.');
     } else if (f.kind === 'stagger') {
       const S = byScene(f.scene);
       if (!S) continue;

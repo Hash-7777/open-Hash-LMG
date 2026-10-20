@@ -18,6 +18,7 @@ import { normalizeStoryboard } from './storyboard.js';
 import { beatLength } from '../engine/math.js';
 import { entranceSpan } from '../engine/motion.js';
 import { contrast } from '../util/color.js';
+import { PREROLL } from './lint.js';
 
 // Each style says how it marks an accent word while it holds.
 const ACCENT_HOLD = { studio: 'underline', paper: 'marker', mono: 'none', vivid: 'none', editorial: 'none', tech: 'underline' };
@@ -285,6 +286,16 @@ export function compileStoryboard(input, opts = {}) {
       scenes.splice(worst, 1);
     }
     if (dropped.length) notes.push(`To fit the length asked for, ${dropped.length === 1 ? 'one beat was' : `${dropped.length} beats were`} left out: ${dropped.join(', ')}.`);
+  }
+
+  // Frame one is a picture already forming, never an empty frame: what opens
+  // the film begins its entrance a moment before the film does.
+  for (const L of scenes[0]?.layers || []) {
+    if ((L.at || 0) > 0) continue;
+    const m = typeof L.in === 'string' ? { preset: L.in } : { ...(L.in || {}) };
+    if (m.preset === 'none') continue;
+    m.at = -PREROLL;
+    L.in = m;
   }
 
   // A requested length stretches the holds, never shortens them below reading

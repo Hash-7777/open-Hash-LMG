@@ -16,7 +16,7 @@ export const EXAMPLE_LAUNCH = {
       duration: 2.5,
       camera: { zoom: [1, 1.04] },
       layers: [
-        { type: 'text', text: 'Plans change.', x: 0.5, y: 0.5, size: 120, weight: 700, in: { preset: 'letters', duration: 0.7, stagger: 0.03 } },
+        { type: 'text', text: 'Plans change.', x: 0.5, y: 0.5, size: 120, weight: 700, in: { preset: 'letters', at: -0.4, duration: 0.7, stagger: 0.03 } },
       ],
     },
     {

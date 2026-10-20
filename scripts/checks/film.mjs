@@ -12,6 +12,7 @@ import { STYLE_NAMES, ASPECTS, LAYER_TYPES } from '../../src/core/scene/format.j
 import { EXAMPLES } from '../../src/core/scene/examples.js';
 import { STORYBOARD, measure } from './lib/fixtures.mjs';
 import { statUnits, normalizeStoryboard } from '../../src/core/scene/storyboard.js';
+import { autofix } from '../../src/core/scene/lint.js';
 
 section('Every beat kind, in every style and frame shape, compiles clean');
 for (const style of STYLE_NAMES) {
@@ -24,6 +25,22 @@ for (const style of STYLE_NAMES) {
       ok(`${style} ${aspect}: scenes start on the beat`, scene.scenes.every((S) => Math.abs(S.start / (60 / scene.bpm) - Math.round(S.start / (60 / scene.bpm))) < 0.02 || S.transition.kind !== 'cut'));
     });
   }
+}
+
+section('Frame one is a picture, never an empty frame');
+for (const style of STYLE_NAMES) {
+  const { scene } = compileStoryboard(STORYBOARD, { style, targetDuration: 30 });
+  ok(`${style}: the first frame draws something`, measure(scene, [0])[0].boxes.some((b) => b.tag));
+}
+ok('the example that opens a new project does too', measure(normalizeScene(EXAMPLES.launch).scene, [0])[0].boxes.some((b) => b.tag));
+{
+  const plain = normalizeScene({ scenes: [{ duration: 3, layers: [{ type: 'text', text: 'Hello there', in: 'rise' }] }] }).scene;
+  const issues = lintScene(plain, { samples: measure(plain, sampleTimes(plain)) });
+  const hit = issues.find((i) => i.code === 'empty-open');
+  ok('an empty opening is caught', Boolean(hit));
+  const fixed = autofix(plain, [hit]).scene;
+  ok('and repaired so frame one draws', measure(fixed, [0])[0].boxes.some((b) => b.tag));
+  ok('and the repair holds through normalising', JSON.stringify(normalizeScene(fixed).scene) === JSON.stringify(fixed));
 }
 
 section('A storyboard longer than the length asked for');
