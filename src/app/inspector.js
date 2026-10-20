@@ -29,7 +29,7 @@ function allLayers(list, out = []) {
   return out;
 }
 
-export function createInspector({ store }) {
+export function createInspector({ store, onVersion }) {
   const body = h('div', { class: 'insp-body' });
   const title = h('span', { class: 'panel-title' });
   const el = h('aside', { class: 'inspector', 'aria-label': 'Inspector' }, h('div', { class: 'panel-head' }, title), body);
@@ -75,6 +75,9 @@ export function createInspector({ store }) {
         pair(
           field('Background', select(s.background.kind, labelled(BACKGROUNDS), (v) => film((doc) => { doc.background.kind = v; }))),
           field('Drift', numberInput(s.background.drift, (v) => film((doc) => { doc.background.drift = v; }), { min: 0, max: 1, step: 5, scale: 100, unit: '%', digits: 0 })))),
+      onVersion ? section('Other frame shapes',
+        h('p', { class: 'insp-note', text: 'A version for another screen is laid out again for it, never cropped. It opens as a film of its own; this one stays in Films.' }),
+        buttonRow(...Object.keys(ASPECTS).filter((k) => k !== s.aspect).map((k) => textButton(ASPECT_SHORT[k] || k, () => onVersion(k))))) : null,
       section('Sound',
         field('Music', select(s.sound.score, SCORES.map((k) => [k, SCORE_LABELS[k]]), (v) => film((doc) => { doc.sound.score = v; }))),
         field('Music volume', numberInput(s.sound.volume, (v) => film((doc) => { doc.sound.volume = v; }), { min: 0, max: 1, step: 5, scale: 100, unit: '%', digits: 0 })),

@@ -21,6 +21,7 @@ import { openProjectsDialog } from './projects-dialog.js';
 import { createSettingsStore } from '../platform/settings.js';
 import { storage, projects, newProjectId, isApp, invoke } from '../platform/index.js';
 import { initWindow } from '../platform/window.js';
+import { makeVersion } from './versions.js';
 import { createHost } from '../render/host.js';
 
 const LAST_KEY = 'lmg.last-project';
@@ -81,7 +82,18 @@ async function boot() {
   const openSettings = (section) => openSettingsDialog({ settings, section: typeof section === 'string' ? section : 'model' });
   const player = createPlayer({ store, host, prefs });
   const timeline = createTimeline({ store, player, prefs });
-  const inspector = createInspector({ store });
+  // A version for another frame shape opens as a film of its own.
+  const onVersion = async (aspect) => {
+    try {
+      const version = await makeVersion(store.get().project, aspect, newProjectId);
+      save.flush();
+      store.load(version);
+      storage.setItem(LAST_KEY, version.id);
+      save();
+      toast(`${version.scene.title} is open. The film it came from is in Films.`);
+    } catch (err) { toast(err.message || String(err), 'error'); }
+  };
+  const inspector = createInspector({ store, onVersion });
   const director = createDirectorPanel({ store, settings, openSettings });
 
   const titleInput = h('input', { class: 'film-title', type: 'text', maxlength: '120', 'aria-label': 'Film title', spellcheck: 'false' });
