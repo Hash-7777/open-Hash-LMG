@@ -69,6 +69,8 @@ export function parseModelList(providerId, json) {
       label: m.name || m.model,
       meta: {
         parameterSize: m.details?.parameter_size,
+        quantization: m.details?.quantization_level,
+        bytes: m.size,
         vision: Array.isArray(m.details?.families) ? m.details.families.some((f) => /clip|mllama|vision/i.test(f)) || undefined : undefined,
       },
     })).filter((m) => m.id && !/embed/i.test(m.id));

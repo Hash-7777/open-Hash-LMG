@@ -15,6 +15,7 @@
 import { PROVIDERS, PROVIDER_IDS, LOCAL_IDS, CLOUD_IDS } from '../core/providers/catalog.js';
 import { VOICE_ENGINES_INFO } from '../core/providers/speech.js';
 import { ASPECTS, FPS_CHOICES, STYLE_NAMES, DEVICES } from '../core/scene/format.js';
+import { KEEP_VALUES } from '../core/providers/local.js';
 
 export const SETTINGS_KEY = 'lmg.settings.v1';
 export const KEYS_KEY = 'lmg.keys.v1';
@@ -69,6 +70,9 @@ export function normalizeSettings(input) {
     local: {
       ports,
       device: pick(local.device, DEVICES, 'auto'),
+      // How long Ollama keeps the model loaded after an answer; empty is
+      // Ollama's own choice.
+      keep: pick(local.keep, KEEP_VALUES, ''),
     },
     voice: {
       engine: pick(voice.engine, ['none', ...Object.keys(VOICE_ENGINES_INFO)], 'none'),

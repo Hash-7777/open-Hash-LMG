@@ -15,6 +15,7 @@ import { createHost, contactSheet } from '../render/host.js';
 import { sampleTimes } from '../core/scene/lint.js';
 import { ASPECTS, STYLE_PACKS, STYLE_NAMES } from '../core/scene/format.js';
 import { select, toggle, ASPECT_SHORT } from './fields.js';
+import { createModelSession } from './model-session.js';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120];
 const TIER_SHORT = { guided: 'Guided', plan: 'Plan', code: 'Code' };
@@ -135,16 +136,20 @@ export function createDirectorPanel({ store, settings, openSettings }) {
     const s = settings.get();
     const m = s.model;
     const host = createHost();
+    const session = createModelSession(settings, (u, i) => fetch(u, i));
     const prep = async ({ scene, code }) => { await host.setScene(scene); await host.setCode(code || null); };
     const director = createDirector({
       ask: async ({ system, messages, json, schema, purpose }) => {
         live.textContent = 'Waiting for the model';
+        const extra = await session.options(purpose, { system, messages });
         const text = await ask({
           provider: m.provider, model: m.model, key: settings.key(m.provider), base: settings.base(m.provider),
-          device: s.local.device, system, messages, json, schema,
+          device: s.local.device, system, messages, json, schema, ...extra,
         }, {
           fetch: (u, i) => fetch(u, i), signal,
+          onThinking: () => { live.textContent = 'The model is thinking'; },
           onText: (_, all) => { live.textContent = `Receiving the ${purpose || 'answer'}: ${all.length.toLocaleString()} characters`; },
+          onStats: (st) => session.onStats(st),
         });
         live.textContent = '';
         return text;
@@ -154,7 +159,7 @@ export function createDirectorPanel({ store, settings, openSettings }) {
       sheet: async (target, times) => { await prep(target); return contactSheet(host, target.scene, times); },
       log: logEntry,
     });
-    return { director, done: () => host.dispose() };
+    return { director, session, done: () => host.dispose() };
   }
 
   function ready() {
@@ -174,11 +179,14 @@ export function createDirectorPanel({ store, settings, openSettings }) {
     running = new AbortController();
     paintButtons();
     resetLog();
-    const { director, done } = makeDirector(running.signal);
+    const { director, session, done } = makeDirector(running.signal);
     try {
+      // Ollama says itself whether a model can see pictures; its name is the fallback.
+      const caps = await session.describe();
+      const vision = typeof caps.vision === 'boolean' && session.local ? caps.vision : Boolean(p?.vision);
       const out = await director.make({
         brief: text, tier: tier(), style: s.film.style, aspect: s.film.aspect, seconds: s.film.seconds, fps: s.film.fps,
-        narration: s.film.narration, vision: Boolean(p?.vision && s.model.review),
+        narration: s.film.narration, vision: vision && s.model.review,
       });
       store.patch({ brief: text, storyboard: out.storyboard, scene: out.scene, code: out.code, tier: out.tier, edited: false });
       store.select(null);
@@ -186,6 +194,8 @@ export function createDirectorPanel({ store, settings, openSettings }) {
       const left = out.issues.filter((i) => i.level !== 'info');
       logEntry({ id: 'end', title: left.length ? 'Made, with a few things to look at' : 'Made', status: 'done' });
       for (const i of left.slice(0, 6)) logEntry({ id: 'end', status: 'note', detail: i.message });
+      const fit = await session.fitNote();
+      if (fit) logEntry({ id: 'end', status: 'note', detail: fit });
     } catch (err) {
       if (!err.stopped) toast(err.message || String(err), 'error');
       logEntry({ id: 'end', title: err.stopped ? 'Stopped' : 'Could not finish', status: 'fail', detail: err.stopped ? '' : err.message });

@@ -11,6 +11,7 @@
 import { PROVIDERS } from './catalog.js';
 import { buildRequest, readEvent, eventSplitter, describeFailure } from './request.js';
 import { modelsRequest, parseModelList } from './models.js';
+import { stripThinking, speedOf } from './local.js';
 
 // The processor or the graphics chip, as Ollama's num_gpu: the number of the
 // model's layers placed on the chip. "auto" sends nothing.
@@ -18,6 +19,15 @@ export function gpuLayers(device) {
   if (device === 'cpu') return 0;
   if (device === 'gpu') return 999;
   return undefined;
+}
+
+// A model told to run only on the graphics chip that does not fit there fails
+// to load; the message then says how to go back.
+function onChipHint(req, message) {
+  if (req.device === 'gpu' && /memory|alloc|metal|cuda|vram|load/i.test(message)) {
+    return `${message} The model may not fit on the graphics chip: choose Automatic under Runs on in Settings.`;
+  }
+  return message;
 }
 
 function unreachable(providerId, base, err) {
@@ -30,9 +40,10 @@ function unreachable(providerId, base, err) {
   return new Error(`${p ? p.label : 'The service'} could not be reached. Check the connection to the internet, then try again.`);
 }
 
-// Sends one question and returns the whole answer as text.
+// Sends one question and returns the whole answer as text, with any thinking
+// a model wrote into it taken out.
 //   req     as for buildRequest, plus device for local models
-//   io      { fetch, signal, onText(chunk, all), onThinking(chunk) }
+//   io      { fetch, signal, onText(chunk, all), onThinking(chunk), onStats({ speed, promptTokens }) }
 export async function ask(req, io) {
   const p = PROVIDERS[req.provider];
   if (!p) throw new Error(`Unknown model service: ${req.provider}`);
@@ -50,7 +61,7 @@ export async function ask(req, io) {
   if (!res.ok) {
     let body = '';
     try { body = await res.text(); } catch { /* the status says enough */ }
-    throw new Error(describeFailure(req.provider, res.status, body));
+    throw new Error(onChipHint(req, describeFailure(req.provider, res.status, body)));
   }
 
   let text = '';
@@ -58,6 +69,7 @@ export async function ask(req, io) {
   let finished = false;
   const take = (ev) => {
     if (ev && ev.__done) { finished = true; return; }
+    if (p.style === 'ollama' && ev && ev.done && io.onStats) io.onStats({ speed: speedOf(ev), promptTokens: Number(ev.prompt_eval_count) || null });
     const r = readEvent(p.style, ev);
     if (r.error) { failure = r.error; return; }
     if (r.thinking && io.onThinking) io.onThinking(r.thinking);
@@ -94,7 +106,8 @@ export async function ask(req, io) {
     split.end();
   }
 
-  if (failure) throw new Error(`${p.label}: ${failure}`);
+  if (failure) throw new Error(onChipHint(req, `${p.label}: ${failure}`));
+  text = stripThinking(text);
   if (!text.trim()) {
     throw new Error(`${p.label} sent back an empty answer.${finished ? '' : ' It may have stopped early.'} Try again, or choose another model.`);
   }

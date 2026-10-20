@@ -202,6 +202,6 @@ export function describeFailure(providerId, status, bodyText) {
   if (status === 401 || status === 403) return `${who} did not accept the key. Check it in Settings.${detail ? ` (${detail})` : ''}`;
   if (status === 404) return `${who} does not know that model, or the address is wrong.${detail ? ` (${detail})` : ''}`;
   if (status === 429) return `${who} says too many requests right now. Wait a moment, or choose another model.${detail ? ` (${detail})` : ''}`;
-  if (status >= 500) return `${who} had a problem on its side (${status}). Try again shortly.`;
+  if (status >= 500) return `${who} had a problem on its side (${status}).${detail ? ` ${detail}` : ''} Try again shortly.`;
   return `${who} answered with an error (${status}).${detail ? ` ${detail}` : ''}`;
 }
