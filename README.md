@@ -127,6 +127,7 @@ src/
     export/        the MP4 and MOV writer
   render/          the locked-down render worker, its host, video export
   platform/        the desktop app or a browser: projects, files, settings and keys
+  app/             the editor window: its state, panels and dialogs
 ```
 
 <br>
