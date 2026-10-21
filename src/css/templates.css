@@ -1,0 +1,36 @@
+/* The template gallery: a grid of films to start from, each shown by a still,
+   its name, what it holds and its length and shape. */
+
+.dialog.templates { width: min(900px, calc(100vw - 32px)); max-height: calc(100vh - 64px); }
+.dialog.templates .dialog-body { overflow-y: auto; }
+.tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 16px 14px; margin-top: 12px; }
+.tpl-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 0 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.tpl-frame {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 10;
+  margin-bottom: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
+  position: relative;
+  background: var(--stage);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+/* The still keeps its own shape, fitted whole inside the frame. */
+.tpl-thumb { position: absolute; inset: 0; margin: auto; display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; }
+.tpl-card:hover .tpl-frame, .tpl-card:focus-visible .tpl-frame { border-color: var(--line-strong); }
+.tpl-name { font-weight: 600; font-size: var(--text-m); }
+.tpl-blurb { color: var(--ink-2); font-size: var(--text-s); line-height: 1.4; }
+.tpl-meta { color: var(--muted); font-size: var(--text-xs); }

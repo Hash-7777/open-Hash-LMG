@@ -22,6 +22,7 @@ import { createSettingsStore } from '../platform/settings.js';
 import { storage, projects, newProjectId, isApp, invoke } from '../platform/index.js';
 import { initWindow } from '../platform/window.js';
 import { makeVersion } from './versions.js';
+import { openTemplatesDialog } from './templates-dialog.js';
 import { createProgress } from './progress.js';
 import { createHost } from '../render/host.js';
 
@@ -113,6 +114,13 @@ async function boot() {
     store.load(normalizeProject({}, newProjectId));
     storage.setItem(LAST_KEY, store.get().project.id);
   };
+  // A film made from a template opens as a new film; the one open now is kept.
+  const fromTemplate = (film) => {
+    save.flush();
+    store.load(normalizeProject({ brief: film.brief, storyboard: film.storyboard, scene: film.scene, tier: 'guided', take: film.take }, newProjectId));
+    storage.setItem(LAST_KEY, store.get().project.id);
+  };
+  const openTemplates = () => openTemplatesDialog({ onUse: fromTemplate });
   const openFilm = async (id) => {
     save.flush();
     try {
@@ -124,7 +132,8 @@ async function boot() {
   // The bar drags the window in the desktop app, wherever it has no control.
   const topbar = h('header', { class: 'topbar', 'data-tauri-drag-region': true },
     h('div', { class: 'brand', 'data-tauri-drag-region': true }, h('span', { class: 'brand-name', text: 'Hash LMG', 'data-tauri-drag-region': true })),
-    iconButton(ICONS.open, 'Films', () => openProjectsDialog({ currentId: store.get().project.id, onOpen: openFilm, onNew: startFresh })),
+    iconButton(ICONS.open, 'Films', () => openProjectsDialog({ currentId: store.get().project.id, onOpen: openFilm, onNew: startFresh, onTemplates: openTemplates })),
+    iconButton(ICONS.templates, 'Start from a template', openTemplates),
     titleInput,
     progress.label,
     h('span', { class: 'spacer', 'data-tauri-drag-region': true }),

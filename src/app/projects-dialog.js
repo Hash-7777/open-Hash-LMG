@@ -11,10 +11,12 @@ function when(ms) {
   return same ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-export function openProjectsDialog({ currentId, onOpen, onNew }) {
+export function openProjectsDialog({ currentId, onOpen, onNew, onTemplates }) {
   const d = dialog({ title: 'Films' });
   const list = h('ul', { class: 'project-list' });
-  d.body.append(list, h('div', { class: 'dialog-actions' }, textButton('New film', () => { d.close(); onNew(); }, 'primary-text')));
+  d.body.append(list, h('div', { class: 'dialog-actions' },
+    onTemplates ? textButton('Start from a template', () => { d.close(); onTemplates(); }) : null,
+    textButton('New film', () => { d.close(); onNew(); }, 'primary-text')));
 
   async function paint() {
     let rows = [];
