@@ -17,6 +17,7 @@ import {
 } from '../core/scene/format.js';
 import { toHex } from '../core/util/color.js';
 import { resizeScene } from '../core/scene/edit.js';
+import { staggerSection } from './stagger-fields.js';
 import { repeatSection } from './repeat-fields.js';
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ');
@@ -147,6 +148,7 @@ export function createInspector({ store, onVersion }) {
           field('Zoom from', numberInput(S.camera.zoom[0], (v) => inScene(S.id, (T) => { T.camera.zoom[0] = v; }), { min: 0.25, max: 4, step: 1, scale: 100, unit: '%', digits: 0 })),
           field('Zoom to', numberInput(S.camera.zoom[1], (v) => inScene(S.id, (T) => { T.camera.zoom[1] = v; }), { min: 0.25, max: 4, step: 1, scale: 100, unit: '%', digits: 0 }))),
         h('div', { class: 'field-hint', text: 'A slow push of a few percent keeps a scene alive without drawing the eye.' })),
+      staggerSection(S, inScene),
       section('Narration',
         field('Spoken line', textArea(line ? line.text : '', { onLive: (v) => setLine(v, true), onCommit: (v) => { setLine(v, true); store.commit(); }, rows: 3, placeholder: 'What the voice says in this scene', max: 300 }),
           line && line.clip ? null : line ? 'Not spoken yet. Voices come with the voice settings.' : null)),
