@@ -41,6 +41,12 @@ export const ICONS = {
   spark: svg('<path d="M8 2.5v3M8 10.5v3M2.5 8h3M10.5 8h3M4.2 4.2l2 2M9.8 9.8l2 2M11.8 4.2l-2 2M6.2 9.8l-2 2"/>'),
   dot: svg('<circle cx="8" cy="8" r="2.5" fill="currentColor" stroke="none"/>'),
   ring: svg('<circle cx="8" cy="8" r="5"/>'),
+  monitor: svg('<rect x="2" y="2.5" width="12" height="8.5" rx="1.2"/><path d="M6 13.5h4M8 11v2.5"/>'),
+  key: svg('<circle cx="5.5" cy="10.5" r="2.8"/><path d="m7.5 8.5 5.5-5.5M11 5l1.5 1.5M9.5 6.5 11 8"/>'),
+  contrast: svg('<circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11a5.5 5.5 0 0 0 0-11z" fill="currentColor" stroke="none"/>'),
+  info: svg('<circle cx="8" cy="8" r="5.5"/><path d="M8 7.2v3.6M8 5.2v.1"/>'),
+  external: svg('<path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5"/><path d="M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3"/>'),
+  search: svg('<circle cx="7" cy="7" r="4"/><path d="m10 10 3.5 3.5"/>'),
   code: svg('<path d="m5.5 4.5-3.5 3.5 3.5 3.5M10.5 4.5l3.5 3.5-3.5 3.5"/>'),
 };
 

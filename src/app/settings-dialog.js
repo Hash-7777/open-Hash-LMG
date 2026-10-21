@@ -18,7 +18,7 @@ import { appVersion, openExternal } from '../platform/index.js';
 
 const SIZE_WORDS = { small: 'small', medium: 'mid-size', large: 'large', frontier: 'frontier' };
 const TIER_WORDS = { guided: 'Guided', plan: 'Plan', code: 'Code' };
-const SECTIONS = [['model', 'Model'], ['local', 'This computer'], ['keys', 'Keys'], ['look', 'Appearance'], ['about', 'About']];
+const SECTIONS = [['model', 'Model', 'spark'], ['local', 'This computer', 'monitor'], ['keys', 'Cloud keys', 'key'], ['look', 'Appearance', 'contrast'], ['about', 'About', 'info']];
 // Models worth starting with on Ollama, smallest first.
 const STARTERS = [
   ['qwen2.5:3b', 'Small and quick, about 2 GB'],
@@ -38,6 +38,11 @@ function copyButton(text) {
   });
 }
 const command = (text) => h('div', { class: 'command' }, h('code', { text }), copyButton(text));
+// A link to a service's own page, opened in the system browser.
+const hostOf = (url) => { try { return new URL(url).host.replace(/^www\./, ''); } catch { return url; } };
+function webLink(url, text = hostOf(url)) {
+  return h('a', { class: 'web-link', href: url, onclick: (e) => { e.preventDefault(); openExternal(url); } }, h('span', { text }), h('span', { class: 'web-link-icon', html: ICONS.external }));
+}
 const statusDot = (state) => h('span', { class: `status ${state}`, html: state === 'ok' ? ICONS.check : state === 'bad' ? ICONS.cross : ICONS.ring });
 
 export function openSettingsDialog({ settings, section: start = 'model' }) {
@@ -52,8 +57,8 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
   const probes = {};
 
   function paintRail() {
-    clear(rail).append(...SECTIONS.map(([k, label]) => {
-      const b = h('button', { type: 'button', class: k === current ? 'on' : '', text: label, 'aria-current': k === current ? 'page' : null });
+    clear(rail).append(...SECTIONS.map(([k, label, icon]) => {
+      const b = h('button', { type: 'button', class: k === current ? 'on' : '', 'aria-current': k === current ? 'page' : null }, h('span', { class: 'rail-icon', html: ICONS[icon] }), h('span', { text: label }));
       b.addEventListener('click', () => { current = k; paint(); if (k === 'local') probeAll(); });
       return b;
     }));
@@ -84,7 +89,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
       ? `${prof.params ? `About ${prof.params < 1 ? prof.params.toFixed(1) : Math.round(prof.params)}B parameters, ` : ''}${SIZE_WORDS[prof.size]}. Suggested way of working: ${TIER_WORDS[prof.tier]}.${prof.vision ? ' It can see pictures, so it can review stills.' : ''}`
       : 'Choose a model, or type its name.';
     const keyLine = p.kind === 'cloud'
-      ? h('div', { class: 'field-hint' }, settings.hasKey(id) ? `Your ${p.label} key is saved. ` : `Add your ${p.label} key under Keys first. `, textButton('Keys', () => { current = 'keys'; paint(); }))
+      ? h('div', { class: 'field-hint' }, settings.hasKey(id) ? `Your ${p.label} key is saved. ` : `Add your ${p.label} key under Cloud keys first. Get one at `, settings.hasKey(id) ? null : webLink(p.keyUrl), settings.hasKey(id) ? null : ' ', textButton('Cloud keys', () => { current = 'keys'; paint(); }))
       : h('div', { class: 'field-hint' }, 'Runs on this computer. Set it up under This computer. ', textButton('This computer', () => { current = 'local'; paint(); probeAll(); }));
 
     return [section('Model',
@@ -180,26 +185,53 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
   }
 
   // ---- keys ---------------------------------------------------------------------------
+  // One row a service: its name with a link straight to the page where its
+  // keys are made, the key field, and a check that asks the service for its
+  // models with the key, which proves the key works without making a film.
+  let filter = '';
+  const checks = {};
+  async function checkKey(id) {
+    checks[id] = { state: 'wait', text: 'Checking' };
+    paint();
+    try {
+      const list = await listModels(id, { key: settings.key(id), fetch: fetchIt });
+      checks[id] = { state: 'ok', text: `Works. ${list.length} model${list.length === 1 ? '' : 's'} offered.` };
+    } catch (err) {
+      checks[id] = { state: 'bad', text: err.message || String(err) };
+    }
+    if (current === 'keys') paint();
+  }
+
   function keysPane() {
+    const search = h('input', { class: 'input key-search', type: 'search', placeholder: 'Find a service', value: filter, spellcheck: 'false', 'aria-label': 'Find a service' });
+    search.addEventListener('input', () => { filter = search.value; for (const row of pane.querySelectorAll('.key-row')) row.hidden = !row.dataset.name.includes(filter.trim().toLowerCase()); });
     const rows = CLOUD_IDS.map((id) => {
       const p = PROVIDERS[id];
       const saved = settings.hasKey(id);
-      const input = h('input', { class: 'input', type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: saved ? 'Saved. Paste to replace it.' : 'Paste your key', 'aria-label': `${p.label} key` });
+      const check = checks[id];
+      const input = h('input', { class: 'input', type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: saved ? 'Saved. Paste a new key to replace it.' : 'Paste your key', 'aria-label': `${p.label} key` });
       input.addEventListener('change', () => {
         if (!input.value.trim()) return;
         settings.setKey(id, input.value.trim());
         input.value = '';
         toast(`${p.label} key saved`);
-        paint();
+        checkKey(id);
       });
-      return h('div', { class: 'key-row' },
-        statusDot(saved ? 'ok' : 'wait'),
-        h('div', { class: 'key-name' }, h('div', { text: p.label }), h('div', { class: 'field-hint', text: p.keyHint })),
-        input,
-        saved ? textButton('Forget', () => { settings.setKey(id, ''); paint(); }, 'danger') : h('span'));
+      const row = h('div', { class: 'key-row', dataset: { name: p.label.toLowerCase() } },
+        h('div', { class: 'key-head' },
+          statusDot(check ? check.state : saved ? 'ok' : 'wait'),
+          h('span', { class: 'key-name', text: p.label }),
+          h('span', { class: 'key-link' }, saved ? null : 'Get a key at ', webLink(p.keyUrl))),
+        h('div', { class: 'key-field' }, input,
+          saved ? textButton(check?.state === 'wait' ? 'Checking' : 'Check', () => checkKey(id)) : null,
+          saved ? textButton('Forget', () => { settings.setKey(id, ''); delete checks[id]; paint(); }, 'danger') : null),
+        check && check.state !== 'wait' ? h('div', { class: `field-hint key-check ${check.state}`, text: check.text }) : null);
+      row.hidden = Boolean(filter.trim()) && !row.dataset.name.includes(filter.trim().toLowerCase());
+      return row;
     });
-    return [section('Keys for cloud services',
-      h('p', { class: 'insp-note', text: 'Each key is kept on this computer, in the app’s own storage, apart from your other settings. It is not encrypted. It is sent only to the service it belongs to.' }),
+    return [section('Cloud keys',
+      h('p', { class: 'insp-note', text: 'Each key is kept on this computer, in the app\u2019s own storage, apart from your other settings. It is not encrypted. It is sent only to the service it belongs to. Each link opens that service\u2019s key page in your browser.' }),
+      search,
       h('div', { class: 'key-list' }, ...rows))];
   }
 

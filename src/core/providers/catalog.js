@@ -1,8 +1,9 @@
 // Every model service the app can talk to, local first.
 //
 // A service is named by how it is asked (its "style": the request and reply
-// shapes), where it lives, how its key is sent, and whether it can be told to
-// answer in JSON. Local services need no key and never leave the computer.
+// shapes), where it lives, how its key is sent, whether it can be told to
+// answer in JSON, and for a cloud service the page where its keys are made
+// (keyUrl), which Settings opens in the system browser. Local services need no key and never leave the computer.
 //
 // The cloud hosts here and the connect-src list in src-tauri/tauri.conf.json
 // must name the same places: scripts/checks/policy.mjs fails if they
@@ -54,6 +55,7 @@ export const PROVIDERS = {
     modelsPath: '/v1/models',
     json: null,
     keyHint: 'console.anthropic.com, Settings, Keys',
+    keyUrl: 'https://console.anthropic.com/settings/keys',
     fallbackModels: ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'],
   },
   openai: {
@@ -66,6 +68,7 @@ export const PROVIDERS = {
     json: 'object',
     newTokenField: true,
     keyHint: 'platform.openai.com, Keys',
+    keyUrl: 'https://platform.openai.com/api-keys',
   },
   gemini: {
     label: 'Google Gemini',
@@ -75,6 +78,7 @@ export const PROVIDERS = {
     modelsPath: '/v1beta/models?pageSize=200',
     json: 'object',
     keyHint: 'aistudio.google.com, Get key',
+    keyUrl: 'https://aistudio.google.com/apikey',
   },
   openrouter: {
     label: 'OpenRouter',
@@ -87,6 +91,7 @@ export const PROVIDERS = {
     // OpenRouter credits requests to an app by these; they are not credentials.
     extraHeaders: { 'X-Title': 'Hash LMG' },
     keyHint: 'openrouter.ai, Keys',
+    keyUrl: 'https://openrouter.ai/settings/keys',
   },
   groq: {
     label: 'Groq',
@@ -97,6 +102,7 @@ export const PROVIDERS = {
     modelsPath: '/openai/v1/models',
     json: 'object',
     keyHint: 'console.groq.com, Keys',
+    keyUrl: 'https://console.groq.com/keys',
   },
   deepseek: {
     label: 'DeepSeek',
@@ -107,6 +113,7 @@ export const PROVIDERS = {
     modelsPath: '/v1/models',
     json: 'object',
     keyHint: 'platform.deepseek.com, Keys',
+    keyUrl: 'https://platform.deepseek.com/api_keys',
   },
   mistral: {
     label: 'Mistral',
@@ -117,6 +124,7 @@ export const PROVIDERS = {
     modelsPath: '/v1/models',
     json: 'object',
     keyHint: 'console.mistral.ai, Keys',
+    keyUrl: 'https://console.mistral.ai/api-keys',
   },
   xai: {
     label: 'xAI',
@@ -127,6 +135,7 @@ export const PROVIDERS = {
     modelsPath: '/v1/models',
     json: 'object',
     keyHint: 'console.x.ai, Keys',
+    keyUrl: 'https://console.x.ai',
   },
   moonshot: {
     label: 'Moonshot (Kimi)',
@@ -137,6 +146,7 @@ export const PROVIDERS = {
     modelsPath: '/v1/models',
     json: 'object',
     keyHint: 'platform.moonshot.ai, Keys',
+    keyUrl: 'https://platform.moonshot.ai/console/api-keys',
   },
   together: {
     label: 'Together AI',
@@ -147,6 +157,7 @@ export const PROVIDERS = {
     modelsPath: '/v1/models',
     json: 'object',
     keyHint: 'api.together.ai, Settings, Keys',
+    keyUrl: 'https://api.together.ai/settings/api-keys',
   },
   fireworks: {
     label: 'Fireworks AI',
@@ -157,6 +168,7 @@ export const PROVIDERS = {
     modelsPath: '/inference/v1/models',
     json: 'object',
     keyHint: 'fireworks.ai, Settings, Keys',
+    keyUrl: 'https://app.fireworks.ai/settings/users/api-keys',
   },
   cerebras: {
     label: 'Cerebras',
@@ -167,6 +179,7 @@ export const PROVIDERS = {
     modelsPath: '/v1/models',
     json: 'object',
     keyHint: 'cloud.cerebras.ai, Keys',
+    keyUrl: 'https://cloud.cerebras.ai',
   },
 };
 
