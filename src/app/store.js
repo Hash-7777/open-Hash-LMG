@@ -11,7 +11,6 @@
 // history only when the drag ends, so one drag is one undo.
 
 import { normalizeScene } from '../core/scene/normalize.js';
-import { EXAMPLE_LAUNCH } from '../core/scene/examples.js';
 
 export const PROJECT_FORMAT = 'lmg.project/1';
 const TIERS = ['guided', 'plan', 'code'];
@@ -20,7 +19,8 @@ const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 export function normalizeProject(input, newId) {
   const p = isObj(input) ? input : {};
-  const { scene } = normalizeScene(p.scene || EXAMPLE_LAUNCH);
+  // A new film starts empty: no scenes until one is made, chosen or added.
+  const { scene } = normalizeScene(p.scene || { title: 'Untitled film', scenes: [], sound: { score: 'none' } });
   return {
     format: PROJECT_FORMAT,
     id: typeof p.id === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(p.id) ? p.id : newId(),

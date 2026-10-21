@@ -82,7 +82,7 @@ async function boot() {
 
   // ---- panels --------------------------------------------------------------------
   const openSettings = (section) => openSettingsDialog({ settings, section: typeof section === 'string' ? section : 'model' });
-  const player = createPlayer({ store, host, prefs });
+  const player = createPlayer({ store, host, prefs, onTemplates: () => openTemplates() });
   const timeline = createTimeline({ store, player, prefs });
   // A version for another frame shape opens as a film of its own.
   const onVersion = async (aspect) => {
@@ -132,6 +132,7 @@ async function boot() {
   // The bar drags the window in the desktop app, wherever it has no control.
   const topbar = h('header', { class: 'topbar', 'data-tauri-drag-region': true },
     h('div', { class: 'brand', 'data-tauri-drag-region': true }, h('span', { class: 'brand-name', text: 'Hash LMG', 'data-tauri-drag-region': true })),
+    iconButton(ICONS.plus, 'New film', () => startFresh()),
     iconButton(ICONS.open, 'Films', () => openProjectsDialog({ currentId: store.get().project.id, onOpen: openFilm, onNew: startFresh, onTemplates: openTemplates })),
     iconButton(ICONS.templates, 'Start from a template', openTemplates),
     titleInput,
@@ -140,7 +141,8 @@ async function boot() {
     undoBtn, redoBtn,
     h('span', { class: 'divider' }),
     iconButton(ICONS.settings, 'Settings', openSettings),
-    h('button', { class: 'primary-btn', type: 'button', onclick: () => openExportDialog({ store, settings, playhead: () => store.get().time }) }, h('span', { html: ICONS.export }), h('span', { text: 'Export' })),
+    h('button', { class: 'secondary-btn', type: 'button', onclick: () => openExportDialog({ store, settings, playhead: () => store.get().time }) }, h('span', { html: ICONS.export }), h('span', { text: 'Export' })),
+    director.makeBtn,
     progress.bar);
 
   const workspace = h('main', { class: 'workspace' }, director.el, player.el, inspector.el, timeline.el);

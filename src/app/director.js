@@ -50,6 +50,8 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
   let briefTimer = 0;
   brief.addEventListener('input', () => { clearTimeout(briefTimer); briefTimer = setTimeout(keepBrief, 600); });
   brief.addEventListener('change', keepBrief);
+  // Command or Control with Return makes the film from the brief.
+  brief.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); make(); } });
   // Ideas to start from, while the brief is empty.
   const ideas = createSuggestions({
     pick: (idea) => {
@@ -66,7 +68,8 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
   const options = h('div', { class: 'dir-options' });
   const modelLine = h('button', { class: 'model-line', type: 'button', title: 'Choose the model in Settings', onclick: () => openSettings('model') });
   const tierHelp = h('div', { class: 'field-hint' });
-  const makeBtn = h('button', { class: 'primary-btn wide', type: 'button' });
+  // The main button lives in the top bar; the panel hands it over.
+  const makeBtn = h('button', { class: 'primary-btn make-btn', type: 'button' });
   const askBox = h('textarea', { class: 'input textarea ask', rows: '2', maxlength: '1000', placeholder: 'Ask for a change', 'aria-label': 'Ask for a change' });
   const askBtn = iconButton(ICONS.send, 'Send the change', () => change(), 'send-btn');
   askBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); change(); } });
@@ -74,7 +77,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
   const el = h('aside', { class: 'director', 'aria-label': 'Director' },
     h('div', { class: 'panel-head' }, h('span', { class: 'panel-title', text: 'Director' })),
     h('div', { class: 'dir-body' },
-      h('div', { class: 'dir-block' }, brief, ideas.el, options, modelLine, tierHelp, makeBtn)),
+      h('div', { class: 'dir-block' }, brief, ideas.el, options, modelLine, tierHelp)),
     h('div', { class: 'dir-ask' }, askBox, askBtn));
 
   let running = null; // AbortController while the model works
@@ -269,5 +272,5 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
 
   paintOptions();
   paintButtons();
-  return { el, busy: () => Boolean(running) };
+  return { el, makeBtn, busy: () => Boolean(running) };
 }

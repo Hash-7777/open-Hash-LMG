@@ -8,13 +8,14 @@
 // falling behind. Playing follows the sound's own clock when there is sound,
 // so picture and music cannot drift apart.
 
+import { emptyFilm } from './stage-empty.js';
 import { h, iconButton, timecode, perFrame } from './dom.js';
 import { ICONS } from './icons.js';
 import { findLayer } from './store.js';
 import { safeArea } from '../core/scene/lint.js';
 import { soundtrackFor } from './soundtrack.js';
 
-export function createPlayer({ store, host, prefs }) {
+export function createPlayer({ store, host, prefs, onTemplates = null }) {
   const canvas = h('canvas', { class: 'preview-canvas', 'aria-label': 'Film preview' });
   const overlay = h('canvas', { class: 'preview-overlay', 'aria-hidden': 'true' });
   const notice = h('div', { class: 'preview-notice', hidden: true });
@@ -44,6 +45,7 @@ export function createPlayer({ store, host, prefs }) {
     facts,
     h('div', { class: 'transport-group' }, loopBtn, soundBtn, safeBtn));
 
+  viewport.append(emptyFilm(store, onTemplates));
   const el = h('section', { class: 'stage', 'aria-label': 'Preview' }, viewport, transport);
 
   function paintToggles() {

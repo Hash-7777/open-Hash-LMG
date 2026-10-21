@@ -344,3 +344,11 @@ svg { display: block; flex: none; }
 .idea { display: block; width: 100%; padding: 6px 2px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink-2); font-size: var(--text-s); line-height: 1.35; text-align: left; cursor: pointer; }
 .idea:hover { color: var(--ink); }
 .idea-text { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* What an empty film says, over the empty frame. */
+.preview-viewport { position: relative; }
+.stage-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; pointer-events: none; }
+.stage-empty[hidden] { display: none; }
+.stage-empty > * { pointer-events: auto; }
+.stage-empty-title { font-size: var(--text-l); font-weight: 600; color: var(--ink); }
+.stage-empty-text { max-width: 360px; font-size: var(--text-s); line-height: 1.5; color: var(--muted); }

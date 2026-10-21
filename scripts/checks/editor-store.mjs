@@ -6,13 +6,14 @@ import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
 import { createStore, normalizeProject, findLayer } from '../../src/app/store.js';
 import { staggerLayers } from '../../src/core/scene/edit.js';
+import { EXAMPLE_LAUNCH } from '../../src/core/scene/examples.js';
 
 let n = 0;
 const newId = () => `film-test-${++n}`;
-const fresh = () => createStore(normalizeProject({}, newId));
+const fresh = () => createStore(normalizeProject({ scene: EXAMPLE_LAUNCH }, newId));
 
 section('Projects');
-await claim('a new project opens on the example film', () => { const p = normalizeProject({}, newId); assert.ok(p.scene.scenes.length > 0); assert.match(p.id, /^film-test-/); });
+await claim('a new project opens empty, as an untitled film', () => { const p = normalizeProject({}, newId); assert.equal(p.scene.scenes.length, 0); assert.equal(p.scene.title, 'Untitled film'); assert.equal(p.scene.sound.score, 'none'); assert.match(p.id, /^film-test-/); });
 await claim('a saved project reads back as itself', () => { const p = normalizeProject({}, newId); assert.deepEqual(normalizeProject(JSON.parse(JSON.stringify(p)), newId), p); });
 await claim('a damaged id is replaced, never used as a file name', () => assert.match(normalizeProject({ id: '../x' }, newId).id, /^film-test-/));
 
