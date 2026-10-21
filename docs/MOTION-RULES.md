@@ -51,7 +51,16 @@ rules when it lays a storyboard out, so a guided film starts out passing them.
 | Two or three kinds of transition, used consistently. | `transition-mix`; fixed by the style's own transitions; the compiler cycles only those. | Consistency reads as designed. | Lore |
 | A transition arrives in about half a second. | `slow-transition` above 1.2 s. | | Lore |
 | One element carries the story across a scene change: the same words in two scenes in a row move and resize into place instead of leaving and arriving again. | The `carry` transition (`src/core/engine/carry.js`); the compiler uses it wherever two scenes in a row show the same words. | Creator briefs for directed motion: one object keeps its identity across shots. | Lore |
-| A slow push on text scenes, so nothing is ever fully still. | The compiler's scene cameras. | Product launch films keep the camera drifting. | Lore |
+| A slow push on text scenes, so nothing is ever fully still. | The compiler's scene cameras; a directed film turns through push, pull, drift and rise moves (`cameraFor` in `src/core/scene/direction.js`). | Product launch films keep the camera drifting. | Lore |
+
+## Direction
+
+| Rule | In the code | Source | Weight |
+|---|---|---|---|
+| Every film is designed for its own brief: no two briefs, and no two takes of one brief, share a look, a colour, a tempo or a set of compositions. | `chooseDirection` in `src/core/scene/direction.js`, read from the brief's words and the model's suggested look, turned by a take number. | The briefs behind the most directed model-made films all name their look and ban "anything that looks like a template". | Fair |
+| Vary scale and composition; never the same composition twice in a row. | Several compositions per kind of scene in `src/core/scene/layouts.js`, chosen by `layoutFor`. | Creator briefs for directed motion. | Lore |
+| The accent colour reads on its field: 3 to 1 for large type. | `chooseDirection` keeps a suggested or brief-named colour only when it does; checked in `scripts/checks/direction.mjs`. | WCAG 2 contrast minimum, large text. | Strong |
+| Models that design their own motion are given the moves of the best directed films and a banned list. | `MOTION` and `BANNED` in `src/core/director/prompts.js`, in the plan and code prompts. | Repeated across the most detailed briefs behind model-made films. | Fair |
 
 ## Time and sound
 

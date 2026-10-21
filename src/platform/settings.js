@@ -92,7 +92,8 @@ export function normalizeSettings(input) {
       serverPort: int(voice.serverPort, VOICE_ENGINES_INFO.server.defaultPort, 1, 65535),
     },
     film: {
-      style: pick(film.style, STYLE_NAMES, 'studio'),
+      // 'auto' lets each film's direction choose the look from its brief.
+      style: pick(film.style, ['auto', ...STYLE_NAMES], 'auto'),
       aspect: pick(film.aspect, Object.keys(ASPECTS), '16:9'),
       fps: pick(int(film.fps, 60, 1, 240), FPS_CHOICES, 60),
       seconds: int(film.seconds, 30, 5, 600),

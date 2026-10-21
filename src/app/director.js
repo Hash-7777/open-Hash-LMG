@@ -87,7 +87,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
         labelled('Length', select(String(f.seconds), LENGTHS.map((s) => [String(s), s < 60 ? `${s} seconds` : `${s / 60} minute${s > 60 ? 's' : ''}`]), (v) => setFilm({ seconds: Number(v) }))),
         labelled('Format', select(f.aspect, Object.keys(ASPECTS).map((k) => [k, ASPECT_SHORT[k] || k]), (v) => setFilm({ aspect: v })))),
       h('div', { class: 'field-pair' },
-        labelled('Look', select(f.style, STYLE_NAMES.map((k) => [k, STYLE_PACKS[k].label]), (v) => setFilm({ style: v }))),
+        labelled('Look', select(f.style, [['auto', 'Auto'], ...STYLE_NAMES.map((k) => [k, STYLE_PACKS[k].label])], (v) => setFilm({ style: v }))),
         labelled('Way of working', select(m.tier, [['auto', p ? `Suggested: ${TIER_SHORT[p.tier]}` : 'Suggested'], ['guided', 'Guided'], ['plan', 'Plan'], ['code', 'Code']], (v) => settings.update({ model: { tier: v } })))),
       toggle(f.narration, (v) => setFilm({ narration: v }), 'Narration for each scene'));
     const prov = PROVIDERS[m.provider];
@@ -189,10 +189,12 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
       const caps = await session.describe();
       const vision = typeof caps.vision === 'boolean' && session.local ? caps.vision : Boolean(p?.vision);
       const out = await director.make({
+        // A new take each time: the same brief made again is a new film.
+        take: Math.floor(Math.random() * 1e6),
         brief: text, tier: way, style: s.film.style, aspect: s.film.aspect, seconds: s.film.seconds, fps: s.film.fps,
         narration: s.film.narration, vision: vision && s.model.review, drafts: s.model.drafts, verify: s.model.verify,
       });
-      store.patch({ brief: text, storyboard: out.storyboard, scene: out.scene, code: out.code, tier: out.tier, edited: false });
+      store.patch({ brief: text, storyboard: out.storyboard, scene: out.scene, code: out.code, tier: out.tier, take: out.take, edited: false });
       store.select(null);
       store.setTime(0);
       const left = out.issues.filter((i) => i.level !== 'info');

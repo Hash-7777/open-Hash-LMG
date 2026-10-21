@@ -21,6 +21,7 @@
 
 import { normalizeStoryboard } from '../scene/storyboard.js';
 import { compileStoryboard } from '../scene/compile.js';
+import { chooseDirection, describeDirection } from '../scene/direction.js';
 import { normalizeScene } from '../scene/normalize.js';
 import { lintScene, autofix, sampleTimes, motionTimes } from '../scene/lint.js';
 import { extractJson, extractCode } from '../util/json.js';
@@ -30,44 +31,10 @@ import {
   STORYBOARD_SCHEMA, storyboardPrompt, planPrompt, planFromDraftMessage, codePrompt,
   revisePlanMessage, reviseCodeMessage, CRITIC_PROMPT, criticMessage, applyCritiqueMessage, editMessage,
 } from './prompts.js';
+import { sceneForModel, restore, draftScore } from './scene-io.js';
 
-// What a model is shown of a scene: everything but the media bytes.
-export function sceneForModel(scene) {
-  const { assets, ...rest } = scene;
-  const listed = Object.fromEntries(Object.entries(assets || {}).filter(([, a]) => a.kind === 'image').map(([id, a]) => [id, { kind: a.kind, name: a.name }]));
-  return { ...rest, assets: listed, voice: { ...scene.voice, lines: (scene.voice?.lines || []).map(({ clip, ...l }) => l) } };
-}
-
-// Puts back what the model is not shown: media, clips, and the narration the
-// film was planned around if a redesign dropped it.
-function restore(next, prev) {
-  const doc = { ...next, assets: { ...(prev.assets || {}) } };
-  const lines = next.voice?.lines?.length ? next.voice.lines : prev.voice?.lines || [];
-  const ids = new Set((next.scenes || []).map((S, i) => S.id || `scene-${i + 1}`));
-  const prevIds = (prev.scenes || []).map((S) => S.id);
-  const nextIds = (next.scenes || []).map((S, i) => S.id || `scene-${i + 1}`);
-  doc.voice = {
-    ...(prev.voice || {}),
-    ...(next.voice || {}),
-    engine: prev.voice?.engine ?? next.voice?.engine,
-    lines: lines.map((l) => {
-      const prevLine = (prev.voice?.lines || []).find((p) => p.scene === l.scene && p.text === l.text);
-      // A redesign that renamed scenes keeps each line on the scene in the same place.
-      const scene = ids.has(l.scene) ? l.scene : nextIds[prevIds.indexOf(l.scene)] ?? l.scene;
-      return { ...l, scene, clip: prevLine?.clip ?? null };
-    }),
-  };
-  return doc;
-}
-
-// How far a laid-out storyboard is from good: its problems by weight, and how
-// far it runs from the length asked for. Lower is better.
-export function draftScore(scene, issues, seconds) {
-  const weight = { error: 10, warn: 3, info: 1 };
-  let s = issues.reduce((n, i) => n + (weight[i.level] || 0), 0);
-  if (seconds) s += (Math.abs(scene.duration - seconds) / seconds) * 10;
-  return s;
-}
+// The scene helpers are in scene-io.js; sceneForModel is re-exported for the checks.
+export { sceneForModel, draftScore } from './scene-io.js';
 
 export function createDirector(deps) {
   const log = deps.log || (() => {});
@@ -139,8 +106,15 @@ export function createDirector(deps) {
     return verifyIntent(intent, samples, { duration: scene.duration, width: scene.width, counters });
   }
 
+  // The film's direction: read from the brief and the model's suggested look,
+  // turned by the take so the same brief made again is a new film.
+  function directionFor(storyboard, opts) {
+    return chooseDirection({ brief: opts.brief, look: storyboard?.look, style: opts.style, take: opts.take || 0 });
+  }
+
   function compile(storyboard, opts) {
     return compileStoryboard(storyboard, {
+      direction: directionFor(storyboard, opts),
       style: opts.style, aspect: opts.aspect, fps: opts.fps, targetDuration: opts.seconds,
       narration: opts.narration, voice: opts.voice, assets: opts.assets, palette: opts.palette, score: opts.score,
     });
@@ -191,7 +165,8 @@ export function createDirector(deps) {
 
   async function writeCode(brief, storyboard, draft, opts) {
     const system = codePrompt({ seconds: draft.duration, aspect: draft.aspect, timing: timingText(draft) });
-    let content = `Brief:\n${brief}\n\nStoryboard:\n${JSON.stringify(storyboard)}\n\nPalette: ${JSON.stringify(draft.palette)}`;
+    const d = directionFor(storyboard, opts);
+    let content = `Brief:\n${brief}\n\nStoryboard:\n${JSON.stringify(storyboard)}\n\nDirection: ${describeDirection(d)}. Fonts: ${JSON.stringify(draft.fonts)}. Palette (lmg.palette holds it): ${JSON.stringify(draft.palette)}`;
     let code = '';
     for (let attempt = 0; attempt < 3; attempt++) {
       const text = await deps.ask({ system, messages: [{ role: 'user', content }], purpose: attempt ? 'revise code' : 'code' });
@@ -241,6 +216,8 @@ export function createDirector(deps) {
         note('intent', 'The model\u2019s list of what the brief asks for could not be read, so the film is made without it.');
       }
     }
+    const direction = directionFor(storyboard, opts);
+    note('layout', `Direction: ${describeDirection(direction)}.`);
     let { scene, notes: laid } = await step('layout', 'Laying it out and timing it to the music', async () => compile(storyboard, opts));
     for (const n of laid || []) note('layout', n);
     let code = null;
@@ -344,7 +321,7 @@ export function createDirector(deps) {
     }
 
     // Code that never ran falls back to the scene plan, and the film says so.
-    return { storyboard, scene, code, issues, brief: briefResults, tier: code ? 'code' : tier === 'code' ? 'plan' : tier };
+    return { storyboard, scene, code, issues, brief: briefResults, tier: code ? 'code' : tier === 'code' ? 'plan' : tier, take: opts.take || 0, direction };
   }
 
   // project: { tier, storyboard, scene, code, edited }
@@ -360,6 +337,7 @@ export function createDirector(deps) {
         return storyboard;
       });
       let { scene } = compileStoryboard(sb, {
+        direction: chooseDirection({ brief: project.brief, look: sb.look || project.storyboard?.look, style: project.scene.style, take: project.take || 0 }),
         style: project.scene.style, aspect: project.scene.aspect, fps: project.scene.fps, bpm: project.scene.bpm,
         targetDuration: opts.seconds, narration: opts.narration, voice: project.scene.voice, assets: project.scene.assets,
         palette: project.scene.palette, score: project.scene.sound.score,

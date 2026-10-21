@@ -12,7 +12,7 @@ await claim('the defaults are sane', () => {
   const d = normalizeSettings({});
   assert.equal(d.model.provider, 'ollama');
   assert.deepEqual(d.local.ports, { ollama: 11434, lmstudio: 1234, llamacpp: 8080 });
-  assert.equal(d.film.style, 'studio');
+  assert.equal(d.film.style, 'auto');
 });
 await claim('guided films choose from two storyboards unless told otherwise, never more than three', () => {
   assert.equal(normalizeSettings({}).model.drafts, 2);
@@ -23,7 +23,7 @@ await claim('normalising twice changes nothing', () => { const d = normalizeSett
 await claim('unknown or out-of-range values come back valid', () => {
   const s = normalizeSettings({ model: { provider: 'nope', tier: 'x' }, film: { fps: 61, style: 'zzz', seconds: 2 }, local: { ports: { ollama: '99999' }, device: 'gpu' }, voice: { speed: 9 }, extra: 1 });
   assert.equal(s.model.provider, 'ollama'); assert.equal(s.model.tier, 'auto'); assert.equal(s.film.fps, 60);
-  assert.equal(s.film.style, 'studio'); assert.equal(s.film.seconds, 30); assert.equal(s.local.ports.ollama, 11434);
+  assert.equal(s.film.style, 'auto'); assert.equal(s.film.seconds, 30); assert.equal(s.local.ports.ollama, 11434);
   assert.equal(s.local.device, 'gpu'); assert.equal(s.voice.speed, 2); assert.equal(s.extra, undefined);
 });
 await claim('only cloud services keep keys, trimmed', () => assert.deepEqual(normalizeKeys({ openai: ' a ', ollama: 'b', other: 'c' }), { openai: 'a' }));
@@ -53,6 +53,6 @@ await claim('everything is there after reopening', () => {
 });
 await claim('a damaged stored entry reads as the defaults', () => {
   const mem = memory(); mem.setItem(SETTINGS_KEY, '{broken');
-  assert.equal(createSettingsStore(mem).get().film.style, 'studio');
+  assert.equal(createSettingsStore(mem).get().film.style, 'auto');
 });
 done();

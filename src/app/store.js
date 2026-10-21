@@ -30,6 +30,8 @@ export function normalizeProject(input, newId) {
     code: typeof p.code === 'string' && p.code.trim() ? p.code : null,
     tier: TIERS.includes(p.tier) ? p.tier : 'guided',
     edited: Boolean(p.edited),
+    // Which take of its brief the film is: the same brief made again is a new take.
+    take: Number.isInteger(p.take) && p.take >= 0 ? p.take : 0,
     created: Number.isFinite(p.created) ? p.created : Date.now(),
     updated: Number.isFinite(p.updated) ? p.updated : Date.now(),
   };

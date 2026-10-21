@@ -31,6 +31,22 @@ export const CRAFT = [
 
 const craftList = () => CRAFT.map((c) => `- ${c}`).join('\n');
 
+// How the most directed model-made films move (docs/MOTION-RULES.md), for the
+// models that design the motion themselves.
+export const MOTION = [
+  'Frame one is a finished picture, never a word half way through flying in.',
+  'One main movement leads; smaller ones overlap under it, so the frame never stops and starts all at once.',
+  'The speed always changes: things land slowly enough to read, leave fast, and the next thing slows as it arrives.',
+  'The element in front becomes the transition: it moves toward the camera or across the frame while the next scene already waits underneath.',
+  'One object carries the story across scenes and keeps its identity: a line that becomes a chart axis, a ring that becomes a frame, a word that moves into the next layout.',
+  'Vary the scale and the composition: close, wide, full-frame type, small precise labels, left-set, centred, split. Never the same composition twice in a row.',
+  'About twelve to fifteen compositions in thirty seconds, each held one and a half to three and a half seconds.',
+  'Build with geometry: hairlines that draw on, rings and arcs, grids and dot fields that fill in by a rule, masks that reveal type, numbers that count.',
+  'It makes sense with the sound off.',
+];
+export const BANNED = 'a crossfade between every scene, blur-ins, particle bursts, glows and lens flares, camera shake, colour-split glitches, bouncy easing, a hold over a second with nothing moving, a camera move that reverses, zooming in and straight back out, gradients as decoration, and anything that looks like a template';
+const motionList = () => MOTION.map((c) => `- ${c}`).join('\n');
+
 // ---- storyboard (every model, and the only step small models do) ----------
 
 export const STORYBOARD_SCHEMA = {
@@ -61,6 +77,7 @@ export const STORYBOARD_SCHEMA = {
         required: ['kind'],
       },
     },
+    look: { type: 'object', properties: { mood: { type: 'string' }, accent: { type: 'string' }, tempo: { type: 'string' } } },
   },
   required: ['title', 'beats'],
 };
@@ -83,14 +100,15 @@ Beat kinds:
 - words: 2 to 6 single words in "words", shown one per beat for punch
 - logo: the brand name in "text", tagline in "sub"
 - end: the name in "text", a web address or call to action in "sub"
-Put one accent word in "accent" when a word deserves the accent colour.${narration ? '\nGive every beat a "say": one short spoken sentence of narration, at most 14 words, in plain speech.' : ''}
+Put one accent word in "accent" when a word deserves the accent colour.
+Add "look": {"mood": one of calm, bold, playful, technical, luxury, warm, serious, energetic; "accent": a hex colour that suits the subject; "tempo": slow, medium or fast}.${narration ? '\nGive every beat a "say": one short spoken sentence of narration, at most 14 words, in plain speech.' : ''}
 
 Craft:
 ${craftList()}
 
 The film should run about ${Math.round(seconds)} seconds: about ${beats} beats. Start with a hook. End with an end beat.
 Reply with JSON only, no other text:
-{"title": "...", "beats": [{"kind": "hook", "text": "..."}, ...]}`;
+{"title": "...", "look": {"mood": "...", "accent": "#...", "tempo": "..."}, "beats": [{"kind": "hook", "text": "..."}, ...]}`;
 }
 
 // ---- full scene plan (mid-size models) -------------------------------------
@@ -150,6 +168,10 @@ ${craftList()}
 - Ease out (outExpo, outQuint) for things arriving; inCubic for things leaving; inOutCubic for things moving within the frame.
 - Stagger related items by 0.1 to 0.3 s; never more than a third of the frame moving at once.
 - A 0.3 to 0.6 s stillness before a big reveal makes it land.
+
+Motion:
+${motionList()}
+Never: ${BANNED}.
 - Vertical (9:16) frames: keep words between y 0.14 and 0.76 and x 0.06 to 0.86; phone apps cover the rest.
 
 ${planFormatReference()}
@@ -162,7 +184,7 @@ Reply with the complete scene plan as JSON only.`;
 }
 
 export function planFromDraftMessage(brief, storyboard, draft) {
-  return `Brief:\n${brief}\n\nStoryboard agreed:\n${JSON.stringify(storyboard)}\n\nA draft plan made from it by rule:\n${JSON.stringify(draft)}\n\nImprove the draft into a finished design: better composition and hierarchy, motion that is designed for each beat (custom keys, shapes that draw on, a counter, a chart), and moments of stillness before reveals. Keep the words, the timing grid and the style. Reply with the complete scene plan as JSON only.`;
+  return `Brief:\n${brief}\n\nStoryboard agreed:\n${JSON.stringify(storyboard)}\n\nA draft plan made from it by rule:\n${JSON.stringify(draft)}\n\nImprove the draft into a finished design for this brief alone: stronger composition and hierarchy, varied scale and placement from scene to scene, motion designed for each beat (custom keys, hairlines and rings that draw on, a repeat field that fills in, a counter, a chart), one element carried between scenes where it helps, and moments of stillness before reveals. Keep the words, the timing grid, the style and the palette. Reply with the complete scene plan as JSON only.`;
 }
 
 // ---- free drawing code (strong models) -------------------------------------
@@ -226,7 +248,12 @@ Craft:
 ${craftList()}
 - Ease out (outExpo, outQuint) for arrivals; inCubic for exits; inOutCubic for camera moves and moves within the frame.
 - Build scenes as time windows that overlap by their transition, and move the outgoing and incoming scenes together (push, zoom-through, mask wipe).
-- Use lmg.u for every size so the film is right at every resolution.${aspect === '9:16' ? '\n- Vertical frame: keep words between 14% and 76% of the height and out of the right 13%; phone apps cover the rest.' : ''}
+- Use lmg.u for every size so the film is right at every resolution.
+
+Motion, as the best directed films move:
+${motionList()}
+Never: ${BANNED}.
+Design it as an expert motion designer would for this brief alone: its own compositions, its own geometry, its own way of moving between scenes. Use the direction and palette you are given.${aspect === '9:16' ? '\n- Vertical frame: keep words between 14% and 76% of the height and out of the right 13%; phone apps cover the rest.' : ''}
 
 ${KIT_REFERENCE}
 

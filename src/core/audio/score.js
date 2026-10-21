@@ -26,6 +26,9 @@ const CHORDS = {
   cinematic: [[[0, 7, 12, 15, 19], 0], [[-4, 3, 8, 12, 15], -4], [[-9, -2, 3, 7, 12], -9], [[-5, 2, 7, 11, 14], -5]],
 };
 
+// The orders a film's four chords can come in.
+const ORDERS = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]];
+
 const SECTION = {
   hook: 'hook', statement: 'mode', title: 'reveal', logo: 'reveal', stat: 'mode', list: 'mode', steps: 'mode',
   chart: 'mode', quote: 'calm', compare: 'mode', words: 'mode', end: 'end',
@@ -59,7 +62,12 @@ export async function makeScore(doc, { onStage = null, seed = 1, voices = [] } =
   const len = doc.duration + 1.5;
   const dry = new Bus(len), send = new Bus(len);
   const pump = new Float32Array(dry.n).fill(1);
-  const chords = CHORDS[flavor] || CHORDS.pulse;
+  // The film's key and chord order, from its direction: the same flavour in
+  // another key and another progression is another piece of music.
+  const key = Number.isInteger(doc.sound.key) ? doc.sound.key : 0;
+  const order = ORDERS[doc.sound.progression] || ORDERS[0];
+  const chords = order.map((k) => (CHORDS[flavor] || CHORDS.pulse)[k]);
+  const tone = (k) => semi(k + key);
   const kindAt = (t) => { let k = sections[0]?.kind || 'mode'; for (const s of sections) if (t >= s.t - 1e-4) k = s.kind; return t > doc.duration ? 'tail' : k; };
   const step = async (name) => { if (onStage) await onStage(name); };
   const duck = (t, depth) => {
@@ -77,7 +85,7 @@ export async function makeScore(doc, { onStage = null, seed = 1, voices = [] } =
     const k = kindAt(t0 + 0.01);
     const g = { hook: 0.55, reveal: 0.75, mode: 0.6, calm: 0.85, end: 0.8 }[k] ?? 0.6;
     notes.forEach((st, j) => {
-      const sig = pad(semi(st), chordBars * BAR + 1.0, seed * 31 + b * 7 + j, flavor === 'cinematic' ? { attack: 1.8, release: 2.2, harmonics: 6 } : {});
+      const sig = pad(tone(st), chordBars * BAR + 1.0, seed * 31 + b * 7 + j, flavor === 'cinematic' ? { attack: 1.8, release: 2.2, harmonics: 6 } : {});
       dry.add(sig, t0 - 0.2, 0.5 * g, ((j % 2) * 2 - 1) * 0.4);
       send.add(sig, t0 - 0.2, 0.35 * g, ((j % 2) * 2 - 1) * 0.4);
     });
@@ -95,7 +103,7 @@ export async function makeScore(doc, { onStage = null, seed = 1, voices = [] } =
     // A beat of near silence before each drop, and the two after it left open.
     if (drops.some((d) => t >= d - beat - 1e-3 && t < d) || drops.some((d) => t >= d && t < d + beat * 2 - 1e-3)) continue;
     const barBeat = i % 4;
-    const root = semi(chords[Math.floor(t / BAR / chordBars) % 4][1]) / 2;
+    const root = tone(chords[Math.floor(t / BAR / chordBars) % 4][1]) / 2;
     if (flavor === 'cinematic') {
       if (k === 'calm' || k === 'end') { if (barBeat === 0) dry.add(sub(root, 0.6), t, 0.3); continue; }
       // A low heartbeat: two soft pulses each bar.
@@ -114,7 +122,7 @@ export async function makeScore(doc, { onStage = null, seed = 1, voices = [] } =
       dry.add(H, t + beat / 2, 0.035, 0.25);
       const [notes] = chords[Math.floor(t / BAR / chordBars) % 4];
       for (let h2 = 0; h2 < 2; h2++) {
-        const f = semi(notes[(i * 2 + h2) % notes.length]) * 4;
+        const f = tone(notes[(i * 2 + h2) % notes.length]) * 4;
         const sig = bell(f, 1.2);
         dry.add(sig, t + (h2 * beat) / 2, 0.02, h2 ? 0.4 : -0.4);
         send.add(sig, t + (h2 * beat) / 2, 0.03, h2 ? 0.4 : -0.4);

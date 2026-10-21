@@ -19,15 +19,11 @@ import { beatLength } from '../engine/math.js';
 import { entranceSpan } from '../engine/motion.js';
 import { contrast } from '../util/color.js';
 import { PREROLL } from './lint.js';
+import { layoutFor, cameraFor } from './direction.js';
+import { layBeat } from './layouts.js';
 
 // Each style says how it marks an accent word while it holds.
 const ACCENT_HOLD = { studio: 'underline', paper: 'marker', mono: 'none', vivid: 'none', editorial: 'none', tech: 'underline', stage: 'none' };
-
-// Text size for a line of n words, so long lines shrink before they wrap badly.
-function lineSize(words, big, vertical) {
-  const base = words <= 3 ? big : words <= 6 ? big * 0.78 : words <= 10 ? big * 0.62 : big * 0.5;
-  return Math.max(vertical ? 36 : 28, Math.round(vertical ? base * 0.92 : base));
-}
 
 // Transitions in which both scenes share the frame for a moment.
 const HANDOFF = new Set(['fade', 'zoom', 'carry']);
@@ -44,16 +40,22 @@ function vividBackground(i, palette) {
 
 export function compileStoryboard(input, opts = {}) {
   const { storyboard, notes } = input && input.beats && input.beats.every((b) => b && b.kind) ? { storyboard: input, notes: [] } : normalizeStoryboard(input);
-  const style = opts.style || storyboard.style || 'studio';
+  // The film's direction (src/core/scene/direction.js), when there is one,
+  // chooses the look, palette, tempo and motion; without one the look's own
+  // defaults are used.
+  const D = opts.direction || null;
+  const style = D?.style || (STYLE_PACKS[opts.style] ? opts.style : null) || storyboard.style || 'studio';
   const pack = STYLE_PACKS[style] || STYLE_PACKS.studio;
+  const E = { ...pack.enter, ...(D?.enter || {}) };
   const aspect = opts.aspect || '16:9';
   const vertical = aspect === '9:16' || aspect === '4:5';
-  const bpm = opts.bpm || (style === 'editorial' ? 96 : style === 'paper' ? 108 : 120);
+  const bpm = opts.bpm || D?.bpm || (style === 'editorial' ? 96 : style === 'paper' ? 108 : 120);
   const beat = beatLength(bpm);
-  const palette = { ...pack.palette, ...(opts.palette || {}) };
+  const palette = { ...pack.palette, ...(D?.palette || {}), ...(opts.palette || {}) };
   const accentHold = ACCENT_HOLD[style] || 'none';
   const ease = pack.ease;
-  const T = pack.transitions;
+  const T = D?.transitions?.length ? D.transitions : pack.transitions;
+  const seen = {};
 
   // Vertical: the middle of the area phone video apps leave clear.
   // The clear area's centre is left of the frame's, because the right edge
@@ -68,9 +70,7 @@ export function compileStoryboard(input, opts = {}) {
   const beats = storyboard.beats;
 
   beats.forEach((b, i) => {
-    const layers = [];
-    let entrance = 0.9;
-    let camera = { zoom: [1, 1.035] };
+    let layers, entrance, camera;
     let sceneBg = style === 'vivid' ? vividBackground(i, palette) : null;
     const accentWords = b.accent || [];
     const textColor = (bgToken) => {
@@ -88,151 +88,29 @@ export function compileStoryboard(input, opts = {}) {
     const accentSmall = accentFor(sceneBg, 4.5);
     const muted = contrast(palette.muted, palette[sceneBg || 'bg']) < 4.5 ? ink : 'muted';
     const hold = accentWords.length ? accentHold : 'none';
+    // Which of this kind's compositions the scene takes.
+    const lay = layoutFor(D, b.kind, (seen[b.kind] = (seen[b.kind] ?? -1) + 1));
+    const wide = !vertical;
 
-    switch (b.kind) {
-      case 'hook': case 'statement': {
-        const big = b.kind === 'hook' ? 132 : 112;
-        const size = lineSize(wordCount(b.text), big, vertical);
-        layers.push({
-          type: 'text', text: b.text, x: X, y: b.sub ? cy - 0.04 : cy, size, weight: pack.fonts.weight, color: ink,
-          maxWidth: MW, highlight: accentWords, highlightColor: accent, hold,
-          in: { preset: wordCount(b.text) <= 4 ? pack.enter.title : pack.enter.line, duration: 0.8, ease },
-        });
-        if (b.sub) layers.push({ type: 'text', text: b.sub, x: X, y: cy + (vertical ? 0.1 : 0.12), size: vertical ? 44 : 40, weight: 500, color: muted, at: 0.45, maxWidth: MW, in: { preset: pack.enter.small, duration: 0.7, ease } });
-        break;
+    ({ layers, entrance, camera } = layBeat({ b, lay, X, cy, MW, left, vertical, wide, style, pack, E, ease, D, beat, opts, sceneBg, ink, accent, accentSmall, muted, hold, accentWords }));
+
+    // The film's camera moves, scene by scene; a chart and a run of single
+    // words keep their own.
+    if (D && b.kind !== 'chart' && b.kind !== 'words') camera = cameraFor(D, i, camera);
+    // Marks that run through the whole film: a running index or corner marks.
+    if (D?.motif === 'index' && b.kind !== 'words') {
+      layers.push({ type: 'text', text: `${String(i + 1).padStart(2, '0')} / ${String(beats.length).padStart(2, '0')}`, x: vertical ? 0.1 : 0.05, y: vertical ? 0.1 : 0.07, anchor: 'left', align: 'left', size: 22, weight: 600, font: 'mono', tracking: 0.08, color: muted, opacity: 0.8, z: 5, in: { preset: 'fade', duration: 0.4 } });
+    } else if (D?.motif === 'arcs' && b.kind !== 'words' && b.kind !== 'chart') {
+      // One large circle, mostly off the frame, drawing itself round behind the
+      // scene, with a short accent arc riding it; it moves corner to corner.
+      const [ax, ay] = [[0.92, 0.88], [0.08, 0.12], [0.94, 0.1], [0.06, 0.9]][i % 4];
+      const w = vertical ? 1500 : 1300;
+      layers.push({ type: 'shape', shape: 'ring', x: ax, y: ay, w, fill: 'none', stroke: muted, strokeWidth: 2, opacity: 0.32, z: -2, in: { preset: 'draw', duration: 1.6, ease: 'inOutCubic' } });
+      layers.push({ type: 'shape', shape: 'ring', x: ax, y: ay, w, fill: 'none', stroke: accent, strokeWidth: 3, arc: [0, 0.12], opacity: 0.8, z: -2, at: 0.2, rotate: (i * 47) % 360, in: { preset: 'draw', duration: 1.2, ease: 'inOutCubic' } });
+    } else if (D?.motif === 'corners') {
+      for (const [cx2, cy2, w2, h2] of [[0.04, 0.06, 40, 0], [0.04, 0.06, 0, 40], [0.96, 0.94, 40, 0], [0.96, 0.94, 0, 40]]) {
+        layers.push({ type: 'shape', shape: 'line', x: cx2 + (w2 ? (cx2 < 0.5 ? 0.0104 : -0.0104) : 0), y: cy2 + (h2 ? (cy2 < 0.5 ? 0.0185 : -0.0185) : 0), w: w2, h: h2, strokeWidth: 2, color: muted, opacity: 0.7, z: 5, in: { preset: 'fade', duration: 0.4 } });
       }
-      case 'title': {
-        // A field of dots filling in behind the name: one rule, many shapes.
-        if (style === 'tech' || style === 'stage') {
-          layers.push({ type: 'shape', shape: 'circle', x: X, y: cy, w: 6, fill: muted, opacity: 0.35, z: -1, in: { preset: 'scale', duration: 0.4, ease },
-            repeat: { count: vertical ? 54 : 105, layout: 'grid', cols: vertical ? 6 : 15, gap: 90, stagger: 0.012 } });
-        }
-        layers.push({ type: 'text', text: b.text, x: X, y: cy - 0.05, size: lineSize(wordCount(b.text), 150, vertical), weight: Math.min(900, pack.fonts.weight + 100), color: ink, highlight: accentWords, highlightColor: accent, in: { preset: pack.enter.title, duration: 0.8, ease }, hold: style === 'studio' || style === 'tech' ? 'shimmer' : hold });
-        layers.push({ type: 'shape', shape: 'line', x: X, y: cy + 0.055, w: vertical ? 140 : 120, h: 0, strokeWidth: 6, color: accent, at: 0.35, in: { preset: 'draw', duration: 0.6, ease: 'inOutCubic' } });
-        if (b.sub) layers.push({ type: 'text', text: b.sub, x: X, y: cy + 0.13, size: vertical ? 46 : 44, weight: 500, color: muted, at: 0.6, maxWidth: MW, in: { preset: pack.enter.small, duration: 0.7, ease } });
-        entrance = 1.2;
-        break;
-      }
-      case 'stat': {
-        layers.push({ type: 'counter', from: 0, to: b.value, prefix: b.prefix, suffix: b.suffix, decimals: b.decimals, x: X, y: cy - 0.06, size: vertical ? 190 : 210, weight: Math.min(900, pack.fonts.weight + 100), color: accent, count: 1.4, roll: Boolean(pack.roll), in: { preset: pack.roll ? 'soft' : 'rise', duration: 0.6, ease } });
-        if (b.sub) layers.push({ type: 'text', text: b.sub, x: X, y: cy + 0.12, size: lineSize(wordCount(b.sub), 56, vertical), weight: 500, color: muted, at: 0.5, maxWidth: MW, in: { preset: pack.enter.small, duration: 0.7, ease } });
-        entrance = 1.6;
-        camera = { zoom: [1.03, 1] };
-        break;
-      }
-      case 'list': {
-        const n = b.items.length;
-        const top = b.text ? (vertical ? 0.3 : 0.34) : cy - ((n - 1) * (vertical ? 0.075 : 0.12)) / 2;
-        if (b.text) layers.push({ type: 'text', text: b.text, x: left, y: vertical ? 0.2 : 0.2, anchor: 'left', align: 'left', size: vertical ? 64 : 60, weight: pack.fonts.weight, color: ink, in: { preset: pack.enter.line, duration: 0.7, ease } });
-        const step = vertical ? 0.075 : 0.12;
-        b.items.forEach((it, k) => {
-          const at = (b.text ? 0.35 : 0) + k * 0.28;
-          const y = top + k * step;
-          layers.push({ type: 'shape', shape: 'circle', x: left + 0.006, y, w: 16, fill: accent, at, in: { preset: 'scale', duration: 0.5, ease } });
-          layers.push({ type: 'text', text: it, x: left + (vertical ? 0.05 : 0.03), y, anchor: 'left', align: 'left', size: lineSize(wordCount(it), vertical ? 60 : 64, vertical), weight: 600, color: ink, maxWidth: vertical ? 0.7 : 0.7, at: at + 0.06, in: { preset: pack.enter.list, duration: 0.7, ease } });
-        });
-        entrance = (b.text ? 0.35 : 0) + n * 0.28 + 0.7;
-        break;
-      }
-      case 'steps': {
-        const n = b.items.length;
-        if (b.text) layers.push({ type: 'text', text: b.text, x: X, y: vertical ? 0.2 : 0.22, size: vertical ? 64 : 60, weight: pack.fonts.weight, color: ink, in: { preset: pack.enter.line, duration: 0.7, ease } });
-        if (!vertical) {
-          const spread = Math.min(0.66, 0.22 * (n - 1));
-          const x0 = 0.5 - spread / 2, x1 = 0.5 + spread / 2;
-          const span = spread * 1920;
-          layers.push({ type: 'shape', shape: 'line', x: X, y: 0.5, w: span, h: 0, strokeWidth: 3, color: muted, at: 0.3, in: { preset: 'draw', duration: 0.4 + n * 0.3, ease: 'inOutCubic' } });
-          b.items.forEach((it, k) => {
-            const x = n === 1 ? 0.5 : x0 + ((x1 - x0) * k) / (n - 1);
-            const at = 0.4 + k * 0.32;
-            layers.push({ type: 'shape', shape: 'circle', x, y: 0.5, w: 76, fill: sceneBg || 'bg', stroke: accent, strokeWidth: 5, at, z: 1, in: { preset: 'scale', duration: 0.5, ease } });
-            layers.push({ type: 'text', text: String(k + 1), x, y: 0.5, size: 34, weight: 700, color: accentSmall, at: at + 0.1, z: 2, in: { preset: 'fade', duration: 0.4 } });
-            layers.push({ type: 'text', text: it, x, y: 0.63, size: lineSize(wordCount(it), 44, false), weight: 600, color: ink, maxWidth: 0.9 / n, at: at + 0.15, in: { preset: 'rise', duration: 0.6, ease } });
-          });
-        } else {
-          const top = 0.3, step = Math.min(0.11, 0.42 / Math.max(1, n - 1));
-          layers.push({ type: 'shape', shape: 'line', x: 0.16, y: top + ((n - 1) * step) / 2, w: 0, h: (n - 1) * step * 1920, strokeWidth: 3, color: muted, at: 0.3, in: { preset: 'draw', duration: 0.4 + n * 0.3 } });
-          b.items.forEach((it, k) => {
-            const y = top + k * step, at = 0.4 + k * 0.32;
-            layers.push({ type: 'shape', shape: 'circle', x: 0.16, y, w: 70, fill: sceneBg || 'bg', stroke: accent, strokeWidth: 5, at, z: 1, in: { preset: 'scale', duration: 0.5, ease } });
-            layers.push({ type: 'text', text: String(k + 1), x: 0.16, y, size: 36, weight: 700, color: accentSmall, at: at + 0.1, z: 2, in: 'fade' });
-            layers.push({ type: 'text', text: it, x: 0.25, y, anchor: 'left', align: 'left', size: lineSize(wordCount(it), 52, true), weight: 600, color: ink, maxWidth: 0.62, at: at + 0.15, in: { preset: 'rise', ease } });
-          });
-        }
-        entrance = 0.55 + n * 0.32;
-        camera = { zoom: [1, 1.02] };
-        break;
-      }
-      case 'chart': {
-        if (b.text) layers.push({ type: 'text', text: b.text, x: left, y: vertical ? 0.2 : 0.16, anchor: 'left', align: 'left', size: vertical ? 60 : 56, weight: pack.fonts.weight, color: ink, maxWidth: MW, in: { preset: pack.enter.line, duration: 0.7, ease } });
-        const w = vertical ? 900 : 1400, h = vertical ? 760 : 560;
-        if (b.chart === 'line') {
-          layers.push({ type: 'line-chart', values: b.values, x: X, y: vertical ? 0.47 : 0.56, w, h, color: accent, area: true, at: 0.3, in: { preset: 'draw', duration: 1.8, ease: 'inOutCubic' } });
-        } else {
-          layers.push({ type: 'bars', values: b.values, labels: b.labels, suffix: b.suffix, x: X, y: vertical ? 0.47 : 0.56, w, h, color: accent, labelSize: vertical ? 34 : 28, at: 0.3, in: { preset: 'grow', duration: 1.6, ease } });
-        }
-        entrance = 2.2;
-        camera = { zoom: [1, 1] };
-        break;
-      }
-      case 'quote': {
-        layers.push({ type: 'text', text: '“', x: X, y: vertical ? 0.26 : 0.24, size: 200, weight: 700, font: 'serif', color: accent, in: { preset: 'fade', duration: 0.6 } });
-        layers.push({ type: 'text', text: b.text, x: X, y: cy, size: lineSize(wordCount(b.text), 84, vertical), weight: 500, font: 'serif', color: ink, maxWidth: vertical ? 0.76 : 0.72, leading: 1.2, at: 0.2, highlight: accentWords, highlightColor: accent, in: { preset: 'words', duration: 0.6, stagger: 0.06, ease } });
-        if (b.by) layers.push({ type: 'text', text: `— ${b.by}`, x: X, y: vertical ? 0.66 : 0.74, size: 36, weight: 500, color: muted, at: 0.8, in: { preset: 'rise', ease } });
-        entrance = 0.8 + wordCount(b.text) * 0.06;
-        break;
-      }
-      case 'compare': {
-        const pos = vertical ? [[X, 0.3], [X, 0.58]] : [[0.28, cy], [0.72, cy]];
-        [b.left, b.right].forEach((side, k) => {
-          const [x, y] = pos[k];
-          const at = k * 0.6;
-          layers.push({ type: 'text', text: side.label.toUpperCase(), x, y: y - (vertical ? 0.06 : 0.1), size: vertical ? 36 : 30, weight: 600, tracking: 0.12, color: k ? accentSmall : muted, at, in: { preset: 'fade', duration: 0.5 } });
-          layers.push({ type: 'text', text: side.text, x, y: y + 0.02, size: lineSize(wordCount(side.text), 72, vertical), weight: pack.fonts.weight, color: k ? ink : muted, maxWidth: vertical ? 0.76 : 0.38, at: at + 0.15, in: { preset: pack.enter.line, duration: 0.7, ease } });
-        });
-        layers.push(vertical
-          ? { type: 'shape', shape: 'line', x: X, y: 0.44, w: 280, h: 0, strokeWidth: 3, color: muted, at: 0.4, in: { preset: 'draw', duration: 0.6 } }
-          : { type: 'shape', shape: 'line', x: X, y: cy, w: 0, h: 320, strokeWidth: 3, color: muted, at: 0.4, in: { preset: 'draw', duration: 0.6 } });
-        entrance = 1.5;
-        break;
-      }
-      case 'words': {
-        // One word or phrase on the beat, each replacing the last: the punch-in
-        // rhythm. Each holds whole beats, long enough to be taken in at a glance.
-        const stride = Math.max(2, Math.ceil(1.15 / beat - 1e-6)) * beat;
-        b.words.forEach((w, k) => {
-          const last = k === b.words.length - 1;
-          layers.push({
-            type: 'text', text: w, x: X, y: cy, size: lineSize(wordCount(w), 160, vertical), weight: Math.min(900, pack.fonts.weight + 100),
-            color: accentWords.includes(w) || (last && accentWords.length === 0 && b.words.length > 2) ? accent : ink,
-            at: +(k * stride).toFixed(3), until: last ? undefined : +((k + 1) * stride).toFixed(3),
-            in: { preset: 'scale', duration: 0.25, ease: 'outExpo' }, out: 'none',
-          });
-        });
-        entrance = (b.words.length - 1) * stride + 0.25;
-        camera = { zoom: [1, 1.06] };
-        break;
-      }
-      case 'logo': {
-        if (b.asset && opts.assets && opts.assets[b.asset]) {
-          layers.push({ type: 'image', asset: b.asset, x: X, y: cy - 0.1, w: vertical ? 420 : 360, h: vertical ? 420 : 360, in: { preset: 'focus', duration: 0.9, ease } });
-          layers.push({ type: 'text', text: b.text, x: X, y: cy + 0.16, size: 96, weight: pack.fonts.weight, color: ink, at: 0.5, in: { preset: pack.enter.title, duration: 0.8, ease } });
-        } else {
-          layers.push({ type: 'text', text: b.text, x: X, y: b.sub ? cy - 0.03 : cy, size: lineSize(wordCount(b.text), 160, vertical), weight: Math.min(900, pack.fonts.weight + 100), color: ink, in: { preset: pack.enter.title, duration: 0.9, ease }, hold: 'shimmer' });
-        }
-        if (b.sub) layers.push({ type: 'text', text: b.sub, x: X, y: cy + (b.asset ? 0.26 : 0.1), size: 44, weight: 500, color: muted, at: 0.7, maxWidth: MW, in: { preset: pack.enter.small, duration: 0.7, ease } });
-        entrance = 1.4;
-        camera = { zoom: [1.04, 1] };
-        break;
-      }
-      case 'end': {
-        layers.push({ type: 'text', text: b.text, x: X, y: cy - 0.05, size: lineSize(wordCount(b.text), 128, vertical), weight: Math.min(900, pack.fonts.weight + 100), color: ink, highlight: accentWords, highlightColor: accent, in: { preset: pack.enter.title, duration: 0.8, ease } });
-        if (b.sub) layers.push({ type: 'text', text: b.sub, x: X, y: cy + 0.07, size: 44, weight: 600, color: accentSmall, at: 0.5, maxWidth: MW, in: { preset: pack.enter.small, duration: 0.7, ease } });
-        entrance = 1.2;
-        camera = { zoom: [1.03, 1] };
-        break;
-      }
-      default: break;
     }
 
     // How long the beat holds. Every line must stay readable for its reading
@@ -384,9 +262,10 @@ export function compileStoryboard(input, opts = {}) {
     style,
     palette,
     fonts: pack.fonts,
-    background: { ...pack.background },
+    background: { ...pack.background, ...(D?.background || {}) },
+    seed: D ? D.seed % 1e9 : undefined,
     scenes: sceneDocs,
-    sound: { score: opts.score || pack.score, hits },
+    sound: { score: opts.score || D?.score || pack.score, hits, ...(D ? { key: D.key, progression: D.progression } : {}) },
     voice: {
       ...(opts.voice || {}),
       lines: opts.narration === false ? [] : beats.map((b, i) => (b.say ? { scene: `${b.kind}-${i + 1}`, text: b.say, at: 0.15 } : null)).filter(Boolean),

@@ -33,7 +33,7 @@ Made by the model on your own computer, or by any cloud model on your own key.
 |---|---|
 | **01 Brief** | You describe the film in a sentence or two: what it is for, how long, landscape or vertical. |
 | **02 Storyboard** | The model writes only the words and numbers, beat by beat: a hook, a statement, a stat, a list, a quote, an end card. |
-| **03 Design** | The app lays the beats out in a style, times every line to how long it takes to read, and starts every scene on the beat of the music. |
+| **03 Design** | The app directs the film from the brief: a look, an accent colour, a tempo and key for the music, the transitions and camera moves it cuts with, and a composition for every scene, so two briefs, or two takes of one brief, never come out alike. Then it times every line to how long it takes to read and starts every scene on the beat of the music. |
 | **04 Check** | Key moments are rendered and measured: text off the frame, outside a phone's safe area, too small, too faint, too fast to read, or a scene that sits still too long. What rules can fix, they fix. The film is also held to what the brief asks to see: what must appear, in what order, what counts up, what is on screen at the end. The rest goes back to the model. |
 | **05 Film** | An original score fitted to the cuts, narration if you want it, mastered to the loudness video platforms play at, written to MP4 or MOV. |
 
@@ -60,7 +60,7 @@ The app suggests the way of working from the model's size, and you can always ch
   <img src="docs/assets/styles-dark.svg" width="100%" alt="Studio, Paper, Mono, Vivid, Editorial and Tech">
 </picture>
 
-Each style is a complete design: palette, type, background, and the two or three transitions it cuts with. **Studio** is near-black and quiet. **Paper** is a Swiss grid with a red mark. **Mono** types on and cuts on the beat. **Vivid** changes colour field scene by scene. **Editorial** sets serif headlines and holds long. **Tech** draws contour lines behind precise type. **Stage**, not pictured above, sets medium-weight type rising softly into place on a black stage, with one lit colour and figures that roll in on an odometer.
+By default the look is matched to the brief: a calm brief, a technical one and a luxury one each get a look that suits them, and a model may suggest a mood, an accent colour and a tempo. Each style is a complete design: palette, type, background, and the two or three transitions it cuts with. **Studio** is near-black and quiet. **Paper** is a Swiss grid with a red mark. **Mono** types on and cuts on the beat. **Vivid** changes colour field scene by scene. **Editorial** sets serif headlines and holds long. **Tech** draws contour lines behind precise type. **Stage**, not pictured above, sets medium-weight type rising softly into place on a black stage, with one lit colour and figures that roll in on an odometer.
 
 <br>
 
@@ -73,7 +73,7 @@ Each style is a complete design: palette, type, background, and the two or three
 | **Shapes and data** | Rings, lines, arrows and any SVG path drawn on stroke by stroke; counters that count up; bar and line charts that grow |
 | **Camera and cuts** | Slow pushes and pans per scene; push, slide, zoom-through, wipe, fade and dip transitions, and a carry that moves one element into the next scene while the rest crossfades |
 | **Formats** | 16:9, 9:16, 1:1 and 4:5, at 24 to 60 frames a second |
-| **Sound** | Three score flavours (deep pulse, soft, cinematic) built from the film's own scenes: a build into the reveal, a boom on the drop, a fade on the end card |
+| **Sound** | Three score flavours (deep pulse, soft, cinematic) built from the film's own scenes, in the film's own tempo and key with its chords in one of three orders: a build into the reveal, a boom on the drop, a fade on the end card |
 | **Narration** | One line per scene, the music lowered under the voice, captions that light up word by word as they are said |
 
 <br>
@@ -125,9 +125,9 @@ src/
   index.html       the editor window
   css/             the editor's colours, type and layout, dark and light
   core/            pure modules, no page access: the checks run them in Node
-    scene/         format, normaliser, film checks, storyboard, compiler, examples
+    scene/         format, normaliser, film checks, storyboard, direction, layouts, compiler, examples
     engine/        easing, keyframes, paths, the drawing kit, motion, the renderer
-    director/      prompts, the plan-check-revise loop, the code check
+    director/      prompts, the plan-check-revise loop, scene helpers, the code check
     providers/     model services, requests and streams, model sizes, voices
     audio/         synth, score, narration mix, loudness, word timing, WAV
     export/        the MP4 and MOV writer

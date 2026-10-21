@@ -504,6 +504,10 @@ export function normalizeScene(input, opts = {}) {
       .sort((a, b) => a.t - b.t)
       .slice(0, 200),
     sync: soundIn.sync === undefined ? true : Boolean(soundIn.sync),
+    // The key, in semitones from the score's home key, and the order its
+    // chords come in: set by the film's direction.
+    key: Math.round(num(soundIn.key, 0, -6, 6)),
+    progression: Math.round(num(soundIn.progression, 0, 0, 2)),
   };
 
   // Narration: one spoken line per scene at most, placed a moment after the

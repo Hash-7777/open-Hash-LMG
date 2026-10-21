@@ -9,6 +9,7 @@
 // bare string is a statement, "bullets" are items, "headline" is text, and so
 // on. Every repair is noted.
 
+import { MOODS, TEMPOS } from './direction.js';
 import { STYLE_NAMES, wordCount } from './format.js';
 
 export const BEAT_KINDS = ['hook', 'statement', 'title', 'stat', 'list', 'steps', 'chart', 'quote', 'compare', 'words', 'logo', 'end'];
@@ -156,7 +157,17 @@ export function normalizeStoryboard(input) {
   const beats = raw.slice(0, 40).map((b) => normBeat(b, notes)).filter(Boolean);
   if (!beats.length) notes.add('The storyboard has no beats.');
   const style = typeof doc.style === 'string' && STYLE_NAMES.includes(doc.style.toLowerCase()) ? doc.style.toLowerCase() : null;
-  return { storyboard: { title: s(doc.title, 120) || (beats[0]?.text || 'Untitled film').slice(0, 60), style, beats }, notes: list };
+  return { storyboard: { title: s(doc.title, 120) || (beats[0]?.text || 'Untitled film').slice(0, 60), style, look: normLook(doc.look), beats }, notes: list };
+}
+
+// What the model suggests for the film's look: a mood, an accent colour and a
+// tempo. Each is kept only when it is one the app knows.
+function normLook(input) {
+  const l = isObj(input) ? input : {};
+  const mood = typeof l.mood === 'string' && MOODS.includes(l.mood.toLowerCase().trim()) ? l.mood.toLowerCase().trim() : null;
+  const accent = typeof l.accent === 'string' && /^#(?:[0-9a-f]{6}|[0-9a-f]{3})$/i.test(l.accent.trim()) ? l.accent.trim().toLowerCase() : null;
+  const tempo = typeof l.tempo === 'string' && TEMPOS.includes(l.tempo.toLowerCase().trim()) ? l.tempo.toLowerCase().trim() : null;
+  return { mood, accent, tempo };
 }
 
 // Words a viewer reads in a beat, for timing.
