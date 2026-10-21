@@ -19,7 +19,7 @@ import { sampleTimes } from '../core/scene/lint.js';
 import { ASPECTS, STYLE_PACKS, STYLE_NAMES } from '../core/scene/format.js';
 import { select, toggle, ASPECT_SHORT } from './fields.js';
 import { createModelSession } from './model-session.js';
-import { createSuggestions } from './suggestions.js';
+import { createSuggestions, openIdeasDialog } from './suggestions.js';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120];
 
@@ -53,15 +53,14 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
   // Command or Control with Return makes the film from the brief.
   brief.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); make(); } });
   // Ideas to start from, while the brief is empty.
-  const ideas = createSuggestions({
-    pick: (idea) => {
-      brief.value = idea.text;
-      keepBrief();
-      settings.update({ film: { seconds: idea.seconds, aspect: idea.aspect } });
-      ideas.show(false);
-      brief.focus();
-    },
-  });
+  const useIdea = (idea) => {
+    brief.value = idea.text;
+    keepBrief();
+    settings.update({ film: { seconds: idea.seconds, aspect: idea.aspect } });
+    ideas.show(false);
+    brief.focus();
+  };
+  const ideas = createSuggestions({ pick: useIdea, openAll: () => openIdeasDialog({ pick: useIdea }) });
   const showIdeas = () => ideas.show(!brief.value.trim());
   brief.addEventListener('input', showIdeas);
 
