@@ -36,45 +36,9 @@ function readableSpan(doc, si, L) {
   return { from: ins.end, to: end, length: end - ins.end };
 }
 
-// The moments worth looking at: in each scene, just after the last entrance
-// settles, and in the middle of its hold.
-// How far into its entrance the opening line already is on the first frame.
-export const PREROLL = 0.4;
-
-export function sampleTimes(doc) {
-  const times = [];
-  doc.scenes.forEach((S, si) => {
-    const layers = allLayers(S.layers);
-    const settled = Math.max(0.3, ...layers.map((L) => entranceSpan(L).end));
-    const next = doc.scenes[si + 1];
-    const lastClean = S.duration - (next && next.transition.kind !== 'cut' ? next.transition.duration : 0) - 0.05;
-    // Never inside a transition: mid-push, both scenes are partly off the frame.
-    const t1 = Math.min(Math.max(settled + 0.05, S.transition.duration + 0.05), lastClean);
-    times.push(+(S.start + Math.max(0, t1)).toFixed(3));
-    const t2 = (t1 + lastClean) / 2;
-    if (lastClean - t1 > 1) times.push(+(S.start + t2).toFixed(3));
-  });
-  return [...new Set(times)].filter((t) => t <= doc.duration);
-}
-
-// Moments in the middle of moves: a quarter, half and three quarters of the
-// way through each transition, and half way through the entrance of each
-// line of text. Words that cross other words here read as a collision even
-// when every resting frame is clean.
-export function motionTimes(doc) {
-  const out = [];
-  doc.scenes.forEach((S, si) => {
-    if (si > 0 && S.transition.kind !== 'cut' && S.transition.duration > 0) {
-      for (const u of [0.25, 0.5, 0.75]) out.push(S.start + S.transition.duration * u);
-    }
-    for (const L of allLayers(S.layers)) {
-      if (L.type !== 'text') continue;
-      const e = entranceSpan(L);
-      if (e.end > e.start) out.push(S.start + (Math.max(0, e.start) + e.end) / 2);
-    }
-  });
-  return [...new Set(out.map((t) => +t.toFixed(3)))].filter((t) => t > 0 && t < doc.duration).sort((a, b) => a - b);
-}
+// The moments the checks look at, and the first-frame preroll, live in samples.js.
+export { PREROLL, sampleTimes, motionTimes, beatTimes } from './samples.js';
+import { frameShift, PREROLL } from './samples.js';
 
 // Safe areas, as fractions of the frame: titles stay inside these.
 export function safeArea(doc) {
@@ -255,6 +219,29 @@ export function lintScene(doc, opts = {}) {
     }
   }
 
+  // Something moves on every beat: frames a beat apart that draw exactly the
+  // same picture for more than two beats are a frozen screen. The end card
+  // holds on purpose.
+  const beats = opts.beats || [];
+  const beatLen = 60 / doc.bpm;
+  const sceneAt = (t) => doc.scenes.findLast((S) => S.start <= t + 1e-6) || doc.scenes[0];
+  const frozen = new Set();
+  let run = null;
+  const flush = () => {
+    if (!run || run.to - run.from <= beatLen * 2 + 1e-3) return;
+    const S = sceneAt(run.from);
+    if (!S || S === doc.scenes[doc.scenes.length - 1] || frozen.has(S.id)) return;
+    frozen.add(S.id);
+    add('warn', 'frozen', `Nothing moves from ${run.from.toFixed(1)} s to ${run.to.toFixed(1)} s in scene ${doc.scenes.indexOf(S) + 1}. Something should move on every beat: a slow push, a line drawing on, a figure counting.`, { scene: S.id, t: run.from }, { kind: 'add-camera', scene: S.id });
+  };
+  for (let i = 1; i < beats.length; i++) {
+    if (frameShift(beats[i - 1].boxes, beats[i].boxes) < 0.75 && sceneAt(beats[i - 1].t) === sceneAt(beats[i].t)) {
+      run ||= { from: beats[i - 1].t };
+      run.to = beats[i].t;
+    } else { flush(); run = null; }
+  }
+  flush();
+
   if (opts.targetDuration && doc.duration > 0) {
     const r = doc.duration / opts.targetDuration;
     if (r > 1.25 || r < 0.75) add('info', 'length', `The film runs ${doc.duration.toFixed(1)} s against the ${opts.targetDuration} s asked for.`);
@@ -346,6 +333,7 @@ export function autofix(doc, issues) {
       const S = byScene(f.scene);
       if (!S || S.camera.zoom[0] !== S.camera.zoom[1]) continue;
       S.camera.zoom = [1, 1.05];
+      S.camera.ease = 'linear';
       applied.push(`Added a slow camera push to scene ${d.scenes.indexOf(S) + 1}.`);
     } else if (f.kind === 'unify-transitions') {
       const pack = STYLE_PACKS[d.style] || STYLE_PACKS.studio;

@@ -23,7 +23,7 @@ import { normalizeStoryboard } from '../scene/storyboard.js';
 import { compileStoryboard } from '../scene/compile.js';
 import { chooseDirection, describeDirection } from '../scene/direction.js';
 import { normalizeScene } from '../scene/normalize.js';
-import { lintScene, autofix, sampleTimes, motionTimes } from '../scene/lint.js';
+import { lintScene, autofix, sampleTimes, motionTimes, beatTimes } from '../scene/lint.js';
 import { extractJson, extractCode } from '../util/json.js';
 import { checkCode, asModule } from './code-check.js';
 import { INTENT_SCHEMA, intentPrompt, normalizeIntent, intentTimes, verifyIntent, intentFailures } from './intent.js';
@@ -125,8 +125,9 @@ export function createDirector(deps) {
   // collide while moving are caught too.
   async function measured(scene) {
     const rest = sampleTimes(scene);
-    const all = await deps.measure({ scene }, [...rest, ...motionTimes(scene)]);
-    return { samples: all.slice(0, rest.length), moving: all.slice(rest.length) };
+    const moves = motionTimes(scene);
+    const all = await deps.measure({ scene }, [...rest, ...moves, ...beatTimes(scene)]);
+    return { samples: all.slice(0, rest.length), moving: all.slice(rest.length, rest.length + moves.length), beats: all.slice(rest.length + moves.length) };
   }
 
   async function checkScene(scene, opts) {

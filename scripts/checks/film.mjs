@@ -12,7 +12,7 @@ import { STYLE_NAMES, ASPECTS, LAYER_TYPES } from '../../src/core/scene/format.j
 import { EXAMPLES } from '../../src/core/scene/examples.js';
 import { STORYBOARD, measure } from './lib/fixtures.mjs';
 import { statUnits, normalizeStoryboard } from '../../src/core/scene/storyboard.js';
-import { autofix, motionTimes } from '../../src/core/scene/lint.js';
+import { autofix, motionTimes, beatTimes } from '../../src/core/scene/lint.js';
 import { resizeScene } from '../../src/core/scene/edit.js';
 
 section('Every beat kind, in every style and frame shape, compiles clean');
@@ -123,6 +123,24 @@ for (const type of LAYER_TYPES) {
   const twice = normalizeScene(normalizeScene(doc).scene).scene.scenes[0].layers[0];
   const lost = Object.keys(L).filter((k) => !(k in once) || !(k in twice));
   ok(`${type}: every field survives twice`, lost.length === 0, `lost ${lost.join(', ')}`);
+}
+
+section('Something moves on every beat');
+{
+  const still = normalizeScene({ bpm: 120, scenes: [
+    { id: 'a', duration: 6, camera: { zoom: [1, 1] }, layers: [{ type: 'text', text: 'Held', in: { preset: 'fade', at: -0.4, duration: 0.4 } }] },
+    { id: 'b', duration: 3, layers: [{ type: 'text', text: 'End' }] },
+  ] }).scene;
+  const frozen = lintScene(still, { beats: measure(still, beatTimes(still)) }).filter((i) => i.code === 'frozen');
+  ok('a scene that holds a still picture is caught', frozen.length === 1 && frozen[0].scene === 'a');
+  const fixed = autofix(still, frozen).scene;
+  ok('and given a slow push, after which it moves on every beat', lintScene(fixed, { beats: measure(fixed, beatTimes(fixed)) }).every((i) => i.code !== 'frozen'));
+  ok('the end card may hold', lintScene(still, { beats: measure(still, beatTimes(still)) }).every((i) => i.scene !== 'b' || i.code !== 'frozen'));
+}
+for (const style of STYLE_NAMES) {
+  const { scene } = compileStoryboard(STORYBOARD, { style, targetDuration: 40 });
+  const hits = lintScene(scene, { beats: measure(scene, beatTimes(scene)) }).filter((i) => i.code === 'frozen');
+  ok(`${style}: a compiled film moves on every beat`, hits.length === 0, hits.map((i) => i.message).join(' / '));
 }
 
 section('Every example draws at every moment');

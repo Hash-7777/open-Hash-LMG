@@ -173,7 +173,7 @@ export function layBeat(c) {
         layers.push({ type: 'bars', values: b.values, labels: b.labels, suffix: b.suffix, x: X, y: vertical ? 0.47 : 0.56, w, h, color: accent, labelSize: vertical ? 34 : 28, at: 0.3, in: { preset: 'grow', duration: 1.6, ease } });
       }
       entrance = 2.2;
-      camera = { zoom: [1, 1] };
+      camera = { zoom: [1, 1.02] };
       break;
     }
     case 'quote': {

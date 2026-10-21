@@ -97,6 +97,9 @@ export function compileStoryboard(input, opts = {}) {
     // The film's camera moves, scene by scene; a chart and a run of single
     // words keep their own.
     if (D && b.kind !== 'chart' && b.kind !== 'words') camera = cameraFor(D, i, camera);
+    // A camera drifts at one steady speed: an eased move all but stops at
+    // both ends of the scene, which reads as a frozen frame.
+    camera = { ease: 'linear', ...camera };
     // Marks that run through the whole film: a running index or corner marks.
     if (D?.motif === 'index' && b.kind !== 'words') {
       layers.push({ type: 'text', text: `${String(i + 1).padStart(2, '0')} / ${String(beats.length).padStart(2, '0')}`, x: vertical ? 0.1 : 0.05, y: vertical ? 0.1 : 0.07, anchor: 'left', align: 'left', size: 22, weight: 600, font: 'mono', tracking: 0.08, color: muted, opacity: 0.8, z: 5, in: { preset: 'fade', duration: 0.4 } });
