@@ -332,3 +332,15 @@ svg { display: block; flex: none; }
 @media (max-width: 1280px) {
   .transport-facts { display: none; }
 }
+
+/* Ideas to start from, under an empty brief. */
+.ideas { display: flex; flex-direction: column; gap: 2px; margin-top: -2px; }
+.ideas[hidden] { display: none; }
+.ideas-head { display: flex; align-items: center; justify-content: space-between; font-size: var(--text-xs); color: var(--muted); padding: 0 2px 2px; }
+.ideas-more { display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: var(--r-s); background: transparent; color: var(--muted); cursor: pointer; }
+.ideas-more:hover { color: var(--ink); background: var(--raised); }
+.ideas-more svg { width: 13px; height: 13px; }
+.ideas-list { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.idea { display: block; width: 100%; padding: 6px 2px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink-2); font-size: var(--text-s); line-height: 1.35; text-align: left; cursor: pointer; }
+.idea:hover { color: var(--ink); }
+.idea-text { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

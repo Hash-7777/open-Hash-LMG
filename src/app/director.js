@@ -19,6 +19,7 @@ import { sampleTimes } from '../core/scene/lint.js';
 import { ASPECTS, STYLE_PACKS, STYLE_NAMES } from '../core/scene/format.js';
 import { select, toggle, ASPECT_SHORT } from './fields.js';
 import { createModelSession } from './model-session.js';
+import { createSuggestions } from './suggestions.js';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120];
 
@@ -49,6 +50,18 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
   let briefTimer = 0;
   brief.addEventListener('input', () => { clearTimeout(briefTimer); briefTimer = setTimeout(keepBrief, 600); });
   brief.addEventListener('change', keepBrief);
+  // Ideas to start from, while the brief is empty.
+  const ideas = createSuggestions({
+    pick: (idea) => {
+      brief.value = idea.text;
+      keepBrief();
+      settings.update({ film: { seconds: idea.seconds, aspect: idea.aspect } });
+      ideas.show(false);
+      brief.focus();
+    },
+  });
+  const showIdeas = () => ideas.show(!brief.value.trim());
+  brief.addEventListener('input', showIdeas);
 
   const options = h('div', { class: 'dir-options' });
   const modelLine = h('button', { class: 'model-line', type: 'button', title: 'Choose the model in Settings', onclick: () => openSettings('model') });
@@ -61,7 +74,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
   const el = h('aside', { class: 'director', 'aria-label': 'Director' },
     h('div', { class: 'panel-head' }, h('span', { class: 'panel-title', text: 'Director' })),
     h('div', { class: 'dir-body' },
-      h('div', { class: 'dir-block' }, brief, options, modelLine, tierHelp, makeBtn)),
+      h('div', { class: 'dir-block' }, brief, ideas.el, options, modelLine, tierHelp, makeBtn)),
     h('div', { class: 'dir-ask' }, askBox, askBtn));
 
   let running = null; // AbortController while the model works
@@ -251,7 +264,8 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
 
   makeBtn.addEventListener('click', make);
   settings.subscribe(paintOptions);
-  store.on('project', () => { if (document.activeElement !== brief && brief.value !== store.get().project.brief) brief.value = store.get().project.brief; });
+  store.on('project', () => { if (document.activeElement !== brief && brief.value !== store.get().project.brief) { brief.value = store.get().project.brief; showIdeas(); } });
+  showIdeas();
 
   paintOptions();
   paintButtons();
