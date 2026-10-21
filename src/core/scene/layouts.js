@@ -86,19 +86,22 @@ export function layBeat(c) {
       break;
     }
     case 'stat': {
+      // A long figure (" million", a currency) is set smaller so it fits.
+      const figure = `${b.prefix || ''}${b.value}${b.suffix || ''}`.length;
+      const fit = Math.min(1, 5 / Math.max(1, figure));
       const counter = { type: 'counter', from: 0, to: b.value, prefix: b.prefix, suffix: b.suffix, decimals: b.decimals, weight: Math.min(900, pack.fonts.weight + 100), color: accent, count: 1.4, roll: Boolean(pack.roll), in: { preset: pack.roll ? 'soft' : 'rise', duration: 0.6, ease } };
       if (lay === 1 && wide && b.sub) {
         // The figure large on the left, what it means beside it.
-        layers.push({ ...counter, x: 0.5, y: cy, anchor: 'right', align: 'right', size: 250 });
+        layers.push({ ...counter, x: 0.5, y: cy, anchor: 'right', align: 'right', size: Math.round(250 * fit) });
         layers.push({ type: 'text', text: b.sub, x: 0.55, y: cy, anchor: 'left', align: 'left', size: lineSize(wordCount(b.sub), 60, false), weight: 500, color: ink, at: 0.6, maxWidth: 0.34, in: { preset: E.line, duration: 0.7, ease } });
       } else if (lay === 2 && b.suffix && /%/.test(b.suffix) && b.value > 0 && b.value <= 100) {
         // A share: the ring fills to the figure while it counts.
         layers.push({ type: 'shape', shape: 'ring', x: X, y: cy - 0.06, w: vertical ? 560 : 440, fill: 'none', stroke: 'surface', strokeWidth: 14, z: -1, in: { preset: 'fade', duration: 0.4 } });
         layers.push({ type: 'shape', shape: 'ring', x: X, y: cy - 0.06, w: vertical ? 560 : 440, fill: 'none', stroke: accent, strokeWidth: 14, arc: [0, b.value / 100], z: 0, in: { preset: 'draw', duration: 1.4, ease: 'inOutCubic' } });
-        layers.push({ ...counter, x: X, y: cy - 0.06, size: vertical ? 150 : 130, color: ink });
+        layers.push({ ...counter, x: X, y: cy - 0.06, size: Math.round((vertical ? 150 : 130) * fit), color: ink });
         if (b.sub) layers.push({ type: 'text', text: b.sub, x: X, y: cy + (vertical ? 0.14 : 0.2), size: lineSize(wordCount(b.sub), 50, vertical), weight: 500, color: muted, at: 0.6, maxWidth: MW, in: { preset: E.small, duration: 0.7, ease } });
       } else {
-        layers.push({ ...counter, x: X, y: cy - 0.06, size: vertical ? 190 : 210 });
+        layers.push({ ...counter, x: X, y: cy - 0.06, size: Math.round((vertical ? 190 : 210) * Math.max(fit, 0.55)) });
         if (b.sub) layers.push({ type: 'text', text: b.sub, x: X, y: cy + 0.12, size: lineSize(wordCount(b.sub), 56, vertical), weight: 500, color: muted, at: 0.5, maxWidth: MW, in: { preset: E.small, duration: 0.7, ease } });
       }
       entrance = 1.6;

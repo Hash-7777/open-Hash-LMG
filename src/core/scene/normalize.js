@@ -47,6 +47,13 @@ function num(v, def, lo = -Infinity, hi = Infinity) {
   return Math.min(hi, Math.max(lo, v));
 }
 
+// A number's prefix or suffix keeps its own space (" million", "$ "), so it is
+// not trimmed; runs of space still become one.
+function affix(v, max) {
+  if (typeof v !== 'string' && typeof v !== 'number') return '';
+  return String(v).replace(/\s+/g, ' ').slice(0, max);
+}
+
 function str(v, def = '', max = 400) {
   if (v === null || v === undefined) return def;
   if (typeof v === 'number') v = String(v);
@@ -301,8 +308,8 @@ function normLayer(L, ctx, depth = 0) {
       from: num(L.from, 0),
       to: num(L.to ?? L.value, 100),
       decimals: Math.round(num(L.decimals, 0, 0, 6)),
-      prefix: str(L.prefix, '', 12),
-      suffix: str(L.suffix, '', 24),
+      prefix: affix(L.prefix, 12),
+      suffix: affix(L.suffix, 24),
       separator: L.separator === undefined ? true : Boolean(L.separator),
       size: size(L.size, 160, 8, 800),
       weight: Math.round(num(L.weight, ctx.fonts.weight, 100, 900) / 100) * 100,
@@ -332,7 +339,7 @@ function normLayer(L, ctx, depth = 0) {
       dots: L.dots === undefined ? true : Boolean(L.dots),
       area: Boolean(L.area),
       decimals: Math.round(num(L.decimals, 0, 0, 4)),
-      suffix: str(L.suffix, '', 12),
+      suffix: affix(L.suffix, 12),
     });
   } else if (type === 'group') {
     if (depth > 3) { notes.add('Groups nested deeper than four levels were flattened away.'); return null; }
