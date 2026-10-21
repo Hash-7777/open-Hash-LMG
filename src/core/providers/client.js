@@ -10,7 +10,7 @@
 
 import { PROVIDERS } from './catalog.js';
 import { buildRequest, readEvent, eventSplitter, describeFailure } from './request.js';
-import { modelsRequest, parseModelList } from './models.js';
+import { modelsRequest, parseModelList, sortModels } from './models.js';
 import { stripThinking, speedOf } from './local.js';
 
 // The processor or the graphics chip, as Ollama's num_gpu: the number of the
@@ -67,6 +67,7 @@ export async function ask(req, io) {
   let text = '';
   let failure = null;
   let finished = false;
+  let stop = null;
   const take = (ev) => {
     if (ev && ev.__done) { finished = true; return; }
     if (p.style === 'ollama' && ev && ev.done && io.onStats) io.onStats({ speed: speedOf(ev), promptTokens: Number(ev.prompt_eval_count) || null });
@@ -74,6 +75,7 @@ export async function ask(req, io) {
     if (r.error) { failure = r.error; return; }
     if (r.thinking && io.onThinking) io.onThinking(r.thinking);
     if (r.text) { text += r.text; if (io.onText) io.onText(r.text, text); }
+    if (r.stop) stop = r.stop;
     if (r.done) finished = true;
   };
 
@@ -108,6 +110,8 @@ export async function ask(req, io) {
 
   if (failure) throw new Error(onChipHint(req, `${p.label}: ${failure}`));
   text = stripThinking(text);
+  if (!text.trim() && stop === 'declined') throw new Error(`${p.label} declined to answer this brief. Try other words, or another model.`);
+  if (!text.trim() && stop === 'cut') throw new Error(`${p.label} used all the room it was given before it wrote an answer. Try again, or choose another model.`);
   if (!text.trim()) {
     throw new Error(`${p.label} sent back an empty answer.${finished ? '' : ' It may have stopped early.'} Try again, or choose another model.`);
   }
@@ -136,8 +140,7 @@ export async function listModels(providerId, { key = '', base = '', fetch, signa
   }
   let json = null;
   try { json = await res.json(); } catch { /* read as empty below */ }
-  const list = parseModelList(providerId, json);
-  list.sort((a, b) => a.label.localeCompare(b.label));
+  const list = sortModels(parseModelList(providerId, json));
   if (!list.length && p.fallbackModels) return p.fallbackModels.map((id) => ({ id, label: id, meta: {} }));
   return list;
 }

@@ -11,7 +11,7 @@ import { h, clear, dialog, toast } from './dom.js';
 import { ICONS } from './icons.js';
 import { field, section, select, segmented, toggle, textButton } from './fields.js';
 import { PROVIDERS, LOCAL_IDS, CLOUD_IDS } from '../core/providers/catalog.js';
-import { modelProfile, parseModelList } from '../core/providers/models.js';
+import { modelProfile, parseModelList, defaultModel } from '../core/providers/models.js';
 import { listModels } from '../core/providers/client.js';
 import { KEEP_CHOICES, probeLocal, sizeText } from '../core/providers/local.js';
 import { appVersion, openExternal } from '../platform/index.js';
@@ -118,7 +118,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
       const list = await listModels(id, { key: settings.key(id), base: settings.base(id), fetch: fetchIt });
       if (loading !== mine || settings.get().model.provider !== id) return;
       models = list;
-      if (!settings.get().model.model && list.length) settings.update({ model: { model: list[0].id } });
+      if (!settings.get().model.model && list.length) settings.update({ model: { model: defaultModel(id, list) } });
     } catch (err) {
       if (loading === mine) toast(err.message || String(err), 'error');
       models = [];

@@ -6,7 +6,8 @@
 import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
 import { ask, listModels, gpuLayers } from '../../src/core/providers/client.js';
-import { modelProfile } from '../../src/core/providers/models.js';
+import { modelProfile, sortModels, defaultModel, parseModelList } from '../../src/core/providers/models.js';
+import { buildRequest } from '../../src/core/providers/request.js';
 
 const stream = (chunks) => new Response(new ReadableStream({ start(c) { for (const x of chunks) c.enqueue(new TextEncoder().encode(x)); c.close(); } }));
 const q = (provider, extra = {}) => ({ provider, model: 'm', key: 'k', messages: [{ role: 'user', content: 'x' }], ...extra });
@@ -53,6 +54,37 @@ await claim('a stop is reported as stopped, not as a failure', async () => {
   await assert.rejects(ask(q('ollama'), { signal: ac.signal, fetch: async (u, i) => { if (i.signal.aborted) throw Object.assign(new Error('a'), { name: 'AbortError' }); } }), (e) => e.stopped === true);
 });
 
+section('What each service accepts');
+const body = (provider, model, extra = {}) => JSON.parse(buildRequest({ ...q(provider, { model, ...extra }), maxTokens: 1500 }).init.body);
+await claim('a current Claude model is sent no sampling value, and room to think', () => {
+  for (const m of ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-4-8', 'claude-fable-5-1']) {
+    const b = body('anthropic', m);
+    assert.equal(b.temperature, undefined, m); assert.ok(b.max_tokens >= 16000, m);
+  }
+});
+await claim('an older Claude model keeps its temperature and its own length', () => {
+  for (const m of ['claude-sonnet-4-5-20250929', 'claude-opus-4-6', 'claude-3-5-haiku-latest']) {
+    const b = body('anthropic', m);
+    assert.equal(b.temperature, 0.4, m); assert.equal(b.max_tokens, 1500, m);
+  }
+});
+await claim('an OpenAI reasoning model gets room to reason and no temperature', () => {
+  const b = body('openai', 'gpt-5.1');
+  assert.equal(b.temperature, undefined); assert.ok(b.max_completion_tokens >= 16000);
+  assert.equal(body('openai', 'gpt-4.1').max_completion_tokens, 1500);
+});
+await claim('a relayed current Claude model is sent no temperature either', () => {
+  assert.equal(body('openrouter', 'anthropic/claude-opus-5-5').temperature, undefined);
+  assert.equal(body('openrouter', 'meta-llama/llama-4-maverick').temperature, 0.4);
+});
+await claim('a Gemini model that thinks gets room to think', () => {
+  assert.ok(body('gemini', 'gemini-2.5-flash').generationConfig.maxOutputTokens >= 16000);
+  assert.equal(body('gemini', 'gemini-2.0-flash').generationConfig.maxOutputTokens, 1500);
+});
+await rejects('an answer declined by the model says so', q('anthropic'), { fetch: async () => stream(['data: {"type":"message_delta","delta":{"stop_reason":"refusal"}}\n\ndata: {"type":"message_stop"}\n\n']) }, /declined to answer/);
+await rejects('a model that answers only another request shape says to choose another', q('openai'), { fetch: async () => new Response('{"error":{"message":"This model is only supported in v1/responses and not in v1/chat/completions."}}', { status: 404 }) }, /does not answer chat requests/);
+await rejects('an answer cut off before any text says so', q('openai'), { fetch: async () => stream(['data: {"choices":[{"delta":{},"finish_reason":"length"}]}\n\n']) }, /used all the room/);
+
 section('Model lists');
 await claim('Ollama lists chat models, sorted, without embedding models', async () => {
   const ms = await listModels('ollama', { fetch: async () => new Response(JSON.stringify({ models: [{ name: 'qwen2.5:7b' }, { name: 'nomic-embed-text' }, { name: 'gemma3:4b' }] })) });
@@ -61,6 +93,18 @@ await claim('Ollama lists chat models, sorted, without embedding models', async 
 await claim('a service with a built-in list falls back to it when unreachable', async () => {
   const ms = await listModels('anthropic', { key: 'k', fetch: async () => { throw new TypeError('x'); } });
   assert.ok(ms.length >= 1);
+});
+await claim('a dated list comes newest first, so current models lead', () => {
+  const list = sortModels([{ id: 'a', label: 'Old', meta: { created: 1 } }, { id: 'b', label: 'New', meta: { created: 9 } }]);
+  assert.deepEqual(list.map((m) => m.id), ['b', 'a']);
+});
+await claim('OpenAI models that do not chat are left out', () => {
+  const ids = parseModelList('openai', { data: ['gpt-5.1', 'babbage-002', 'gpt-image-1', 'sora-2', 'text-embedding-3-small', 'gpt-4o-mini'].map((id) => ({ id, created: 1 })) }).map((m) => m.id);
+  assert.deepEqual(ids, ['gpt-5.1', 'gpt-4o-mini']);
+});
+await claim('the first model chosen is a recommended one, not the first by name', () => {
+  assert.equal(defaultModel('anthropic', [{ id: 'claude-3-haiku' }, { id: 'claude-sonnet-5-5' }]), 'claude-sonnet-5-5');
+  assert.equal(defaultModel('groq', [{ id: 'x' }, { id: 'y' }]), 'x');
 });
 await claim('a cloud list without a key asks for one', () => assert.rejects(listModels('openai', { fetch: async () => new Response('') }), /key first/));
 

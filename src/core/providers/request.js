@@ -17,6 +17,15 @@ const dataUrlParts = (url) => {
 
 // Models that refuse a temperature (reasoning families) are sent none.
 const NO_TEMPERATURE = /^(o\d|gpt-5)/i;
+// Claude models that still take a temperature: the 3 family and the 4 family
+// up to 4.6. Every later one refuses any sampling value, and thinks before it
+// answers, so it is given room for that.
+const CLAUDE_SAMPLING = /^claude-(?:3|2|instant)|^claude-[a-z]+-4(?:-[0-6])?(?:-\d{8})?$/i;
+// Gemini models that think before answering, and count that in their budget.
+const GEMINI_THINKING = /gemini-(?:2\.5|[3-9])/i;
+// Room for thinking on top of the answer, for the models that do it.
+const THINKING_ROOM = 16000;
+const withRoom = (maxTokens) => Math.max(maxTokens, THINKING_ROOM);
 
 // req: { provider, model, key, base, system, messages: [{ role, content, images: [dataUrl] }],
 //        json: boolean, schema: object|null, temperature, maxTokens, stream, numCtx, numGpu, keepAlive }
@@ -71,8 +80,13 @@ export function buildRequest(req) {
         })),
       ],
     };
-    if (p.newTokenField) body.max_completion_tokens = maxTokens; else body.max_tokens = maxTokens;
-    if (!NO_TEMPERATURE.test(req.model || '')) body.temperature = temperature;
+    // A service that relays other companies' models names them "maker/model".
+    const bare = String(req.model || '').replace(/^[^/]+\//, '');
+    const reasons = NO_TEMPERATURE.test(bare);
+    const sampling = !reasons && !(/^claude-/i.test(bare) && !CLAUDE_SAMPLING.test(bare));
+    const limit = reasons && p.newTokenField ? withRoom(maxTokens) : maxTokens;
+    if (p.newTokenField) body.max_completion_tokens = limit; else body.max_tokens = limit;
+    if (sampling) body.temperature = temperature;
     if (req.json) {
       if (req.schema && p.json === 'schema') body.response_format = { type: 'json_schema', json_schema: { name: 'answer', schema: req.schema, strict: false } };
       else if (p.json) body.response_format = { type: 'json_object' };
@@ -86,11 +100,12 @@ export function buildRequest(req) {
     // The service refuses a request from a web page unless it is told the page
     // means it. The key stays on this computer either way.
     headers['anthropic-dangerous-direct-browser-access'] = 'true';
+    const sampling = CLAUDE_SAMPLING.test(req.model || '');
     const body = {
       model: req.model,
       stream,
-      max_tokens: maxTokens,
-      temperature,
+      max_tokens: sampling ? maxTokens : withRoom(maxTokens),
+      ...(sampling ? { temperature } : {}),
       ...(req.system ? { system: req.system } : {}),
       messages: req.messages.map((m) => ({
         role: m.role,
@@ -116,7 +131,7 @@ export function buildRequest(req) {
           ...(m.images || []).map((u) => dataUrlParts(u)).filter(Boolean).map((d) => ({ inline_data: { mime_type: d.mime, data: d.data } })),
         ],
       })),
-      generationConfig: { temperature, maxOutputTokens: maxTokens, ...(req.json ? { responseMimeType: 'application/json' } : {}) },
+      generationConfig: { temperature, maxOutputTokens: GEMINI_THINKING.test(model) ? withRoom(maxTokens) : maxTokens, ...(req.json ? { responseMimeType: 'application/json' } : {}) },
     };
     const action = stream ? 'streamGenerateContent?alt=sse' : 'generateContent';
     return { url: `${base}/v1beta/models/${encodeURIComponent(model)}:${action}`, init: { method: 'POST', headers, body: JSON.stringify(body) } };
@@ -124,8 +139,13 @@ export function buildRequest(req) {
   throw new Error(`No request shape for ${p.label}`);
 }
 
+// Why an answer ended early, in the app's own words, from each service's name
+// for it: the length it was allowed, or the model declining to answer.
+const CUT = { length: 'cut', max_tokens: 'cut', MAX_TOKENS: 'cut', refusal: 'declined', SAFETY: 'declined', content_filter: 'declined', PROHIBITED_CONTENT: 'declined' };
+
 // Text from one parsed event of a streamed reply, per style. Returns
-// { text, thinking, error, done }.
+// { text, thinking, error, done, stop }, stop being 'cut' or 'declined' when
+// the answer ended before it was finished.
 export function readEvent(style, ev) {
   if (!ev || typeof ev !== 'object') return {};
   if (ev.error) {
@@ -139,15 +159,16 @@ export function readEvent(style, ev) {
     const c = ev.choices?.[0];
     if (!c) return {};
     const d = c.delta || c.message || {};
-    return { text: d.content || '', thinking: d.reasoning_content || d.reasoning || '', done: !!c.finish_reason };
+    return { text: d.content || '', thinking: d.reasoning_content || d.reasoning || '', done: !!c.finish_reason, stop: CUT[c.finish_reason] };
   }
   if (style === 'anthropic') {
     if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') return { text: ev.delta.text };
     if (ev.type === 'content_block_delta' && ev.delta?.type === 'thinking_delta') return { thinking: ev.delta.thinking };
+    if (ev.type === 'message_delta' && CUT[ev.delta?.stop_reason]) return { stop: CUT[ev.delta.stop_reason] };
     if (ev.type === 'message_stop') return { done: true };
     if (ev.type === 'error') return { error: ev.error?.message || 'The service reported an error.' };
     // A non-streamed reply.
-    if (Array.isArray(ev.content)) return { text: ev.content.filter((b) => b.type === 'text').map((b) => b.text).join(''), done: true };
+    if (Array.isArray(ev.content)) return { text: ev.content.filter((b) => b.type === 'text').map((b) => b.text).join(''), done: true, stop: CUT[ev.stop_reason] };
     return {};
   }
   if (style === 'gemini') {
@@ -156,6 +177,7 @@ export function readEvent(style, ev) {
       text: parts.filter((x) => !x.thought).map((x) => x.text || '').join(''),
       thinking: parts.filter((x) => x.thought).map((x) => x.text || '').join(''),
       done: !!ev.candidates?.[0]?.finishReason,
+      stop: CUT[ev.candidates?.[0]?.finishReason],
     };
   }
   return {};
@@ -199,6 +221,7 @@ export function describeFailure(providerId, status, bodyText) {
     if (typeof detail !== 'string') detail = JSON.stringify(detail);
   } catch { detail = String(bodyText || '').slice(0, 200); }
   const who = p ? p.label : 'The service';
+  if (/v1\/responses|not a chat model|not supported in the v1\/chat|chat\/completions? (?:is )?not supported/i.test(detail)) return `${who}: that model does not answer chat requests. Choose another model in Settings.`;
   if (status === 401 || status === 403) return `${who} did not accept the key. Check it in Settings.${detail ? ` (${detail})` : ''}`;
   if (status === 404) return `${who} does not know that model, or the address is wrong.${detail ? ` (${detail})` : ''}`;
   if (status === 429) return `${who} says too many requests right now. Wait a moment, or choose another model.${detail ? ` (${detail})` : ''}`;

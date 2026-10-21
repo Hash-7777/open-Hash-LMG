@@ -5,7 +5,7 @@
 // answer in JSON. Local services need no key and never leave the computer.
 //
 // The cloud hosts here and the connect-src list in src-tauri/tauri.conf.json
-// must name the same places: scripts/checks/providers.mjs fails if they
+// must name the same places: scripts/checks/policy.mjs fails if they
 // drift. A host the code calls that the policy does not list fails as an
 // ordinary network error, which looks like a broken service for no visible
 // reason. Local services may use any port on this computer, which the policy

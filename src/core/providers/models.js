@@ -88,8 +88,38 @@ export function parseModelList(providerId, json) {
     meta: {
       vision: Array.isArray(m.architecture?.input_modalities) ? m.architecture.input_modalities.includes('image') : undefined,
       context: m.context_length || m.context_window || undefined,
+      created: createdAt(m),
     },
-  })).filter((m) => m.id && !/embed|whisper|tts|dall-e|moderation|rerank|transcribe|audio|realtime|image|guard/i.test(m.id));
+  })).filter((m) => m.id && !NOT_CHAT.test(m.id));
+}
+
+// Models a service lists that do not answer a chat request: embeddings,
+// speech, pictures, moderation, and the old completion models (named with a
+// three-digit revision, such as "-002"). A model that answers only another
+// request shape is told apart by the service's own refusal instead
+// (describeFailure in request.js).
+const NOT_CHAT = /embed|whisper|tts|dall-e|moderation|rerank|transcribe|audio|realtime|image|guard|-00\d$|-instruct|sora|deep-research|computer-use|search-preview/i;
+
+// When a model was published, in seconds, from the field each service uses.
+function createdAt(m) {
+  if (Number.isFinite(m.created)) return m.created;
+  const t = Date.parse(m.created_at || '');
+  return Number.isFinite(t) ? t / 1000 : undefined;
+}
+
+// Newest first where the service says when each model came out, which puts
+// the current models at the top; by name otherwise.
+export function sortModels(list) {
+  const dated = list.length && list.every((m) => Number.isFinite(m.meta?.created));
+  return [...list].sort((a, b) => (dated ? b.meta.created - a.meta.created : 0) || a.label.localeCompare(b.label));
+}
+
+// The model to start with when none is chosen: the first of the service's
+// recommended ones it offers, or else the first of its list.
+export function defaultModel(providerId, list) {
+  const p = PROVIDERS[providerId];
+  const ids = new Set(list.map((m) => m.id));
+  return (p?.fallbackModels || []).find((id) => ids.has(id)) || list[0]?.id || '';
 }
 
 // Headers and address for listing a service's models.
