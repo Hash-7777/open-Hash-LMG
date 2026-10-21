@@ -47,36 +47,6 @@ svg { display: block; flex: none; }
 
 .topbar { position: relative; }
 
-/* The loading bar under the top bar while a film is made, and its step. */
-.header-progress {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  z-index: 20;
-  background: var(--line);
-  overflow: hidden;
-  pointer-events: none;
-}
-.hp-fill {
-  height: 100%;
-  background: var(--accent);
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.35s var(--ease), background-color 0.3s;
-}
-.header-progress.fail .hp-fill { background: var(--danger); }
-.header-status.has-details { cursor: help; text-decoration: underline dotted var(--faint); text-underline-offset: 3px; }
-.header-status {
-  max-width: 34vw;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-s);
-  color: var(--muted);
-}
-
 .brand-name {
   font-size: var(--text-m);
   font-weight: 600;

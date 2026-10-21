@@ -119,6 +119,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
   // What the director says as it works: steps move the bar, notes land here.
   function onLog({ id, title, status, detail }) {
     if (status === 'run') progress.step(id, title);
+    else if (status === 'done') progress.stepDone(id);
     else if (status === 'note' && detail) note(detail);
     else if (status === 'fail' && detail) note(detail, 'fail');
   }
@@ -144,8 +145,8 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
         }, {
           fetch: (u, i) => fetch(u, i), signal,
           onThinking: () => progress.say('The model is thinking'),
-          onText: (_, all) => progress.within(part ? (part.index + Math.min(1, all.length / typical)) / part.of : all.length / typical,
-            part ? `The model is writing storyboard ${part.index + 1} of ${part.of}` : `The model is writing the ${ANSWER_WORDS[purpose] || 'answer'}`),
+          onText: (_, all) => { progress.writing(all); progress.within(part ? (part.index + Math.min(1, all.length / typical)) / part.of : all.length / typical,
+            part ? `The model is writing storyboard ${part.index + 1} of ${part.of}` : `The model is writing the ${ANSWER_WORDS[purpose] || 'answer'}`); },
           onStats: (st) => session.onStats(st),
         });
         return text;
@@ -162,6 +163,12 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
       if (await session.release()) note('The model was unloaded to free the graphics chip.');
     };
     return { director, session, done };
+  }
+
+  // The model and the way of working, as the steps panel names them.
+  function whoText(way) {
+    const m = settings.get().model;
+    return [m.model, PROVIDERS[m.provider]?.label, way ? TIER_SHORT[way] : null].filter(Boolean).join(' · ');
   }
 
   function ready() {
@@ -182,7 +189,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     paintButtons();
     resetNotes();
     const way = tier();
-    progress.start(PLANS[way].map(([id, weight]) => ({ id, weight })), 'Starting');
+    progress.start(PLANS[way].map(([id, weight]) => ({ id, weight })), 'Starting', whoText(way));
     const { director, session, done } = makeDirector(running.signal);
     try {
       // Ollama says itself whether a model can see pictures; its name is the fallback.
@@ -224,7 +231,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     running = new AbortController();
     paintButtons();
     resetNotes();
-    progress.start(PLANS.edit.map(([id, weight]) => ({ id, weight })), 'Starting the change');
+    progress.start(PLANS.edit.map(([id, weight]) => ({ id, weight })), 'Starting the change', whoText());
     const { director, done } = makeDirector(running.signal);
     try {
       const out = await director.edit(project, text, { seconds: s.film.seconds, narration: s.film.narration });
