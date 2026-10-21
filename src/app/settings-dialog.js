@@ -18,7 +18,7 @@ import { appVersion, openExternal } from '../platform/index.js';
 
 const SIZE_WORDS = { small: 'small', medium: 'mid-size', large: 'large', frontier: 'frontier' };
 const TIER_WORDS = { guided: 'Guided', plan: 'Plan', code: 'Code' };
-const SECTIONS = [['model', 'Model', 'spark'], ['local', 'This computer', 'monitor'], ['keys', 'Cloud keys', 'key'], ['look', 'Appearance', 'contrast'], ['about', 'About', 'info']];
+const SECTIONS = [['model', 'Model', 'chip'], ['local', 'This computer', 'monitor'], ['keys', 'Cloud keys', 'key'], ['look', 'Appearance', 'contrast'], ['about', 'About', 'info']];
 // Models worth starting with on Ollama, smallest first.
 const STARTERS = [
   ['qwen2.5:3b', 'Small and quick, about 2 GB'],

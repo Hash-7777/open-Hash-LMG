@@ -118,7 +118,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
 
   function paintButtons() {
     const busy = Boolean(running);
-    clear(makeBtn).append(h('span', { html: busy ? ICONS.stop : ICONS.spark }), h('span', { text: busy ? 'Stop' : 'Make the film' }));
+    clear(makeBtn).append(h('span', { html: busy ? ICONS.stop : ICONS.play }), h('span', { text: busy ? 'Stop' : 'Generate the Movie' }));
     makeBtn.classList.toggle('stop', busy);
     askBox.disabled = busy;
     askBtn.disabled = busy;
