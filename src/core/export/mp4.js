@@ -127,11 +127,13 @@ function descriptor(tag, body) {
   return w.out();
 }
 
-function mp4a(channels, sampleRate, asc, bitrate) {
+// AAC carries its configuration; MP3 (object type 0x6B) needs none.
+function mp4a(channels, sampleRate, asc, bitrate, codec = 'aac') {
   const w = new Writer();
   w.zeros(6).u16(1).zeros(8).u16(channels).u16(16).u16(0).u16(0).u32(sampleRate * 65536);
   const dcd = new Writer();
-  dcd.u8(0x40).u8(0x15).u24(0).u32(bitrate).u32(bitrate).bytes(descriptor(5, asc));
+  dcd.u8(codec === 'mp3' ? 0x6b : 0x40).u8(0x15).u24(0).u32(bitrate).u32(bitrate);
+  if (codec !== 'mp3') dcd.bytes(descriptor(5, asc));
   const es = new Writer();
   es.u16(1).u8(0).bytes(descriptor(4, dcd.out())).bytes(descriptor(6, Uint8Array.of(2)));
   w.bytes(full('esds', 0, 0, (x) => x.bytes(descriptor(3, es.out()))));
@@ -165,7 +167,7 @@ function stbl(entry, samples, chunkOffset, { syncSamples = null, ctts = null } =
 }
 
 // video: { width, height, fps, avcC (Uint8Array), packets: [{ data, key, pts (seconds) }] in decode order }
-// audio: { sampleRate, channels, asc (Uint8Array), priming (samples), bitrate, packets: [{ data }] } or null
+// audio: { sampleRate, channels, asc (Uint8Array), priming (samples), bitrate, packets: [{ data }], codec: 'aac' | 'mp3' } or null
 // Returns the file as one Uint8Array.
 export function muxMp4({ video, audio = null, mov = false }) {
   const VTS = 90000; // divides evenly by 24, 25, 30, 50 and 60 frames a second
@@ -181,9 +183,11 @@ export function muxMp4({ video, audio = null, mov = false }) {
   video.packets.forEach((p, i) => { if (p.key) sync.push(i + 1); });
 
   let aSamples = null, aDurMs = 0;
+  // Samples a sound packet holds: 1024 for AAC, 1152 for an MPEG-1 MP3 frame.
+  const frameLen = audio?.codec === 'mp3' ? (audio.sampleRate >= 32000 ? 1152 : 576) : 1024;
   if (audio && audio.packets.length) {
-    aSamples = audio.packets.map((p) => ({ data: p.data, duration: 1024 }));
-    aDurMs = Math.round(((aSamples.length * 1024 - (audio.priming || 0)) / audio.sampleRate) * 1000);
+    aSamples = audio.packets.map((p) => ({ data: p.data, duration: frameLen }));
+    aDurMs = Math.round(((aSamples.length * frameLen - (audio.priming || 0)) / audio.sampleRate) * 1000);
   }
 
   const vBytes = vSamples.reduce((n, s) => n + s.data.length, 0);
@@ -208,12 +212,12 @@ export function muxMp4({ video, audio = null, mov = false }) {
         tkhd(2, Math.min(aDurMs, durationMs), 0, 0, true),
         audio.priming ? edts(Math.min(aDurMs, durationMs), audio.priming) : null,
         box('mdia',
-          mdhd(audio.sampleRate, aSamples.length * 1024),
+          mdhd(audio.sampleRate, aSamples.length * frameLen),
           hdlr(true),
           box('minf',
             full('smhd', 0, 0, (w) => w.zeros(4)),
             dinf(),
-            stbl(mp4a(audio.channels, audio.sampleRate, audio.asc, audio.bitrate || 192000), aSamples, aOff))));
+            stbl(mp4a(audio.channels, audio.sampleRate, audio.asc, audio.bitrate || 192000, audio.codec), aSamples, aOff))));
     }
     return box('moov', mvhd(durationMs, aSamples ? 3 : 2), vTrak, aTrak);
   };

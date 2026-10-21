@@ -154,6 +154,24 @@ export async function encodeAacNative(wavBytes) {
   return out ? new Uint8Array(out) : null;
 }
 
+// The app's own encoders (src-tauri/src/commands/encode.rs), the same on every
+// system: H.264 and GIF from raw RGBA frames, MP3 from stereo sound. Each
+// call answers with bytes. Only in the desktop app.
+const bytesOf = (out) => (out instanceof Uint8Array ? out : new Uint8Array(out));
+export const nativeEncoder = {
+  available: isApp,
+  open: (kind, { width, height, fps, bitrate = 0, keyint = 60 }) => invoke('encoder_open', { kind, width, height, fps, bitrate, keyint }),
+  frame: async (token, rgba, key = false) => bytesOf(await invoke('encoder_frame', rgba, { headers: { 'x-encoder': token, 'x-key': key ? '1' : '0' } })),
+  close: async (token) => bytesOf(await invoke('encoder_close', { token })),
+  async mp3(left, right, sampleRate) {
+    const body = new Float32Array(left.length * 2);
+    body.set(left, 0);
+    body.set(right.subarray(0, left.length), left.length);
+    const pcm = new Uint8Array(body.buffer);
+    return bytesOf(await invoke('mp3_encode', pcm, { headers: { 'x-rate': String(sampleRate) } }));
+  },
+};
+
 // Opens a web address in the system's browser; the app window only ever
 // shows the app.
 export function openExternal(url) {

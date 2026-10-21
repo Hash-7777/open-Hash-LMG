@@ -43,6 +43,13 @@ The page reaches the computer only through the commands in
   page never sees or names the path; a cancelled export leaves nothing.
 - **Sound** is encoded by the system's own AAC encoder (macOS), from a WAV
   the page sends, through temporary files that are removed straight after.
+- **Encoding** is done by encoders built into the app (H.264, GIF, MP3). The
+  page sends raw pixels or sound under a session token and gets encoded
+  bytes back; these commands read and write no file and take no path. Frame
+  sizes are bounded (even sides, up to 4K).
+- A **debug build** started with `LMG_SELFTEST` naming a script runs that
+  script in its window, for testing the app end to end. Release builds do not
+  contain this.
 
 The window holds only the permissions the page uses
 (`src-tauri/capabilities/default.json`): placing, sizing and showing its own

@@ -48,7 +48,7 @@ for (const f of readdirSync(appDir)) {
 section('The bridge between the page and the Rust side');
 const platform = readFileSync(join(root, 'src', 'platform', 'index.js'), 'utf8');
 const calls = new Map();
-for (const m of platform.matchAll(/invoke\('([a-z_:|]+)'(?:,\s*(\{[^}]*\}|[A-Za-z_.()\s,]+?))?[,)]/g)) {
+for (const m of platform.matchAll(/invoke\('([a-z0-9_:|]+)'(?:,\s*(\{[^}]*\}|[A-Za-z0-9_.()\s,]+?))?[,)]/g)) {
   if (m[1].startsWith('plugin:')) continue;
   const args = m[2] && m[2].trim().startsWith('{') ? m[2].slice(1, -1).split(',').map((x) => x.split(':')[0].trim()).filter(Boolean) : null;
   if (!calls.has(m[1]) || args) calls.set(m[1], args);

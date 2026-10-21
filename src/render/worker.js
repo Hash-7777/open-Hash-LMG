@@ -103,6 +103,13 @@ self.onmessage = async (e) => {
       frame(m.t, m.blur);
       const bitmap = canvas.transferToImageBitmap();
       reply({ id: m.id, ok: true, bitmap }, [bitmap]);
+    } else if (m.type === 'pixels') {
+      // The frame's RGBA pixels, for the app's own encoder; the buffer moves
+      // to the page rather than being copied.
+      ensureCanvas(scene.width, scene.height);
+      frame(m.t, m.blur);
+      const data = ctx.getImageData(0, 0, scene.width, scene.height).data;
+      reply({ id: m.id, ok: true, pixels: data.buffer, width: scene.width, height: scene.height }, [data.buffer]);
     } else if (m.type === 'measure') {
       ensureCanvas(scene.width, scene.height);
       const samples = m.times.map((t) => { const boxes = []; drawAt(ctx, t, boxes); return { t, boxes }; });

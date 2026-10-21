@@ -23,8 +23,19 @@ tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# The encoders built into the app, compiled from source on every system:
+# H.264 for MP4 and MOV, GIF animations, and MP3 for sound where the system
+# has no AAC encoder of its own.
+openh264 = "0.9"
+gif = "0.14"
+mp3lame-encoder = "0.2"
 
 [profile.release]
 lto = "thin"
 codegen-units = 1
 strip = true
+
+# Libraries are optimised even in a development build: the built-in encoders
+# are far too slow to try a real export with otherwise.
+[profile.dev.package."*"]
+opt-level = 3

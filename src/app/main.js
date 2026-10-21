@@ -140,7 +140,7 @@ async function boot() {
     undoBtn, redoBtn,
     h('span', { class: 'divider' }),
     iconButton(ICONS.settings, 'Settings', openSettings),
-    h('button', { class: 'primary-btn', type: 'button', onclick: () => openExportDialog({ store, settings }) }, h('span', { html: ICONS.export }), h('span', { text: 'Export' })),
+    h('button', { class: 'primary-btn', type: 'button', onclick: () => openExportDialog({ store, settings, playhead: () => store.get().time }) }, h('span', { html: ICONS.export }), h('span', { text: 'Export' })),
     progress.bar);
 
   const workspace = h('main', { class: 'workspace' }, director.el, player.el, inspector.el, timeline.el);

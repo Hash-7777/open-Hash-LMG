@@ -118,6 +118,12 @@ export class WorkerHost {
     return m.bitmap;
   }
 
+  // A frame as RGBA bytes, drawn in the worker and moved to the page.
+  async pixels(t, blur = null) {
+    const m = await this.send({ type: 'pixels', t, blur });
+    return new Uint8Array(m.pixels);
+  }
+
   async measure(times) {
     const m = await this.send({ type: 'measure', times }, [], FRAME_TIMEOUT_MS * 2);
     return m.samples;
@@ -169,6 +175,11 @@ export class InlineHost {
   async frame(t) {
     renderPlan(this.kit, this.scene, t);
     return createImageBitmap(this.canvas);
+  }
+
+  async pixels(t) {
+    renderPlan(this.kit, this.scene, t);
+    return new Uint8Array(this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height).data.buffer);
   }
 
   async measure(times) {

@@ -11,6 +11,8 @@ import { encodeWav, decodeWav } from '../../src/core/audio/wav.js';
 import { muxMp4, readBoxes, aacConfig, adtsFrames } from '../../src/core/export/mp4.js';
 import { normalizeScene } from '../../src/core/scene/normalize.js';
 import { EXAMPLES } from '../../src/core/scene/examples.js';
+import { nalUnits, toSample, avcConfig, mp3Frames } from '../../src/core/export/h264.js';
+import { exportSize } from '../../src/core/export/sizes.js';
 
 const scene = normalizeScene(EXAMPLES.launch).scene;
 
@@ -67,5 +69,53 @@ await claim('ADTS frames are split one by one', () => assert.equal(adtsFrames(ad
 await claim('a film without sound has one track', () => {
   const file = muxMp4({ video: fakeVideo });
   assert.equal(readBoxes(file).find((b) => b.type === 'moov').children.filter((b) => b.type === 'trak').length, 1);
+});
+section('The app’s own H.264, made ready for the file');
+const sps = Uint8Array.of(0x67, 66, 0xc0, 30, 0xda, 0x01);
+const pps = Uint8Array.of(0x68, 0xce, 0x3c, 0x80);
+const idr = Uint8Array.of(0x65, 0x88, 0x84, 0x00, 0x21);
+const annexB = Uint8Array.from([0, 0, 0, 1, ...sps, 0, 0, 0, 1, ...pps, 0, 0, 1, ...idr, 0]);
+await claim('units are found between start codes of either length, padding dropped', () => {
+  assert.deepEqual(nalUnits(annexB).map((u) => [...u]), [[...sps], [...pps], [...idr]]);
+});
+await claim('a frame becomes one sample of length-prefixed units, parameter sets taken out', () => {
+  const { sample, sps: s1, pps: p1 } = toSample(annexB);
+  assert.deepEqual([...s1], [...sps]); assert.deepEqual([...p1], [...pps]);
+  assert.deepEqual([...sample], [0, 0, 0, idr.length, ...idr]);
+});
+await claim('the avcC names the profile and carries one of each parameter set', () => {
+  const c = avcConfig(sps, pps);
+  assert.equal(c[0], 1); assert.equal(c[1], 66); assert.equal(c[5], 0xe1);
+  assert.equal(c.length, 11 + sps.length + pps.length);
+  assert.equal(avcConfig(Uint8Array.of(0x67, 100, 0, 40), pps).length, 11 + 4 + pps.length + 4);
+});
+
+section('MP3 frames, and MP3 in an MP4');
+// An invented MPEG-1 layer III frame header: 128 kbps at 48 kHz, 384 bytes a frame.
+const mp3Frame = () => { const f = new Uint8Array(384); f.set([0xff, 0xfb, 0x94, 0x00]); return f; };
+const mp3 = new Uint8Array(384 * 3); [0, 1, 2].forEach((i) => mp3.set(mp3Frame(), i * 384));
+await claim('frames are split by their headers', () => {
+  const frames = mp3Frames(mp3);
+  assert.equal(frames.length, 3); assert.equal(frames[0].data.length, 384); assert.equal(frames[0].rate, 48000);
+});
+await claim('an MP4 with MP3 sound names it as MP3 and times its frames of 1152', () => {
+  const file = muxMp4({ video: fakeVideo, audio: { codec: 'mp3', sampleRate: 48000, channels: 2, asc: null, priming: 0, bitrate: 128000, packets: mp3Frames(mp3).map((f) => ({ data: f.data })) } });
+  const at = (bytes, tag) => { for (let i = 0; i < bytes.length - 4; i++) if (String.fromCharCode(...bytes.subarray(i, i + 4)) === tag) return i; return -1; };
+  const esds = at(file, 'esds');
+  assert.ok(esds > 0);
+  assert.ok([...file.subarray(esds, esds + 40)].includes(0x6b));
+  assert.equal(readBoxes(file).find((b) => b.type === 'moov').children.filter((b) => b.type === 'trak').length, 2);
+});
+
+section('Export sizes');
+await claim('a short side scales the film, keeping its shape, with even sides', () => {
+  assert.deepEqual(exportSize({ width: 1920, height: 1080 }, 720), { width: 1280, height: 720 });
+  assert.deepEqual(exportSize({ width: 1080, height: 1920 }, 2160), { width: 2160, height: 3840 });
+  assert.deepEqual(exportSize({ width: 1080, height: 1350 }, 480), { width: 480, height: 600 });
+  assert.deepEqual(exportSize({ width: 1920, height: 1080 }, 0), { width: 1920, height: 1080 });
+});
+await claim('nothing goes past 4K', () => {
+  const s = exportSize({ width: 1080, height: 1080 }, 4320);
+  assert.ok(s.width <= 4096 && s.height <= 4096 && s.width * s.height <= 4096 * 2304 && s.width % 2 === 0);
 });
 done();

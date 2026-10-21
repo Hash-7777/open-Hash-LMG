@@ -22,7 +22,13 @@ export const KEYS_KEY = 'lmg.keys.v1';
 
 export const TIERS = ['auto', 'guided', 'plan', 'code'];
 export const THEMES = ['system', 'dark', 'light'];
-export const CONTAINERS = ['mp4', 'mov'];
+// What an export writes: a video (MP4, MOV), an animation (GIF), a still
+// (PNG), or the sound alone (WAV, MP3).
+export const CONTAINERS = ['mp4', 'mov', 'gif', 'png', 'wav', 'mp3'];
+// The export's short side in pixels, or 0 for the film's own size.
+export const RESOLUTIONS = [0, 480, 720, 1080, 1440, 2160];
+// Frames a second, or 0 for the film's own.
+export const EXPORT_FPS = [0, 24, 25, 30, 50, 60];
 export const QUALITIES = ['draft', 'good', 'high', 'master'];
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -103,6 +109,8 @@ export function normalizeSettings(input) {
       container: pick(out.container, CONTAINERS, 'mp4'),
       quality: pick(out.quality, QUALITIES, 'high'),
       blur: int(out.blur, 0, 0, 16),
+      size: pick(int(out.size, 0, 0, 4320), RESOLUTIONS, 0),
+      fps: pick(int(out.fps, 0, 0, 240), EXPORT_FPS, 0),
     },
     appearance: {
       theme: pick(look.theme, THEMES, 'system'),

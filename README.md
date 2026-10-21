@@ -35,7 +35,7 @@ Made by the model on your own computer, or by any cloud model on your own key.
 | **02 Storyboard** | The model writes only the words and numbers, beat by beat: a hook, a statement, a stat, a list, a quote, an end card. |
 | **03 Design** | The app directs the film from the brief: a look, an accent colour, a tempo and key for the music, the transitions and camera moves it cuts with, and a composition for every scene, so two briefs, or two takes of one brief, never come out alike. Then it times every line to how long it takes to read and starts every scene on the beat of the music. |
 | **04 Check** | Key moments are rendered and measured: text off the frame, outside a phone's safe area, too small, too faint, too fast to read, or a scene that sits still too long. What rules can fix, they fix. The film is also held to what the brief asks to see: what must appear, in what order, what counts up, what is on screen at the end. The rest goes back to the model. |
-| **05 Film** | An original score fitted to the cuts, narration if you want it, mastered to the loudness video platforms play at, written to MP4 or MOV. |
+| **05 Film** | An original score fitted to the cuts, narration if you want it, mastered to the loudness video platforms play at, written to MP4, MOV or GIF at 480p to 4K and 24 to 60 frames a second, by encoders built into the app, the same on macOS, Windows and Linux. A still (PNG) or the sound alone (WAV, MP3) can be exported too. |
 
 <br>
 
@@ -94,17 +94,17 @@ Hash LMG is being built in the open. This is exactly what exists today:
 | Works today | Written, not yet run | Next |
 |---|---|---|
 | Scene format and its repair | Requests to every model service | Voices through Chatterbox and Kokoro |
-| The engine: type, shapes, charts, transitions | Motion blur, and MOV export | First release for macOS and Windows |
+| The engine: type, shapes, charts, transitions | Motion blur | First release for macOS and Windows |
 | Film checks and automatic fixes | Films and exports kept by the desktop app | |
 | The storyboard compiler, in every style | Sound through the system's own encoder | |
 | The director, with a scripted model | Narration mix, word timing and captions | |
 | Score and mastering | Processor or graphics-chip choice for Ollama | |
 | The editor: preview, timeline, inspector, director, settings | | |
-| Rendering in a background worker, and MP4 export | | |
+| Rendering in a background worker; MP4, MOV, GIF and MP3 export by the app's own encoders, in the macOS app | | |
 | The macOS app: it builds and opens the editor | | |
 | The check suite, `npm run check`, run on every push | | |
 
-"Works today" means exercised in Node with a stand-in canvas and a scripted model, or, for the editor and MP4 export, in a headless browser with a scripted model. The macOS app has been built and opened; nothing in it has been run end to end yet, and nothing has been released.
+"Works today" means exercised in Node with a stand-in canvas and a scripted model, for the editor in a headless browser with a scripted model, and for export in a debug build of the macOS app, with each file read back by the system's own video framework. The built-in encoders build from source on every system; they have been run on macOS only, and nothing has been released.
 
 <br>
 

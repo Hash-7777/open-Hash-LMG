@@ -1,39 +1,29 @@
 // Rendering a film to a video file, inside the app.
 //
-// Frames come from the render host one at a time (with motion blur when asked),
-// go to the system's H.264 encoder through WebCodecs, and are arranged into an
-// MP4 or MOV by src/core/export/mp4.js. The soundtrack (score and narration,
-// already mastered) is encoded to AAC: by the web view when it can, otherwise
-// by the operating system's own encoder through the app, otherwise the film is
-// written silent and the soundtrack is saved beside it as a WAV, and the
-// person is told so.
+// Frames come from the render host one at a time as RGBA pixels (with motion
+// blur when asked), at the export's own size and frame rate, and go to an
+// encoder sink (src/render/encoders.js): in the desktop app always the app's
+// own encoders, the same on every system. H.264 is arranged into an MP4 or MOV
+// by src/core/export/mp4.js; a GIF comes back whole. The soundtrack (score and
+// narration, already mastered) is encoded to AAC where the web view or the
+// operating system can, otherwise to MP3 by the app's own encoder, otherwise
+// the film is written silent with its soundtrack saved beside it as a WAV,
+// and the person is told so.
 
 import { muxMp4, aacConfig, adtsFrames } from '../core/export/mp4.js';
+import { mp3Frames } from '../core/export/h264.js';
+import { videoSink, gifSink } from './encoders.js';
+import { nativeEncoder } from '../platform/index.js';
 import { encodeWav } from '../core/audio/wav.js';
 
-// H.264 profiles and levels, highest first. Level 5.1 covers 4K at 30 and 1080
-// at 120; 4.2 covers 1080 at 60.
-const CODECS = ['avc1.640033', 'avc1.64002A', 'avc1.640028', 'avc1.4D4033', 'avc1.4D4028', 'avc1.42E033', 'avc1.42E01F'];
-
 export function canEncodeVideo() {
-  return typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined';
+  return nativeEncoder.available || (typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined');
 }
 
 // Bits a second for a quality setting, scaled from 1080p60.
 export function bitrateFor(width, height, fps, quality = 'high') {
   const base = { draft: 6e6, good: 12e6, high: 20e6, master: 40e6 }[quality] || 20e6;
   return Math.round(base * ((width * height) / (1920 * 1080)) * Math.max(0.5, fps / 60));
-}
-
-async function pickCodec(width, height, fps, bitrate) {
-  for (const codec of CODECS) {
-    const config = { codec, width, height, bitrate, framerate: fps, avc: { format: 'avc' }, latencyMode: 'quality', bitrateMode: 'variable' };
-    try {
-      const r = await VideoEncoder.isConfigSupported(config);
-      if (r.supported) return r.config || config;
-    } catch { /* next */ }
-  }
-  return null;
 }
 
 async function encodeAudioWebCodecs(left, right, sampleRate) {
@@ -74,82 +64,83 @@ async function encodeAudioWebCodecs(left, right, sampleRate) {
   return { packets, priming, source: 'webcodecs' };
 }
 
-// opts: { host, scene, fps, quality, blur: { samples, shutter }, container: 'mp4'|'mov',
-//         soundtrack: { left, right, sampleRate } | null, encodeAacNative(wavBytes) -> adts bytes | null,
+// The film's sound for an MP4 or MOV: AAC by the web view when it can, else
+// by the operating system's own encoder, else MP3 by the app's own encoder.
+// Returns { audio, wav, notes }: audio for the writer, or a WAV to save beside
+// a silent film when none of them can.
+async function encodeSound(st, encodeAacNative, notes) {
+  let enc = await encodeAudioWebCodecs(st.left, st.right, st.sampleRate);
+  if (!enc && encodeAacNative) {
+    try {
+      const adts = await encodeAacNative(encodeWav(st.left, st.right, st.sampleRate));
+      // The system's AAC encoder primes with 2112 samples, which the edit list skips.
+      if (adts && adts.length) enc = { packets: adtsFrames(adts).map((data) => ({ data })), priming: 2112 };
+    } catch (err) { notes.push(`The system's sound encoder failed: ${err.message || err}`); }
+  }
+  if (enc && enc.packets.length) return { audio: { codec: 'aac', sampleRate: st.sampleRate, channels: 2, asc: aacConfig(st.sampleRate, 2), priming: enc.priming, bitrate: 192000, packets: enc.packets } };
+  if (nativeEncoder.available) {
+    try {
+      const frames = mp3Frames(await nativeEncoder.mp3(st.left, st.right, st.sampleRate));
+      // The MP3 encoder's own delay, skipped by the edit list.
+      if (frames.length) return { audio: { codec: 'mp3', sampleRate: st.sampleRate, channels: 2, asc: null, priming: 1105, bitrate: 192000, packets: frames.map((f) => ({ data: f.data })) } };
+    } catch (err) { notes.push(`The app's sound encoder failed: ${err.message || err}`); }
+  }
+  notes.push('The sound could not be encoded into the video here, so the film is silent and its soundtrack is saved beside it as a WAV file.');
+  return { wav: encodeWav(st.left, st.right, st.sampleRate) };
+}
+
+// opts: { host (already given the scene at the export's size), scene, format: 'mp4'|'mov'|'gif',
+//         width, height, fps, quality, blur: { samples, shutter } | null,
+//         soundtrack: { left, right, sampleRate } | null, encodeAacNative(wavBytes) -> adts | null,
 //         onProgress({ phase, done, total }), signal }
-// Returns { file: Uint8Array, notes: [], wav: Uint8Array | null }.
+// Returns { file: Uint8Array, notes: [], wav: Uint8Array | null, encoder }.
 export async function renderVideo(opts) {
   const { host, scene, onProgress = () => {}, signal } = opts;
-  if (!canEncodeVideo()) throw new Error('This system has no video encoder the app can use. Export still frames instead, or update the operating system.');
+  const format = opts.format || opts.container || 'mp4';
   const fps = opts.fps || scene.fps;
-  const { width, height } = scene;
-  const bitrate = bitrateFor(width, height, fps, opts.quality);
-  const config = await pickCodec(width, height, fps, bitrate);
-  if (!config) throw new Error(`The video encoder on this system cannot make ${width} by ${height} at ${fps} frames a second.`);
-
-  const packets = [];
-  let avcC = null;
-  let failure = null;
-  const encoder = new VideoEncoder({
-    output: (chunk, meta) => {
-      const data = new Uint8Array(chunk.byteLength);
-      chunk.copyTo(data);
-      if (meta?.decoderConfig?.description && !avcC) avcC = new Uint8Array(meta.decoderConfig.description instanceof ArrayBuffer ? meta.decoderConfig.description : meta.decoderConfig.description.buffer.slice(meta.decoderConfig.description.byteOffset, meta.decoderConfig.description.byteOffset + meta.decoderConfig.description.byteLength));
-      packets.push({ data, key: chunk.type === 'key', pts: chunk.timestamp / 1e6 });
-    },
-    error: (e) => { failure = e; },
-  });
-  encoder.configure(config);
-
+  const width = opts.width || scene.width, height = opts.height || scene.height;
   const total = Math.max(1, Math.round(scene.duration * fps));
   const gop = Math.round(fps * 2);
+  const blur = opts.blur && opts.blur.samples > 1 ? opts.blur : null;
   const notes = [];
-  for (let i = 0; i < total; i++) {
-    if (signal?.aborted) { encoder.close(); throw new Error('Export stopped.'); }
-    if (failure) throw new Error(`The encoder stopped: ${failure.message || failure}`);
-    const t = i / fps;
-    const bitmap = await opts.host.frame(t, opts.blur && opts.blur.samples > 1 ? opts.blur : null);
-    const frame = new VideoFrame(bitmap, { timestamp: Math.round((i * 1e6) / fps), duration: Math.round(1e6 / fps) });
-    encoder.encode(frame, { keyFrame: i % gop === 0 });
-    frame.close();
-    bitmap.close?.();
-    // Back-pressure: never let the encoder's queue grow without bound.
-    while (encoder.encodeQueueSize > 6) await new Promise((r) => setTimeout(r, 2));
-    if (i % 5 === 0) onProgress({ phase: 'frames', done: i + 1, total });
+  if (format !== 'gif' && !canEncodeVideo()) throw new Error('There is no video encoder here. Export from the desktop app, which carries its own.');
+  const sink = format === 'gif' ? await gifSink({ width, height, fps }) : await videoSink({ width, height, fps, bitrate: bitrateFor(width, height, fps, opts.quality), keyint: gop });
+
+  // The next frame is drawn while the one before is encoded.
+  let encoding = null;
+  try {
+    for (let i = 0; i < total; i++) {
+      if (signal?.aborted) throw Object.assign(new Error('Export stopped.'), { stopped: true });
+      const rgba = await host.pixels(i / fps, blur);
+      if (encoding) await encoding;
+      encoding = sink.add(rgba, i % gop === 0);
+      if (i % 3 === 0 || i === total - 1) onProgress({ phase: 'frames', done: i + 1, total });
+    }
+    if (encoding) await encoding;
+  } catch (err) {
+    await sink.cancel();
+    throw err;
   }
   onProgress({ phase: 'frames', done: total, total });
-  await encoder.flush();
-  encoder.close();
-  if (failure) throw new Error(`The encoder stopped: ${failure.message || failure}`);
-  if (!avcC) throw new Error('The encoder did not describe its stream; the file cannot be written.');
 
-  let audio = null;
-  let wav = null;
+  if (format === 'gif') {
+    onProgress({ phase: 'file', done: 0, total: 1 });
+    const file = await sink.finish();
+    onProgress({ phase: 'done', done: 1, total: 1 });
+    return { file, notes, wav: null, encoder: 'built-in' };
+  }
+  const video = await sink.finish();
+
+  let audio = null, wav = null;
   const st = opts.soundtrack;
   if (st && st.left?.length) {
     onProgress({ phase: 'sound', done: 0, total: 1 });
-    let enc = await encodeAudioWebCodecs(st.left, st.right, st.sampleRate);
-    if (!enc && opts.encodeAacNative) {
-      try {
-        const adts = await opts.encodeAacNative(encodeWav(st.left, st.right, st.sampleRate));
-        // The system's AAC encoder primes with 2112 samples, which the edit list skips.
-        if (adts && adts.length) enc = { packets: adtsFrames(adts).map((data) => ({ data })), priming: 2112, source: 'system' };
-      } catch (err) {
-        notes.push(`The system's sound encoder failed: ${err.message || err}`);
-      }
-    }
-    if (enc && enc.packets.length) {
-      audio = { sampleRate: st.sampleRate, channels: 2, asc: aacConfig(st.sampleRate, 2), priming: enc.priming, bitrate: 192000, packets: enc.packets };
-    } else {
-      wav = encodeWav(st.left, st.right, st.sampleRate);
-      notes.push('This system could not encode the sound into the video, so the film is silent and its soundtrack is saved beside it as a WAV file.');
-    }
+    ({ audio = null, wav = null } = await encodeSound(st, opts.encodeAacNative, notes));
   }
-
   onProgress({ phase: 'file', done: 0, total: 1 });
-  const file = muxMp4({ video: { width, height, fps, avcC, packets }, audio, mov: opts.container === 'mov' });
+  const file = muxMp4({ video: { width, height, fps, avcC: video.avcC, packets: video.packets }, audio, mov: format === 'mov' });
   onProgress({ phase: 'done', done: 1, total: 1 });
-  return { file, notes, wav, codec: config.codec };
+  return { file, notes, wav, encoder: sink.kind };
 }
 
 // One still frame as PNG bytes.
