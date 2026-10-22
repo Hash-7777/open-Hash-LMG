@@ -49,8 +49,9 @@ export const ICONS = {
   search: svg('<circle cx="7" cy="7" r="4"/><path d="m10 10 3.5 3.5"/>'),
   chip: svg('<rect x="4.5" y="3" width="7" height="10" rx="1.2"/><rect x="6.5" y="5.5" width="3" height="5" rx=".5"/><path d="M2.5 5.5h2M2.5 8h2M2.5 10.5h2M11.5 5.5h2M11.5 8h2M11.5 10.5h2"/>'),
   history: svg('<path d="M2.8 8a5.2 5.2 0 1 0 1.6-3.8"/><path d="M2.5 2.8v2.6h2.6"/><path d="M8 5.3V8l1.9 1.3"/>'),
+  scissors: svg('<circle cx="4.5" cy="11.5" r="2"/><circle cx="11.5" cy="11.5" r="2"/><path d="M5.9 10 12 2.5M10.1 10 4 2.5"/>'),
   templates: svg('<rect x="2.5" y="2.5" width="4.5" height="4.5" rx=".8"/><rect x="9" y="2.5" width="4.5" height="4.5" rx=".8"/><rect x="2.5" y="9" width="4.5" height="4.5" rx=".8"/><rect x="9" y="9" width="4.5" height="4.5" rx=".8"/>'),
   code: svg('<path d="m5.5 4.5-3.5 3.5 3.5 3.5M10.5 4.5l3.5 3.5-3.5 3.5"/>'),
 };
 
-export const LAYER_ICONS = { text: ICONS.text, shape: ICONS.shape, image: ICONS.image, counter: ICONS.counter, bars: ICONS.chart, 'line-chart': ICONS.chart, group: ICONS.group };
+export const LAYER_ICONS = { text: ICONS.text, shape: ICONS.shape, image: ICONS.image, video: ICONS.film, counter: ICONS.counter, bars: ICONS.chart, 'line-chart': ICONS.chart, group: ICONS.group };

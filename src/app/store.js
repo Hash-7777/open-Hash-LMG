@@ -116,10 +116,12 @@ export function createStore(project) {
     // Changes the scene. fn receives a copy (without media bytes) to change in
     // place. { live: true } shows it at once and records it on commit().
     edit(fn, { live = false } = {}) {
+      // Assets can be large (pictures carried as data), so an edit gets a
+      // fresh list of them to add to or take from, without copying each one.
       const { assets, ...rest } = state.project.scene;
       const draft = structuredClone(rest);
+      draft.assets = { ...assets };
       if (fn(draft) === false) return;
-      draft.assets = assets;
       const { scene } = normalizeScene(draft);
       if (live) {
         if (!liveBase) liveBase = state.project;

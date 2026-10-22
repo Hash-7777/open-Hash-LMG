@@ -77,7 +77,6 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
   askBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); change(); } });
 
   const el = h('aside', { class: 'director', 'aria-label': 'Director' },
-    h('div', { class: 'panel-head' }, h('span', { class: 'panel-title', text: 'Director' })),
     h('div', { class: 'dir-body' },
       h('div', { class: 'dir-block' }, brief, ideas.el, options, modelLine, tierHelp)),
     h('div', { class: 'dir-ask' }, askBox, askBtn));

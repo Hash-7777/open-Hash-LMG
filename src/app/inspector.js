@@ -18,6 +18,7 @@ import {
 import { toHex } from '../core/util/color.js';
 import { resizeScene } from '../core/scene/edit.js';
 import { staggerSection } from './stagger-fields.js';
+import { videoSection } from './video-fields.js';
 import { repeatSection } from './repeat-fields.js';
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ');
@@ -291,6 +292,7 @@ export function createInspector({ store, onVersion }) {
           field('Height', numberInput(L.h, (v) => set((M) => { M.h = v; }), { min: 1, max: 8000, step: 10, unit: 'pt', digits: 0 })))));
     }
 
+    if (L.type === 'video') parts.push(videoSection(L, set, s.assets[L.asset]));
     if (L.type === 'shape' || L.type === 'text') parts.push(repeatSection(L, set));
 
     parts.push(section('Place',

@@ -54,3 +54,42 @@ export function staggerLayers(layers, { step = 0.12, order = 'listed', end = Inf
   });
   return moving.length;
 }
+
+// Splits the scene playing at film time t into two at that moment, as a
+// video editor's blade does: the first keeps what came before, the second
+// starts with a cut and carries on what was still on screen, footage picking
+// up where it was in its file and nothing entering again. Lines of narration
+// go with the half they start in. Returns false when t is too near a scene's
+// edge to split there.
+const EDGE = 0.15;
+export function splitScene(doc, t) {
+  const i = doc.scenes.findLastIndex((S) => S.start <= t + 1e-6 && t < S.start + S.duration);
+  if (i < 0) return false;
+  const S = doc.scenes[i];
+  const local = t - S.start;
+  if (local < EDGE || local > S.duration - EDGE) return false;
+  const B = JSON.parse(JSON.stringify(S));
+  let n = 2;
+  while (doc.scenes.some((x) => x.id === `${S.id}-${n}`)) n++;
+  B.id = `${S.id}-${n}`;
+  B.transition = { ...S.transition, kind: 'cut', duration: 0, carry: null };
+  B.duration = +(S.duration - local).toFixed(4);
+  S.duration = +local.toFixed(4);
+  S.layers = S.layers.filter((L) => L.at < local).map((L) => (L.until > local ? { ...L, until: local } : L));
+  B.layers = B.layers.filter((L) => L.until > local).map((L) => {
+    const M = { ...L, until: +(L.until - local).toFixed(4) };
+    if (L.at < local) {
+      // Already on screen: it stays, without entering again.
+      if (L.type === 'video') M.from = +(L.from + (local - L.at) * L.rate).toFixed(4);
+      M.in = { ...(typeof L.in === 'object' ? L.in : {}), preset: 'none' };
+      M.at = 0;
+    } else M.at = +(L.at - local).toFixed(4);
+    if (M.keys) for (const list of Object.values(M.keys)) for (const k of list) k[0] = +(k[0] - local).toFixed(4);
+    return M;
+  });
+  for (const line of doc.voice?.lines || []) {
+    if (line.scene === S.id && line.at >= local) { line.scene = B.id; line.at = +(line.at - local).toFixed(4); }
+  }
+  doc.scenes.splice(i + 1, 0, B);
+  return true;
+}

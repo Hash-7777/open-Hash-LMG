@@ -72,6 +72,7 @@ By default the look is matched to the brief: a calm brief, a technical one and a
 | **Motion** | Fourteen entrances, plus exits, holds and keyframes, eased the way motion designers ease: fast in, no bounce |
 | **Shapes and data** | Rings, lines, arrows and any SVG path drawn on stroke by stroke; counters that count up; bar and line charts that grow |
 | **Camera and cuts** | Slow pushes and pans per scene; push, slide, zoom-through, wipe, fade and dip transitions, and a carry that moves one element into the next scene while the rest crossfades |
+| **Your own footage** | Video (MP4, MOV, WebM), pictures and sound imported from this computer and linked where they are, never copied: a clip or a picture becomes a scene, trimmed by where it starts and how long it runs, split at the playhead, faded, titled over and set louder or quieter; a song plays as the film's music in place of the score |
 | **Templates** | Eight films to start from (a launch, an explainer, a year in numbers, an event teaser, a testimonial, a release, a quiet reveal, a calm app), each made whole at once with no model and directed like any other |
 | **Formats** | 16:9, 9:16, 1:1 and 4:5, at 24 to 60 frames a second |
 | **Sound** | Three score flavours (deep pulse, soft, cinematic) built from the film's own scenes, in the film's own tempo and key with its chords in one of three orders: a build into the reveal, a boom on the drop, a fade on the end card |

@@ -6,6 +6,7 @@
 // snapping on, ends and starts land on the beat, which is what keeps cuts on
 // the music.
 
+import { splitScene } from '../core/scene/edit.js';
 import { h, clear, iconButton, drag, perFrame } from './dom.js';
 import { ICONS, LAYER_ICONS } from './icons.js';
 import { estimateSpeech, wordCount, LIMITS } from '../core/scene/format.js';
@@ -25,6 +26,7 @@ function layerTitle(L) {
   if (L.type === 'shape') return L.shape[0].toUpperCase() + L.shape.slice(1);
   if (L.type === 'bars') return 'Bar chart';
   if (L.type === 'line-chart') return 'Line chart';
+  if (L.type === 'video') return `Clip from ${L.from.toFixed(1)} s`;
   if (L.type === 'group') return `Group of ${L.layers.length}`;
   return L.type;
 }
@@ -40,12 +42,18 @@ export function createTimeline({ store, player, prefs }) {
   const head = h('div', { class: 'tl-head' },
     h('span', { class: 'panel-title', text: 'Timeline' }),
     h('span', { class: 'spacer' }),
+    iconButton(ICONS.scissors, 'Split the scene at the playhead (S)', () => split()),
     snapBtn,
     iconButton(ICONS.zoomOut, 'Zoom out', () => zoomBy(1 / 1.5)),
     zoomLabel,
     iconButton(ICONS.zoomIn, 'Zoom in', () => zoomBy(1.5)),
     h('button', { class: 'text-btn', type: 'button', text: 'Fit', onclick: () => { zoom = 1; render(); } }));
   const el = h('section', { class: 'timeline', 'aria-label': 'Timeline' }, head, scroller);
+
+  // Splits the scene under the playhead in two, as one step to undo.
+  function split() {
+    store.edit((doc) => (splitScene(doc, store.get().time) ? undefined : false));
+  }
 
   let zoom = 1;
   let pps = 40;
@@ -273,9 +281,12 @@ export function createTimeline({ store, player, prefs }) {
     const lane = h('div', { class: 'tl-lane' });
     lane.style.width = `${width}px`;
     lane.addEventListener('pointerdown', (e) => { if (e.target === lane || e.target.classList.contains('tl-music-bed')) scrub(e, lane); });
-    const bed = h('div', { class: 'tl-music-bed', title: SCORE_NAMES[scene.sound.score] });
+    // The bed names what plays: the score, or imported music in its place.
+    const music = (scene.sound.clips || []).filter((c) => scene.assets[c.asset]?.kind === 'sound').map((c) => scene.assets[c.asset].name);
+    const label = scene.sound.score === 'none' && music.length ? music.join(', ') : music.length ? `${SCORE_NAMES[scene.sound.score]} and ${music.join(', ')}` : SCORE_NAMES[scene.sound.score];
+    const bed = h('div', { class: 'tl-music-bed', title: label });
     bed.style.width = `${scene.duration * pps}px`;
-    bed.append(h('span', { class: 'tl-music-name', text: SCORE_NAMES[scene.sound.score] }));
+    bed.append(h('span', { class: 'tl-music-name', text: label }));
     if (wave.scene === scene && wave.canvas) bed.append(wave.canvas);
     lane.append(bed);
     if (scene.sound.score !== 'none') {
@@ -371,5 +382,5 @@ export function createTimeline({ store, player, prefs }) {
   paintSnap();
   render();
   drawWaveSoon(store.get().project.scene);
-  return { el, render };
+  return { el, render, split };
 }

@@ -5,7 +5,8 @@
 import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
 import { createStore, normalizeProject, findLayer } from '../../src/app/store.js';
-import { staggerLayers } from '../../src/core/scene/edit.js';
+import { staggerLayers, splitScene } from '../../src/core/scene/edit.js';
+import { normalizeScene } from '../../src/core/scene/normalize.js';
 import { EXAMPLE_LAUNCH } from '../../src/core/scene/examples.js';
 
 let n = 0;
@@ -80,4 +81,37 @@ await claim('a layer that leaves early keeps its hold; one that stays to the end
   assert.equal(L[1].until, 2.5); assert.equal(L[0].until, 4);
 });
 await claim('one layer alone is left as it is', () => assert.equal(staggerLayers([{ at: 1, in: 'rise' }]), 0));
+section('Split at the playhead');
+const clipFilm = () => normalizeScene({
+  assets: { clip: { kind: 'video', name: 'Invented clip', media: '0123456789abcdef01234567', duration: 30 } },
+  scenes: [
+    { id: 'a', duration: 2, layers: [{ type: 'text', text: 'Opening' }] },
+    { id: 'b', duration: 8, transition: { kind: 'cut' }, layers: [{ id: 'v', type: 'video', asset: 'clip', from: 3 }, { id: 'late', type: 'text', text: 'Later', at: 5 }, { id: 'early', type: 'text', text: 'Early', until: 2 }] },
+  ],
+  voice: { lines: [{ scene: 'b', text: 'Said late', at: 6 }] },
+}).scene;
+await claim('the scene under the playhead becomes two, lengths adding up', () => {
+  const doc = clipFilm();
+  assert.ok(splitScene(doc, 2 + 4));
+  const fixed = normalizeScene(doc).scene;
+  assert.deepEqual(fixed.scenes.map((S) => [S.id, S.duration]), [['a', 2], ['b', 4], ['b-2', 4]]);
+  assert.equal(fixed.duration, 10);
+});
+await claim('footage picks up where it was, without entering again', () => {
+  const doc = clipFilm(); splitScene(doc, 6);
+  const v = doc.scenes[2].layers.find((L) => L.type === 'video');
+  assert.equal(v.from, 7); assert.equal(v.at, 0); assert.equal(v.in.preset, 'none');
+});
+await claim('each layer goes to the half it belongs to, and so does narration', () => {
+  const doc = clipFilm(); splitScene(doc, 6);
+  const ids = (S) => S.layers.map((L) => L.text || L.type);
+  assert.deepEqual(ids(doc.scenes[1]), ['video', 'Early']);
+  assert.deepEqual(ids(doc.scenes[2]), ['video', 'Later']);
+  assert.equal(doc.scenes[2].layers[1].at, 1);
+  assert.equal(doc.voice.lines[0].scene, 'b-2'); assert.equal(doc.voice.lines[0].at, 2);
+});
+await claim('too near an edge, nothing is split', () => {
+  const doc = clipFilm();
+  assert.equal(splitScene(doc, 2.05), false); assert.equal(splitScene(doc, 9.95), false); assert.equal(doc.scenes.length, 2);
+});
 done();

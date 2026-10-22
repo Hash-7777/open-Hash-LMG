@@ -8,7 +8,7 @@
 // The open film is saved a moment after every change, and when the window is
 // hidden or closed.
 
-import { h, iconButton, toast, debounce } from './dom.js';
+import { h, clear, iconButton, toast, debounce } from './dom.js';
 import { ICONS } from './icons.js';
 import { createStore, normalizeProject } from './store.js';
 import { createPlayer } from './player.js';
@@ -22,6 +22,7 @@ import { createSettingsStore } from '../platform/settings.js';
 import { storage, projects, newProjectId, isApp, invoke } from '../platform/index.js';
 import { initWindow } from '../platform/window.js';
 import { makeVersion } from './versions.js';
+import { createMediaPanel } from './media-panel.js';
 import { openTemplatesDialog } from './templates-dialog.js';
 import { createProgress } from './progress.js';
 import { createHost } from '../render/host.js';
@@ -145,7 +146,19 @@ async function boot() {
     director.makeBtn,
     progress.bar);
 
-  const workspace = h('main', { class: 'workspace' }, director.el, player.el, inspector.el, timeline.el);
+  // The left column: the director, or the film's media, by tab.
+  const mediaPanel = createMediaPanel({ store });
+  const tabs = h('div', { class: 'panel-head side-tabs', role: 'tablist' });
+  const showSide = (which) => {
+    director.el.hidden = which !== 'director';
+    mediaPanel.show(which === 'media');
+    clear(tabs).append(...[['director', 'Director'], ['media', 'Media']].map(([k, label]) => h('button', { type: 'button', role: 'tab', class: `side-tab${k === which ? ' on' : ''}`, 'aria-selected': String(k === which), text: label, onclick: () => showSide(k) })));
+  };
+  director.el.classList.remove('director');
+  director.el.classList.add('side-panel');
+  const side = h('div', { class: 'director' }, tabs, director.el, mediaPanel.el);
+  showSide('director');
+  const workspace = h('main', { class: 'workspace' }, side, player.el, inspector.el, timeline.el);
   document.body.append(topbar, workspace);
 
   store.on('history', paintHistory);
@@ -168,6 +181,7 @@ async function boot() {
     else if (e.key === 'ArrowRight') { e.preventDefault(); player.step(e.shiftKey ? 10 : 1); }
     else if (e.key === 'Home') { e.preventDefault(); player.seek(0); }
     else if (e.key === 'End') { e.preventDefault(); player.seek(store.get().project.scene.duration); }
+    else if (e.key === 's' || e.key === 'S') { e.preventDefault(); timeline.split(); }
     else if (e.key === 'Escape') store.select(null);
     else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); inspector.deleteSelected(); }
   });
