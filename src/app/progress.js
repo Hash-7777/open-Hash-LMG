@@ -19,7 +19,7 @@ import { ICONS } from './icons.js';
 
 // What each step is called before it starts.
 const NAMES = {
-  story: 'Write the storyboard', intent: 'List what the brief asks to see', layout: 'Direct, lay out and time it',
+  story: 'Write the storyboard', pictures: 'Draw the pictures', intent: 'List what the brief asks to see', layout: 'Direct, lay out and time it',
   design: 'Design every scene', check: 'Check stills and timing', revise: 'Fix what the checks found',
   verify: 'Check the film against the brief', review: 'Review the stills', edit: 'Make the change', voice: 'Speak the narration',
 };

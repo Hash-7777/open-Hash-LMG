@@ -107,7 +107,7 @@ const MOTIF_POOL = {
 export const CAMERAS = ['push', 'pull', 'drift-left', 'drift-right', 'rise', 'still'];
 
 // How many compositions each kind of scene has in the compiler.
-export const LAYOUTS = { hook: 3, statement: 3, title: 3, stat: 3, list: 3, end: 2, quote: 2, logo: 2 };
+export const LAYOUTS = { hook: 5, statement: 5, title: 3, stat: 3, list: 3, end: 2, quote: 2, logo: 2 };
 
 // ---- seeded numbers ----------------------------------------------------------
 

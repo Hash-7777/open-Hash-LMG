@@ -6,6 +6,12 @@ newest first, grouped by what it does for the person making a film.
 ## Unreleased
 
 ### Making films
+- The model draws the few things a film is about, from the brief's own
+  subject, as line drawings that draw themselves on: a cup for a cafe, a bike
+  for a bike service. Each drawing is checked and fitted, or set aside, and
+  beats with one take compositions built around it: the picture on a panel
+  beside the line, above it, faint behind it, as the name's mark, beside a
+  figure or a list. Plain lines gain a band across the frame and a poster.
 - Every film is directed from its own brief: a look, an accent colour, a
   tempo and musical key, transitions, entrances, camera moves and a
   composition for each scene, so two briefs, or two takes of one brief, never

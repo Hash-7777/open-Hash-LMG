@@ -58,7 +58,7 @@ await claim('the second storyboard shows what was missing and is kept', async ()
     trial: async () => ({ ok: true }), sheet: async () => null, log: (e) => log.push(e),
   });
   const out = await d.make({ brief: 'A launch film with a free trial offer.', tier: 'guided', style: 'studio', seconds: 40, verify: true });
-  assert.deepEqual(asked, ['storyboard', 'intent', 'storyboard']);
+  assert.deepEqual(asked, ['storyboard', 'pictures', 'intent', 'storyboard']);
   assert.ok(out.brief.every((r) => r.ok));
   assert.ok(log.some((e) => e.status === 'note' && /shows everything the brief asked for/.test(e.detail)));
 });

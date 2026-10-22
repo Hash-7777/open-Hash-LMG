@@ -30,19 +30,19 @@ const LENGTHS = [15, 30, 45, 60, 90, 120];
 // The share of the bar each step takes, by way of working: the model writing
 // is most of the wait.
 const PLANS = {
-  guided: [['story', 6], ['intent', 1], ['layout', 1], ['check', 2], ['verify', 1]],
-  plan: [['story', 3], ['intent', 1], ['layout', 1], ['design', 5], ['check', 2], ['revise', 2], ['verify', 1], ['review', 1]],
+  guided: [['story', 6], ['pictures', 3], ['intent', 1], ['layout', 1], ['check', 2], ['verify', 1]],
+  plan: [['story', 3], ['pictures', 3], ['intent', 1], ['layout', 1], ['design', 5], ['check', 2], ['revise', 2], ['verify', 1], ['review', 1]],
   code: [['story', 3], ['intent', 1], ['layout', 1], ['design', 6], ['check', 1], ['revise', 2], ['verify', 1], ['review', 1]],
   edit: [['edit', 7], ['check', 3]],
 };
 // About how long a typical answer of each kind is, in characters, so the bar
 // can fill while the model writes.
 // What each kind of answer is called on the loading bar.
-const ANSWER_WORDS = { intent: 'list of what the brief asks for', storyboard: 'storyboard', plan: 'plan', revise: 'revised plan', edit: 'change', code: 'animation code', 'revise code': 'revised code', review: 'review', 'apply review': 'changes from the review' };
-const TYPICAL = { intent: 400, storyboard: 1400, plan: 9000, revise: 9000, edit: 5000, code: 7000, 'revise code': 7000, review: 500, 'apply review': 8000 };
+const ANSWER_WORDS = { intent: 'list of what the brief asks for', storyboard: 'storyboard', pictures: 'drawings', plan: 'plan', revise: 'revised plan', edit: 'change', code: 'animation code', 'revise code': 'revised code', review: 'review', 'apply review': 'changes from the review' };
+const TYPICAL = { intent: 400, storyboard: 1400, pictures: 1800, plan: 9000, revise: 9000, edit: 5000, code: 7000, 'revise code': 7000, review: 500, 'apply review': 8000 };
 const TIER_SHORT = { guided: 'Guided', plan: 'Plan', code: 'Code' };
 const TIER_HELP = {
-  guided: 'The model writes the story; the app designs, times and scores it.',
+  guided: 'The model writes the story and draws its pictures; the app designs, times and scores it.',
   plan: 'The model designs every scene; the app checks it and sends back what is wrong.',
   code: 'The model writes its own animation code, run with no network or storage.',
 };

@@ -93,6 +93,13 @@ removed before the code is loaded (`src/render/lockdown.js`). A frame that
 does not come back in time stops that worker and starts a fresh one
 (`src/render/host.js`).
 
+## Pictures drawn by a model
+
+A picture a model draws is read as path data only: drawing commands and
+numbers, nothing else (`src/core/scene/pictures.js`). It is flattened to
+straight segments, fitted to its grid and drawn by the app's own renderer,
+like any other shape. A drawing with anything else in it is set aside.
+
 ## What is not done yet
 
 - The app is not signed or notarised. macOS will warn the first time it is

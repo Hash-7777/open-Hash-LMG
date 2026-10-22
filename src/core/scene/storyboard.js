@@ -11,6 +11,7 @@
 
 import { MOODS, TEMPOS } from './direction.js';
 import { STYLE_NAMES, wordCount } from './format.js';
+import { cleanPicture, PICTURE_KINDS } from './pictures.js';
 
 export const BEAT_KINDS = ['hook', 'statement', 'title', 'stat', 'list', 'steps', 'chart', 'quote', 'compare', 'words', 'logo', 'end'];
 
@@ -92,6 +93,9 @@ function normBeat(b, notes) {
   const { text, accents } = splitAccents(text0);
   const accent = [...accents, ...(Array.isArray(b.accent) ? b.accent : typeof b.accent === 'string' && b.accent ? b.accent.split(/\s+/) : [])].map((w) => s(w, 40)).filter(Boolean).slice(0, 6);
   const out = { kind, text, sub: s(b.sub ?? b.subtitle ?? b.subline ?? b.caption ?? b.tagline ?? b.label ?? b.url, 120), accent, say: s(b.say ?? b.narration ?? b.voiceover ?? b.voice, 240) };
+  // The name of the picture this beat shows, from the film's pictures.
+  const picture = s(b.picture, 40).toLowerCase();
+  if (picture && PICTURE_KINDS.includes(kind)) out.picture = picture;
   switch (kind) {
     case 'stat': {
       const v = num(b.value ?? b.number ?? b.to ?? text0);
@@ -166,7 +170,38 @@ export function normalizeStoryboard(input) {
       b.text = title;
     }
   }
-  return { storyboard: { title, style, look: normLook(doc.look), beats }, notes: list };
+  // The drawings, by name; a beat naming one that is not here shows none.
+  const pictures = {};
+  if (isObj(doc.pictures)) {
+    for (const [name, p] of Object.entries(doc.pictures).slice(0, 12)) {
+      const clean = cleanPicture(p);
+      if (clean) pictures[s(name, 40).toLowerCase()] = clean;
+    }
+  }
+  for (const b of beats) if (b.picture && !pictures[b.picture]) delete b.picture;
+  return { storyboard: { title, style, look: normLook(doc.look), beats, pictures }, notes: list };
+}
+
+// The storyboard as a model is shown it: each beat's picture by name, the
+// drawings themselves left out.
+export function storyboardForModel(storyboard) {
+  const { pictures, ...rest } = storyboard || {};
+  return rest;
+}
+
+// After a model rewrote a storyboard, the drawings it was not shown go back:
+// to every beat that still names one, and to a beat of the same kind in the
+// same place that names none.
+export function keepPictures(next, prev) {
+  const pictures = { ...(prev?.pictures || {}), ...(next.pictures || {}) };
+  const beats = next.beats.map((b, i) => {
+    const before = prev?.beats?.[i];
+    const name = b.picture || (before && before.kind === b.kind ? before.picture : null);
+    const { picture, ...rest } = b;
+    return name && pictures[name] && PICTURE_KINDS.includes(b.kind) ? { ...rest, picture: name } : rest;
+  });
+  const used = new Set(beats.map((b) => b.picture).filter(Boolean));
+  return { ...next, beats, pictures: Object.fromEntries(Object.entries(pictures).filter(([n]) => used.has(n))) };
 }
 
 // What the model suggests for the film's look: a mood, an accent colour and a

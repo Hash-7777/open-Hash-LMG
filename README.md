@@ -32,8 +32,8 @@ Made by the model on your own computer, or by any cloud model on your own key.
 | Step | What happens |
 |---|---|
 | **01 Brief** | You describe the film in a sentence or two: what it is for, how long, landscape or vertical. |
-| **02 Storyboard** | The model writes only the words and numbers, beat by beat: a hook, a statement, a stat, a list, a quote, an end card. |
-| **03 Design** | The app directs the film from the brief: a look, an accent colour, a tempo and key for the music, the transitions and camera moves it cuts with, and a composition for every scene, so two briefs, or two takes of one brief, never come out alike. Then it times every line to how long it takes to read and starts every scene on the beat of the music. |
+| **02 Storyboard** | The model writes the words and numbers, beat by beat: a hook, a statement, a stat, a list, a quote, an end card. Then it draws the few things the film is about, from the brief's own subject, as simple line drawings that draw themselves on in the film. |
+| **03 Design** | The app directs the film from the brief: a look, an accent colour, a tempo and key for the music, the transitions and camera moves it cuts with, and a composition for every scene, built around its drawing when it has one, so two briefs, or two takes of one brief, never come out alike. Then it times every line to how long it takes to read and starts every scene on the beat of the music. |
 | **04 Check** | Key moments are rendered and measured: text off the frame, outside a phone's safe area, too small, too faint, too fast to read, or a scene that sits still too long. What rules can fix, they fix. The film is also held to what the brief asks to see: what must appear, in what order, what counts up, what is on screen at the end. The rest goes back to the model. |
 | **05 Film** | An original score fitted to the cuts, narration if you want it, mastered to the loudness video platforms play at, written to MP4, MOV or GIF at 480p to 4K and 24 to 60 frames a second, by encoders built into the app, the same on macOS, Windows and Linux. A still (PNG) or the sound alone (WAV, MP3) can be exported too. |
 
@@ -45,7 +45,7 @@ A three-billion-parameter model cannot lay out a film. It can write a good story
 
 | Way of working | For | The model writes | The app does |
 |---|---|---|---|
-| **Guided** | Small local models, under 10B | The storyboard: words and numbers only | All of the layout, timing, motion and sound |
+| **Guided** | Small local models, under 10B | The storyboard's words and numbers, and line drawings of what the film is about | All of the layout, timing, motion and sound |
 | **Plan** | Mid-size and large models | A full scene plan, starting from the app's own design | Repairs it, checks it, sends back what is wrong |
 | **Code** | The strongest cloud models | Their own animation code, frame by frame | Runs it in a locked box with no network, no storage and no clock, then checks the stills |
 
@@ -102,6 +102,7 @@ Hash LMG is being built in the open. This is exactly what exists today:
 | Score and mastering | Processor or graphics-chip choice for Ollama | |
 | Narration through a Kokoro install or a local speech server, with word-timed captions | Voices through a Chatterbox install | |
 | The editor: preview, timeline, inspector, director, settings | | |
+| Pictures: each drawing checked and fitted, and the compositions built around it | Pictures drawn by a real model | |
 | Rendering in a background worker; MP4, MOV, GIF and MP3 export by the app's own encoders, in the macOS app | | |
 | The macOS app: it builds and opens the editor | | |
 | The check suite, `npm run check`, run on every push | | |

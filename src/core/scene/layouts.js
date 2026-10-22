@@ -7,7 +7,7 @@
 // (layoutFor in src/core/scene/direction.js), so two films of the same words
 // do not look the same.
 
-import { wordCount } from './format.js';
+import { ASPECTS, wordCount } from './format.js';
 
 // Text size for a line of n words, so long lines shrink before they wrap badly.
 export function lineSize(words, big, vertical) {
@@ -16,9 +16,10 @@ export function lineSize(words, big, vertical) {
 }
 
 // c: { b, lay, X, cy, MW, left, vertical, wide, style, pack, E, ease, D, beat, opts,
-//      sceneBg, ink, accent, accentSmall, muted, hold, accentWords, accentHold }
+//      sceneBg, ink, accent, accentSmall, muted, hold, accentWords, accentHold, aspect, inkOn(token) }
 export function layBeat(c) {
-  const { b, lay, X, cy, MW, left, vertical, wide, style, pack, E, ease, D, beat, opts, sceneBg, ink, accent, accentSmall, muted, hold, accentWords } = c;
+  const { b, lay, X, cy, MW, left, vertical, wide, style, pack, E, ease, D, beat, opts, sceneBg, ink, accent, accentSmall, muted, hold, accentWords, aspect, inkOn } = c;
+  const frame = ASPECTS[aspect] || ASPECTS['16:9'];
   const layers = [];
   let entrance = 0.9;
   let camera = { zoom: [1, 1.035] };
@@ -33,6 +34,32 @@ export function layBeat(c) {
         layers.push({ type: 'text', text: b.text, x: left, y: b.sub ? cy - 0.03 : cy, anchor: 'left', align: 'left', size: Math.round(size * 1.08), weight: pack.fonts.weight, color: ink,
           maxWidth: 0.7, highlight: accentWords, highlightColor: accent, hold, at: 0.15, in: { preset: E.line, duration: 0.8, ease } });
         if (b.sub) layers.push({ type: 'text', text: b.sub, x: left, y: cy + 0.12, anchor: 'left', align: 'left', size: 40, weight: 500, color: muted, at: 0.55, maxWidth: 0.6, in: { preset: E.small, duration: 0.7, ease } });
+        break;
+      }
+      if (lay === 3) {
+        // A band across the whole frame with the line set in it, an accent
+        // edge along its top: a lower third grown into the shot.
+        const band = sceneBg === 'surface' ? 'bg' : 'surface';
+        const lines = n > (vertical ? 3 : 5) ? 2 : 1;
+        const bandH = Math.round(size * 1.2 * lines + 150 + (b.sub ? 80 : 0));
+        const top = cy - bandH / 2 / frame.height;
+        layers.push({ type: 'shape', shape: 'rect', x: 0.5, y: cy, w: frame.width, h: bandH, fill: band, z: -1, in: { preset: 'grow', duration: 0.6, ease: 'inOutCubic' } });
+        layers.push({ type: 'shape', shape: 'line', x: 0.5, y: top, w: frame.width, h: 0, strokeWidth: 6, color: accent, z: 0, at: 0.3, in: { preset: 'draw', duration: 0.7, ease: 'inOutCubic' } });
+        layers.push({ type: 'text', text: b.text, x: X, y: b.sub ? cy - 0.035 : cy, size, weight: pack.fonts.weight, color: inkOn(band), maxWidth: MW, highlight: accentWords, highlightColor: accent, hold, at: 0.35, in: { preset: E.line, duration: 0.8, ease } });
+        if (b.sub) layers.push({ type: 'text', text: b.sub, x: X, y: cy + (vertical ? 0.05 : 0.08), size: vertical ? 42 : 38, weight: 500, color: inkOn(band), opacity: 0.75, at: 0.7, maxWidth: MW, in: { preset: E.small, duration: 0.7, ease } });
+        entrance = 1.2;
+        camera = { zoom: [1.03, 1] };
+        break;
+      }
+      if (lay === 4) {
+        // A poster: the line low and to the left under a rule across the
+        // frame, a short accent stroke riding the rule.
+        const y = vertical ? 0.5 : 0.6;
+        layers.push({ type: 'shape', shape: 'line', x: 0.5, y: y - (vertical ? 0.09 : 0.14), w: Math.round(frame.width * (1 - 2 * left)), h: 0, strokeWidth: 2, color: muted, at: 0.1, in: { preset: 'draw', duration: 0.8, ease: 'inOutCubic' } });
+        layers.push({ type: 'shape', shape: 'line', x: left + 0.03, y: y - (vertical ? 0.09 : 0.14), w: 120, h: 0, strokeWidth: 8, color: accent, at: 0.5, in: { preset: 'draw', duration: 0.5, ease: 'inOutCubic' } });
+        layers.push({ type: 'text', text: b.text, x: left, y: b.sub ? y - 0.02 : y, anchor: 'left', align: 'left', size: Math.round(size * 1.05), weight: Math.min(900, pack.fonts.weight + 100), color: ink, maxWidth: 1 - 2 * left, leading: 1.05, highlight: accentWords, highlightColor: accent, hold, at: 0.35, in: { preset: E.line, duration: 0.8, ease } });
+        if (b.sub) layers.push({ type: 'text', text: b.sub, x: left, y: y + (vertical ? 0.08 : 0.12), anchor: 'left', align: 'left', size: vertical ? 42 : 38, weight: 500, color: muted, at: 0.7, maxWidth: 0.6, in: { preset: E.small, duration: 0.7, ease } });
+        camera = { zoom: [1, 1.03], x: [0.006, -0.006] };
         break;
       }
       if (lay === 2 && n >= 2 && n <= 6) {

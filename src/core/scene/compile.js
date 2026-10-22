@@ -21,6 +21,8 @@ import { contrast } from '../util/color.js';
 import { PREROLL } from './lint.js';
 import { layoutFor, cameraFor } from './direction.js';
 import { layBeat } from './layouts.js';
+import { layPictureBeat } from './picture-layouts.js';
+import { cleanPicture } from './pictures.js';
 
 // Each style says how it marks an accent word while it holds.
 const ACCENT_HOLD = { studio: 'underline', paper: 'marker', mono: 'none', vivid: 'none', editorial: 'none', tech: 'underline', stage: 'none' };
@@ -67,6 +69,8 @@ export function compileStoryboard(input, opts = {}) {
 
   const scenes = [];
   let trIndex = 0;
+  // Pictured scenes so far: their compositions turn across the whole film.
+  let pictured = 0;
   const beats = storyboard.beats;
 
   beats.forEach((b, i) => {
@@ -89,10 +93,14 @@ export function compileStoryboard(input, opts = {}) {
     const muted = contrast(palette.muted, palette[sceneBg || 'bg']) < 4.5 ? ink : 'muted';
     const hold = accentWords.length ? accentHold : 'none';
     // Which of this kind's compositions the scene takes.
-    const lay = layoutFor(D, b.kind, (seen[b.kind] = (seen[b.kind] ?? -1) + 1));
+    const occurrence = (seen[b.kind] = (seen[b.kind] ?? -1) + 1);
+    const lay = layoutFor(D, b.kind, occurrence);
     const wide = !vertical;
-
-    ({ layers, entrance, camera } = layBeat({ b, lay, X, cy, MW, left, vertical, wide, style, pack, E, ease, D, beat, opts, sceneBg, ink, accent, accentSmall, muted, hold, accentWords }));
+    const c = { b, lay, X, cy, MW, left, vertical, wide, style, pack, E, ease, D, beat, opts, sceneBg, ink, accent, accentSmall, muted, hold, accentWords, aspect, inkOn: textColor };
+    // A beat that shows a picture the model drew takes a composition built
+    // around it; any other beat, the plain one.
+    const pic = b.picture ? cleanPicture(storyboard.pictures?.[b.picture]) : null;
+    ({ layers, entrance, camera } = (pic && layPictureBeat({ ...c, pic, occurrence: pictured++ })) || layBeat(c));
 
     // The film's camera moves, scene by scene; a chart and a run of single
     // words keep their own.

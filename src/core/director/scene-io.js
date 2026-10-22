@@ -2,17 +2,43 @@
 // is shown it, what is put back after a model rewrites it, and how a laid-out
 // storyboard is scored against another.
 
-// What a model is shown of a scene: everything but the media bytes.
+// A drawn picture's path data is long and the model has nothing to change in
+// it; it is shown this mark instead and given back by restore.
+const KEPT = 'kept:';
+const hidePaths = (layers) => (layers || []).map((L) => ({
+  ...L,
+  ...(L.shape === 'path' && typeof L.d === 'string' && L.d.length > 160 ? { d: `${KEPT}${L.id}` } : {}),
+  ...(L.layers ? { layers: hidePaths(L.layers) } : {}),
+}));
+
+// What a model is shown of a scene: everything but the media bytes and the
+// drawings' path data.
 export function sceneForModel(scene) {
   const { assets, ...rest } = scene;
   const listed = Object.fromEntries(Object.entries(assets || {}).filter(([, a]) => a.kind === 'image').map(([id, a]) => [id, { kind: a.kind, name: a.name }]));
-  return { ...rest, assets: listed, voice: { ...scene.voice, lines: (scene.voice?.lines || []).map(({ clip, ...l }) => l) } };
+  return { ...rest, scenes: (scene.scenes || []).map((S) => ({ ...S, layers: hidePaths(S.layers) })), assets: listed, voice: { ...scene.voice, lines: (scene.voice?.lines || []).map(({ clip, ...l }) => l) } };
+}
+
+// Path data shown as a mark goes back from the scene it came from: the same
+// scene id, else the scene in the same place.
+function showPaths(nextScenes, prevScenes) {
+  const flat = (list) => (list || []).flatMap((L) => [L, ...flat(L.layers)]);
+  return (nextScenes || []).map((S, i) => {
+    const from = (prevScenes || []).find((P) => P.id === S?.id) || prevScenes?.[i];
+    const put = (layers) => (Array.isArray(layers) ? layers.map((L) => {
+      if (!L || typeof L !== 'object') return L;
+      let d = L.d;
+      if (typeof d === 'string' && d.startsWith(KEPT)) d = flat(from?.layers).find((P) => P.id === d.slice(KEPT.length) && P.shape === 'path')?.d || '';
+      return { ...L, ...(d !== L.d ? { d } : {}), ...(L.layers ? { layers: put(L.layers) } : {}) };
+    }) : layers);
+    return S && typeof S === 'object' ? { ...S, layers: put(S.layers) } : S;
+  });
 }
 
 // Puts back what the model is not shown: media, clips, and the narration the
 // film was planned around if a redesign dropped it.
 export function restore(next, prev) {
-  const doc = { ...next, assets: { ...(prev.assets || {}) } };
+  const doc = { ...next, scenes: showPaths(next.scenes, prev.scenes), assets: { ...(prev.assets || {}) } };
   const lines = next.voice?.lines?.length ? next.voice.lines : prev.voice?.lines || [];
   const ids = new Set((next.scenes || []).map((S, i) => S.id || `scene-${i + 1}`));
   const prevIds = (prev.scenes || []).map((S) => S.id);

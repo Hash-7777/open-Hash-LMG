@@ -19,7 +19,8 @@
 //   deps.sheet({ scene, code }, times)                      -> image data URL or null
 //   deps.log({ id, title, status, detail })                 status: run | done | fail | note
 
-import { normalizeStoryboard } from '../scene/storyboard.js';
+import { normalizeStoryboard, storyboardForModel, keepPictures } from '../scene/storyboard.js';
+import { drawPictures } from './pictures.js';
 import { compileStoryboard } from '../scene/compile.js';
 import { chooseDirection, describeDirection } from '../scene/direction.js';
 import { normalizeScene } from '../scene/normalize.js';
@@ -167,7 +168,7 @@ export function createDirector(deps) {
   async function writeCode(brief, storyboard, draft, opts) {
     const system = codePrompt({ seconds: draft.duration, aspect: draft.aspect, timing: timingText(draft) });
     const d = directionFor(storyboard, opts);
-    let content = `Brief:\n${brief}\n\nStoryboard:\n${JSON.stringify(storyboard)}\n\nDirection: ${describeDirection(d)}. Fonts: ${JSON.stringify(draft.fonts)}. Palette (lmg.palette holds it): ${JSON.stringify(draft.palette)}`;
+    let content = `Brief:\n${brief}\n\nStoryboard:\n${JSON.stringify(storyboardForModel(storyboard))}\n\nDirection: ${describeDirection(d)}. Fonts: ${JSON.stringify(draft.fonts)}. Palette (lmg.palette holds it): ${JSON.stringify(draft.palette)}`;
     let code = '';
     for (let attempt = 0; attempt < 3; attempt++) {
       const text = await deps.ask({ system, messages: [{ role: 'user', content }], purpose: attempt ? 'revise code' : 'code' });
@@ -207,6 +208,17 @@ export function createDirector(deps) {
 
     const drafts = tier === 'guided' ? Math.max(1, Math.min(3, opts.drafts || 1)) : 1;
     let storyboard = await step('story', drafts > 1 ? 'Writing storyboards' : 'Writing the storyboard', () => bestStoryboard(brief, opts, drafts));
+    // Pictures of the brief's own subject, so the film shows what it is about.
+    // Code-writing models draw their own; a drawing step that fails leaves
+    // the film without pictures, not unmade.
+    if (tier !== 'code' && opts.pictures !== false) {
+      try {
+        storyboard = await step('pictures', 'Drawing the pictures', () => drawPictures(askJson, (n) => note('pictures', n), brief, storyboard));
+      } catch (err) {
+        if (err?.stopped) throw err;
+        note('pictures', `${String(err.message || err)} The film is laid out without pictures.`);
+      }
+    }
     // What the brief asks to see, as statements the finished film is held to.
     let intent = [];
     if (opts.verify) {
@@ -287,7 +299,7 @@ export function createDirector(deps) {
             const sb2 = await step('revise', 'Rewriting the storyboard to show what the brief asks for', async () => {
               const raw = await askJson(storyboardPrompt({ seconds: opts.seconds, narration: opts.narration }), `Brief:\n${brief}\n\nThe last storyboard missed these:\n${failed.join('\n')}\nWrite the whole storyboard again so the film shows all of them.`, { schema: STORYBOARD_SCHEMA, purpose: 'storyboard' });
               const { storyboard: s2 } = normalizeStoryboard(raw || {});
-              return s2.beats.length ? s2 : null;
+              return s2.beats.length ? keepPictures(s2, storyboard) : null;
             });
             if (sb2) candidate = { storyboard: sb2, ...(await checkScene(compile(sb2, opts).scene, opts)) };
           } else {
@@ -340,10 +352,10 @@ export function createDirector(deps) {
     const route = project.code ? 'code' : project.tier === 'guided' && !project.edited ? 'guided' : 'plan';
     if (route === 'guided') {
       const sb = await step('edit', 'Rewriting the storyboard', async () => {
-        const raw = await askJson(storyboardPrompt({ seconds: opts.seconds || project.scene.duration, narration: opts.narration }), editMessage('guided', text, project.storyboard), { schema: STORYBOARD_SCHEMA, purpose: 'edit' });
+        const raw = await askJson(storyboardPrompt({ seconds: opts.seconds || project.scene.duration, narration: opts.narration }), editMessage('guided', text, storyboardForModel(project.storyboard)), { schema: STORYBOARD_SCHEMA, purpose: 'edit' });
         const { storyboard } = normalizeStoryboard(raw || {});
         if (!storyboard.beats.length) throw new Error('The model\'s answer could not be read as a storyboard. Nothing was changed.');
-        return storyboard;
+        return keepPictures(storyboard, normalizeStoryboard(project.storyboard || {}).storyboard);
       });
       let { scene } = compileStoryboard(sb, {
         direction: chooseDirection({ brief: project.brief, look: sb.look || project.storyboard?.look, style: project.scene.style, take: project.take || 0 }),

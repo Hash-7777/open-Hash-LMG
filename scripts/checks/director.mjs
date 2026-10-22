@@ -39,13 +39,13 @@ await claim('a film comes back, laid out and timed', async () => {
   const { d, asked, log } = director({ storyboard: STORYBOARD });
   const out = await d.make({ ...opts, tier: 'guided' });
   assert.equal(out.tier, 'guided'); assert.ok(out.scene.scenes.length >= 8); assert.equal(out.code, null);
-  assert.deepEqual(asked, ['storyboard']);
+  assert.deepEqual(asked, ['storyboard', 'pictures']);
   assert.ok(log.some((e) => e.id === 'check' && e.status === 'done'));
 });
 await claim('an answer that is not a storyboard is asked for again', async () => {
   const { d, asked } = director({ storyboard: ['I would love to help!', STORYBOARD] });
   await d.make({ ...opts, tier: 'guided' });
-  assert.deepEqual(asked, ['storyboard', 'storyboard']);
+  assert.deepEqual(asked, ['storyboard', 'storyboard', 'pictures']);
 });
 await claim('two unreadable answers end with a plain sentence', async () => {
   const { d } = director({ storyboard: ['no', 'still no'] });
@@ -63,7 +63,7 @@ const SHORT = { title: 'Lumen', beats: [{ kind: 'hook', text: 'Your desk is loud
 await claim('of two storyboards, the one nearer the length with fewer problems is kept', async () => {
   const { d, asked, log } = director({ storyboard: [LONG, SHORT] });
   const out = await d.make({ ...opts, seconds: 15, tier: 'guided', drafts: 2 });
-  assert.deepEqual(asked, ['storyboard', 'storyboard']);
+  assert.deepEqual(asked, ['storyboard', 'storyboard', 'pictures']);
   assert.equal(out.storyboard.beats.length, 4);
   assert.ok(log.some((e) => e.status === 'note' && /kept the cleanest, storyboard 2/.test(e.detail)));
 });

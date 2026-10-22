@@ -17,7 +17,10 @@ Everything that differs between the two goes through `src/platform/index.js`.
 ```
 brief
   -> storyboard          the model writes words and numbers, beat by beat
-  -> direction           look, colour, tempo, key, motion, composition, from the brief
+  -> pictures            the model draws the few things the film is about;
+                         each drawing is checked and fitted, or set aside
+  -> direction           look, colour, tempo, key, motion, composition, from the brief;
+                         a beat with a drawing takes a composition built around it
   -> layout              the compiler lays the beats out and times them to the beat
   -> design (optional)   a mid-size model redesigns the plan, or a strong one writes code
   -> checks              frames are measured at rest, mid-move and on every beat;
@@ -40,12 +43,13 @@ src/
   core/                  pure modules with no page access; the checks run them in Node
     scene/               the scene format (lmg.scene/1) and its normaliser, assets and
                          value cleaners, the storyboard, the direction, the compositions,
+                         the pictures and the compositions built around them,
                          the compiler, the film checks and when they look, editing helpers,
                          templates and examples
     engine/              easing, keyframes, paths, the drawing kit, entrances and exits,
                          the carry transition, repeated layers, the odometer, the renderer
-    director/            the prompts, the pipeline, the brief check, the code check, the
-                         scene helpers, the run record
+    director/            the prompts, the pipeline, the drawing step, the brief check, the
+                         code check, the scene helpers, the run record
     providers/           the model services, request and stream shapes, local model
                          sessions, model profiles, speech requests
     audio/               synthesis, the score, mastering, word timing, WAV
