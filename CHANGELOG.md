@@ -49,7 +49,8 @@ newest first, grouped by what it does for the person making a film.
   mood: bounce (mallets, claps, a hopping bass), drive (four on the floor, a
   rolling bass, a synth pluck), keys (electric-piano chords, a round bass)
   and arp (a running arpeggio, a held bass, bells). Each film gets a melody
-  of its own.
+  of its own. A model redesigning the scenes keeps the music chosen from
+  the brief; a change asked for in words can still switch it.
 
 ### Export
 - Encoders built into the app, the same on macOS, Windows and Linux: MP4,

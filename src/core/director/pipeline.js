@@ -143,8 +143,8 @@ export function createDirector(deps) {
     return { scene, issues };
   }
 
-  // A rewritten plan with every drawing the model dropped put back.
-  const redrawn = (next, prev) => { const r = keepDrawings(next, prev); if (r.note) note('design', r.note); return r.scene; };
+  // A rewritten plan with what the model may not change put back (scene-io.js).
+  const redrawn = (next, prev, asked = false) => { const r = keepDrawings(next, prev, { music: !asked }); if (r.note) note('design', r.note); return r.scene; };
 
   async function designPlan(brief, storyboard, draft, opts) {
     const system = planPrompt({ seconds: opts.seconds, aspect: draft.aspect, style: draft.style });
@@ -385,7 +385,7 @@ export function createDirector(deps) {
     let scene = await step('edit', 'Changing the plan', async () => {
       const raw = await askJson(planPrompt({ seconds: project.scene.duration, aspect: project.scene.aspect, style: project.scene.style }), editMessage('plan', text, sceneForModel(project.scene)), { purpose: 'edit' });
       if (!raw) throw new Error('The model\'s answer could not be read as a plan. Nothing was changed.');
-      const next = normalizeScene(redrawn(restore(raw, project.scene), project.scene), { style: project.scene.style, aspect: project.scene.aspect }).scene;
+      const next = normalizeScene(redrawn(restore(raw, project.scene), project.scene, true), { style: project.scene.style, aspect: project.scene.aspect }).scene;
       if (!next.scenes.length) throw new Error('The changed plan had no scenes. Nothing was changed.');
       return next;
     });

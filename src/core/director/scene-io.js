@@ -60,10 +60,13 @@ export function restore(next, prev) {
 // A model rewriting a plan may drop the drawings of the brief's subject, the
 // one thing in a film that shows what it is about. A rewritten scene that
 // lost the drawing its earlier version had is put back as it was: the same
-// scene id, else the scene in the same place. Returns { scene, kept, note },
-// kept being how many scenes were put back; the caller normalises the result.
+// scene id, else the scene in the same place. With { music }, the score, key
+// and chord order chosen from the brief are kept too: a model cannot hear the
+// score it would pick, so only a change asked for in words may switch it.
+// Returns { scene, kept, note }, kept being how many scenes were put back; the
+// caller normalises the result.
 const drawn = (S) => (S?.layers || []).some((L) => L.shape === 'path' && /^picture/.test(L.id || ''));
-export function keepDrawings(next, prev) {
+export function keepDrawings(next, prev, { music = false } = {}) {
   let kept = 0;
   const scenes = (next.scenes || []).map((S, i) => {
     const before = (prev.scenes || []).find((P) => P.id === S.id) || prev.scenes?.[i];
@@ -72,7 +75,8 @@ export function keepDrawings(next, prev) {
     return { ...before, id: S.id };
   });
   const note = kept ? `${kept === 1 ? 'One scene keeps its' : `${kept} scenes keep their`} drawing as the app laid ${kept === 1 ? 'it' : 'them'} out, since the redesign left ${kept === 1 ? 'it' : 'them'} out.` : '';
-  return { scene: { ...next, scenes }, kept, note };
+  const sound = music ? { ...(next.sound || {}), score: prev.sound?.score, key: prev.sound?.key, progression: prev.sound?.progression } : next.sound;
+  return { scene: { ...next, scenes, ...(sound ? { sound } : {}) }, kept, note };
 }
 
 // How far a laid-out storyboard is from good: its problems by weight, and how

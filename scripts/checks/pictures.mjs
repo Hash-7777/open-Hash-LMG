@@ -201,15 +201,16 @@ await claim('a redesign is shown marks for the drawings and given the path data 
   assert.deepEqual(back.scenes[0].layers.filter((L) => L.shape === 'path').map((L) => L.d), scene.scenes[0].layers.filter((L) => L.shape === 'path').map((L) => L.d));
 });
 
-section('A redesign keeps the drawings');
-await claim('a redesign that dropped the drawings has those scenes put back as the app laid them out, with a note', async () => {
+section('A redesign keeps the drawings, and the music chosen from the brief');
+await claim('a redesign that dropped the drawings and picked its own score gets both put back, with a note', async () => {
   const { d, log } = director({
     storyboard: STORY,
     pictures: { pictures: [{ beat: 1, name: 'cup', ...CUP }, { beat: 2, name: 'ring', ...RING }] },
-    plan: () => { const { scene } = compileStoryboard(normalizeStoryboard(STORY).storyboard, { style: 'studio', targetDuration: 15 }); const s = sceneForModel(scene); s.title = 'Redesigned'; return s; },
+    plan: () => { const { scene } = compileStoryboard(normalizeStoryboard(STORY).storyboard, { style: 'studio', targetDuration: 15 }); const s = sceneForModel(scene); s.title = 'Redesigned'; s.sound = { ...s.sound, score: s.sound.score === 'pulse' ? 'soft' : 'pulse' }; return s; },
   });
   const out = await d.make({ ...brief, tier: 'plan', rounds: 0 });
   assert.equal(out.scene.title, 'Redesigned');
+  assert.equal(out.scene.sound.score, out.direction.score);
   assert.equal(out.scene.scenes.filter((S) => S.layers.some((L) => L.shape === 'path')).length, 2);
   assert.ok(log.some((e) => e.id === 'design' && e.status === 'note' && /keep their drawing/.test(e.detail)));
 });
