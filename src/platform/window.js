@@ -17,7 +17,7 @@
 const STATE_KEY = 'lmg.window.v1';
 
 // tauri.conf.json minWidth and minHeight.
-export const MIN_LOGICAL = { w: 1100, h: 700 };
+export const MIN_LOGICAL = { w: 760, h: 540 };
 const REACH_W = 160; // pixels of title bar that must be on a screen
 const REACH_H = 48; // and the height of that strip
 const FIRST_MARGIN = { x: 24, y: 16 };

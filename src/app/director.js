@@ -123,7 +123,11 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
 
   function paintButtons() {
     const busy = Boolean(running);
-    clear(makeBtn).append(h('span', { html: busy ? ICONS.stop : ICONS.play }), h('span', { text: busy ? 'Stop' : 'Generate the Movie' }));
+    // Both labels are laid one over the other and only one is shown, so the
+    // button keeps its width and the top bar does not move when it turns.
+    clear(makeBtn).append(h('span', { class: 'make-label' },
+      h('span', { class: 'make-go', 'aria-hidden': String(busy) }, h('span', { html: ICONS.play }), h('span', { class: 'make-long', text: 'Generate the Movie' }), h('span', { class: 'make-short', text: 'Generate' })),
+      h('span', { class: 'make-stop', 'aria-hidden': String(!busy) }, h('span', { html: ICONS.stop }), h('span', { text: 'Stop' }))));
     makeBtn.classList.toggle('stop', busy);
     askBox.disabled = busy;
     askBtn.disabled = busy;

@@ -54,6 +54,9 @@ newest first, grouped by what it does for the person making a film.
   and are unloaded once a film is made.
 
 ### The editor
+- The window can share a small screen with another one: the side panels
+  narrow, the timeline gives its empty rows to the preview, and the top bar's
+  words take short forms. The top bar holds still while a film is made.
 - A step chip, a segmented bar and a panel show each real step of the making,
   with what the model is writing as it arrives.
 - Settings has a drawn rail, links to each service's key page with a check,

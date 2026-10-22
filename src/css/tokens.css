@@ -17,7 +17,11 @@
 
   --topbar-h: 44px;
   --side-w: 296px;
-  --timeline-h: 252px;
+  /* The timeline is as tall as its rows need on a big window, and gives way
+     to the preview on a short one. */
+  --timeline-h: clamp(204px, 30vh, 252px);
+  --stage-min-w: 320px;
+  --stage-min-h: 200px;
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 

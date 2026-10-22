@@ -34,7 +34,15 @@
 .primary-btn:disabled { opacity: 0.45; cursor: default; filter: none; }
 .primary-btn.wide { width: 100%; height: 36px; }
 .primary-btn svg, .secondary-btn svg { width: 13px; height: 13px; }
-.make-btn { margin-left: 2px; }
+.make-btn { margin-left: 2px; flex: none; }
+.make-label { display: inline-grid; justify-items: center; }
+.make-label > span { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.make-label .make-short { display: none; }
+@media (max-width: 980px) {
+  .make-label .make-long { display: none; }
+  .make-label .make-short { display: inline; }
+}
+.make-btn:not(.stop) .make-stop, .make-btn.stop .make-go { visibility: hidden; }
 .secondary-btn {
   display: inline-flex;
   align-items: center;

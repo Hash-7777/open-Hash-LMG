@@ -142,7 +142,7 @@ async function boot() {
     undoBtn, redoBtn,
     h('span', { class: 'divider' }),
     iconButton(ICONS.settings, 'Settings', openSettings),
-    h('button', { class: 'secondary-btn', type: 'button', onclick: () => openExportDialog({ store, settings, playhead: () => store.get().time }) }, h('span', { html: ICONS.export }), h('span', { text: 'Export' })),
+    h('button', { class: 'secondary-btn export-btn', type: 'button', 'aria-label': 'Export', onclick: () => openExportDialog({ store, settings, playhead: () => store.get().time }) }, h('span', { html: ICONS.export }), h('span', { class: 'export-word', text: 'Export' })),
     director.makeBtn,
     progress.bar);
 
