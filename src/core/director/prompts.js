@@ -154,7 +154,7 @@ export function planFormatReference() {
      group:   "layers": [...] moved together
    } ]
  } ],
- "sound": {"score": pulse | soft | cinematic | none, "hits": [{"t": seconds, "kind": boom | hit | swell | chime}]}
+ "sound": {"score": pulse | soft | cinematic | bounce | drive | keys | arp | none, "hits": [{"t": seconds, "kind": boom | hit | swell | chime}]}
 }
 Scene start times are worked out from durations and transitions: do not write them.`;
 }

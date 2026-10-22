@@ -5,10 +5,12 @@
 // the plan asks for. Scene starts land on the beat, so every cut lands with
 // the music, and every reveal lands on a drop.
 //
-// Three flavours:
+// Three designed flavours:
 //   pulse      deep and minimal: dark pad, round kick, off-beat sub, soft ticks
 //   soft       a brighter key, a half-time kick and a quiet glass arpeggio
 //   cinematic  wide slow chords, a low heartbeat, swells and bells, no drums
+// and four played grooves with a melody of each film's own (grooves.js):
+// bounce, drive, keys and arp.
 //
 // The arrangement follows the scene kinds: a hook builds, a reveal drops out
 // and lands a boom, feature scenes groove, a quote or a calm scene thins out,
@@ -16,6 +18,7 @@
 
 import { Bus, SR, pad, kick, sub, tick, hat, snap, boom, swell, bell, whoosh, hit, reverb } from './synth.js';
 import { master, integratedLufs } from './master.js';
+import { GROOVES, playGroove, grooveSounds, writeMelody } from './grooves.js';
 
 const A2 = 110;
 const semi = (k) => A2 * 2 ** (k / 12);
@@ -68,7 +71,8 @@ export async function makeScore(doc, { onStage = null, seed = 1, voices = [], be
   // another key and another progression is another piece of music.
   const key = Number.isInteger(doc.sound.key) ? doc.sound.key : 0;
   const order = ORDERS[doc.sound.progression] || ORDERS[0];
-  const chords = order.map((k) => (CHORDS[flavor] || CHORDS.pulse)[k]);
+  const groove = GROOVES[flavor] || null;
+  const chords = order.map((k) => (groove?.chords || CHORDS[flavor] || CHORDS.pulse)[k]);
   const tone = (k) => semi(k + key);
   const kindAt = (t) => { let k = sections[0]?.kind || 'mode'; for (const s of sections) if (t >= s.t - 1e-4) k = s.kind; return t > doc.duration ? 'tail' : k; };
   const step = async (name) => { if (onStage) await onStage(name); };
@@ -80,16 +84,17 @@ export async function makeScore(doc, { onStage = null, seed = 1, voices = [], be
   // The pad: one chord every two bars (cinematic: four), overlapping a little.
   const chordBars = flavor === 'cinematic' ? 4 : 2;
   const nb = Math.ceil(doc.duration / BAR) + 1;
-  for (let b = 0; music && b < nb; b += chordBars) {
+  const padGain = groove ? groove.pad?.gain ?? 0 : 1;
+  for (let b = 0; music && padGain && b < nb; b += chordBars) {
     const t0 = b * BAR;
     if (t0 > doc.duration) break;
     const [notes] = chords[Math.floor(b / chordBars) % 4];
     const k = kindAt(t0 + 0.01);
     const g = { hook: 0.55, reveal: 0.75, mode: 0.6, calm: 0.85, end: 0.8 }[k] ?? 0.6;
     notes.forEach((st, j) => {
-      const sig = pad(tone(st), chordBars * BAR + 1.0, seed * 31 + b * 7 + j, flavor === 'cinematic' ? { attack: 1.8, release: 2.2, harmonics: 6 } : {});
-      dry.add(sig, t0 - 0.2, 0.5 * g, ((j % 2) * 2 - 1) * 0.4);
-      send.add(sig, t0 - 0.2, 0.35 * g, ((j % 2) * 2 - 1) * 0.4);
+      const sig = pad(tone(st), chordBars * BAR + 1.0, seed * 31 + b * 7 + j, flavor === 'cinematic' ? { attack: 1.8, release: 2.2, harmonics: 6 } : groove?.pad?.opts || {});
+      dry.add(sig, t0 - 0.2, 0.5 * g * padGain, ((j % 2) * 2 - 1) * 0.4);
+      send.add(sig, t0 - 0.2, 0.35 * g * padGain, ((j % 2) * 2 - 1) * 0.4);
     });
   }
   await step('pad');
@@ -99,6 +104,9 @@ export async function makeScore(doc, { onStage = null, seed = 1, voices = [], be
   const firstT = sections[0]?.t || 0;
   const nextChange = (t) => sections.find((s) => s.t > t + 1e-4)?.t ?? doc.duration;
   const K = kick(seed + 3), H = hat(seed + 5), T = tick(seed + 7), N = snap(seed + 9);
+  // A groove's own sounds, and the film's own melody from its seed and key.
+  const sounds = groove ? grooveSounds(seed) : null;
+  const mel = groove ? writeMelody((doc.seed || 7) * 13 + key * 7 + (doc.sound.progression || 0)) : null;
   for (let i = 0; music && i < nbeats; i++) {
     const t = i * beat, k = kindAt(t + 1e-3);
     if (k === 'tail') break;
@@ -106,6 +114,11 @@ export async function makeScore(doc, { onStage = null, seed = 1, voices = [], be
     if (drops.some((d) => t >= d - beat - 1e-3 && t < d) || drops.some((d) => t >= d && t < d + beat * 2 - 1e-3)) continue;
     const barBeat = i % 4;
     const root = tone(chords[Math.floor(t / BAR / chordBars) % 4][1]) / 2;
+    if (groove) {
+      const build = (t - firstT) / Math.max(1e-6, nextChange(t) - firstT);
+      playGroove(flavor, { i, t, beat, barBeat, k, build, notes: chords[Math.floor(t / BAR / chordBars) % 4][0], root, tone, dry, send, duck, mel, seed, sounds });
+      continue;
+    }
     if (flavor === 'cinematic') {
       if (k === 'calm' || k === 'end') { if (barBeat === 0) dry.add(sub(root, 0.6), t, 0.3); continue; }
       // A low heartbeat: two soft pulses each bar.

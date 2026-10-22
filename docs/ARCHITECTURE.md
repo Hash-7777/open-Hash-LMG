@@ -52,7 +52,8 @@ src/
                          code check, the scene helpers, the run record
     providers/           the model services, request and stream shapes, local model
                          sessions, model profiles, speech requests
-    audio/               synthesis, the score, mastering, word timing, WAV
+    audio/               synthesis, the score and its played grooves, mastering, word
+                         timing, WAV
     export/              the MP4 and MOV writer, H.264 sample shaping and MP3 frames,
                          export sizes
     util/                colour and JSON helpers

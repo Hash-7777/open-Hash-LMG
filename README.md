@@ -75,7 +75,7 @@ By default the look is matched to the brief: a calm brief, a technical one and a
 | **Your own footage** | Video (MP4, MOV, WebM), pictures and sound imported from this computer and linked where they are, never copied: a clip or a picture becomes a scene, trimmed by where it starts and how long it runs, split at the playhead, faded, titled over and set louder or quieter; a song plays as the film's music in place of the score |
 | **Templates** | Eight films to start from (a launch, an explainer, a year in numbers, an event teaser, a testimonial, a release, a quiet reveal, a calm app), each made whole at once with no model and directed like any other |
 | **Formats** | 16:9, 9:16, 1:1 and 4:5, at 24 to 60 frames a second |
-| **Sound** | Three score flavours (deep pulse, soft, cinematic) built from the film's own scenes, in the film's own tempo and key with its chords in one of three orders: a build into the reveal, a boom on the drop, a fade on the end card |
+| **Sound** | Seven scores built from the film's own scenes, chosen by the brief's mood: three designed ones (deep pulse, soft, cinematic) and four played grooves (bounce, drive, keys, arp), each with its own instruments, drums and a melody written for that film. All in the film's own tempo and key with its chords in one of three orders: a build into the reveal, a boom on the drop, a fade on the end card |
 | **Narration** | One line per scene, the music lowered under the voice, captions that light up word by word as they are said |
 
 <br>
@@ -133,7 +133,7 @@ src/
     engine/        easing, keyframes, paths, the drawing kit, motion, the renderer
     director/      prompts, the plan-check-revise loop, scene helpers, the code check
     providers/     model services, requests and streams, model sizes, voices
-    audio/         synth, score, narration mix, loudness, word timing, WAV
+    audio/         synth, score, grooves, narration mix, loudness, word timing, WAV
     export/        the MP4 and MOV writer
   render/          the locked-down render worker, its host, footage frames, video export
   platform/        the desktop app or a browser: projects, files, settings and keys

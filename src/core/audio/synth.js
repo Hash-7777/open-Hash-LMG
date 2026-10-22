@@ -1,9 +1,10 @@
 // Sound sources for the score, written as plain arithmetic on sample arrays so
 // a film's music is the same on every machine and needs no audio device.
 //
-// Built from sound design rather than melody (a low pad, a round kick, a sub
-// on the off-beat, soft ticks, a boom, a swell, a bell), which is what can be
-// made well in code. Every noise source is seeded.
+// Sound design (a low pad, a round kick, a sub on the off-beat, soft ticks, a
+// boom, a swell, a bell) and a few played instruments for the grooves in
+// grooves.js (a mallet, a plucked string, an electric piano, a synth pluck, a
+// pluck bass, a clap, a shaker). Every noise source is seeded.
 
 import { rand } from '../engine/math.js';
 
@@ -13,7 +14,7 @@ const TAU = Math.PI * 2;
 // A sine table is several times faster than Math.sin in the hot loops.
 const TABLE_BITS = 13, TABLE = new Float32Array((1 << TABLE_BITS) + 1);
 for (let i = 0; i <= 1 << TABLE_BITS; i++) TABLE[i] = Math.sin((i / (1 << TABLE_BITS)) * TAU);
-function sinp(phase) {
+export function sinp(phase) {
   // phase in turns
   const p = phase - Math.floor(phase);
   const x = p * (1 << TABLE_BITS);
@@ -211,4 +212,101 @@ export function reverb(L, R, { size = 0.84, damp = 0.25, wet = 0.3 } = {}) {
   const wl = run(L, 0), wr = run(R, 23);
   for (let i = 0; i < wl.length; i++) { wl[i] *= wet; wr[i] *= wet; }
   return [wl, wr];
+}
+
+// ---- played instruments ------------------------------------------------------
+
+const attackOf = (t, a) => Math.min(1, t / a);
+
+// A struck mallet, like a marimba: the note with its bright fourth and tenth
+// partials, which die first, and a decay that shortens as the note rises.
+export function mallet(freq, dur = 0.7) {
+  const n = Math.ceil(dur * SR), out = new Float32Array(n);
+  const decay = 5 + freq / 180;
+  let p1 = 0, p4 = 0, p10 = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    p1 += freq / SR; p4 += (freq * 3.93) / SR; p10 += (freq * 9.8) / SR;
+    out[i] = (sinp(p1) + 0.3 * sinp(p4) * Math.exp(-t * 28) + 0.12 * sinp(p10) * Math.exp(-t * 70)) * Math.exp(-t * decay) * attackOf(t, 0.002);
+  }
+  return out;
+}
+
+// A plucked string (a delay line averaging itself), seeded. Brightness is how
+// much of each pass is kept unfiltered.
+export function pluck(freq, dur = 1.2, seed = 1, bright = 0.5) {
+  const n = Math.ceil(dur * SR), out = new Float32Array(n);
+  const period = Math.max(2, Math.round(SR / freq));
+  const line = noise(period, seed, 0.5, 0.6);
+  let idx = 0, prev = 0;
+  const keep = 0.996 - (1 - bright) * 0.004;
+  for (let i = 0; i < n; i++) {
+    const x = line[idx];
+    const y = keep * (bright * x + (1 - bright) * 0.5 * (x + prev));
+    prev = x;
+    line[idx] = y;
+    out[i] = x * Math.min(1, (dur - i / SR) / 0.05);
+    if (++idx >= period) idx = 0;
+  }
+  return out;
+}
+
+// An electric piano: one sine bending another, bright as the key is struck
+// and mellowing as it rings.
+export function epiano(freq, dur = 1.8) {
+  const n = Math.ceil(dur * SR), out = new Float32Array(n);
+  let pc = 0, pm = 0, ph = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    pc += freq / SR; pm += freq / SR; ph += (freq * 14) / SR;
+    const index = 1.8 * Math.exp(-t * 5) + 0.25;
+    const tine = 0.06 * sinp(ph) * Math.exp(-t * 40);
+    out[i] = (sinp(pc + (index * sinp(pm)) / (2 * Math.PI) * 2) + tine) * Math.exp(-t * 1.4) * attackOf(t, 0.004) * Math.min(1, (dur - t) / 0.15);
+  }
+  return out;
+}
+
+// A synth pluck: a few harmonics of a saw, the upper ones closing first, as
+// if a filter swept down. bright sets how long they stay open.
+export function synthPluck(freq, dur = 0.35, bright = 1) {
+  const n = Math.ceil(dur * SR), out = new Float32Array(n);
+  const top = Math.max(1, Math.min(14, Math.floor(7000 / freq)));
+  for (let h = 1; h <= top; h++) {
+    const inc = (freq * h) / SR, close = 3 + (h * 9) / bright;
+    let ph = 0;
+    for (let i = 0; i < n; i++) { out[i] += (sinp(ph) / h) * Math.exp((-i / SR) * close); ph += inc; }
+  }
+  for (let i = 0; i < n; i++) { const t = i / SR; out[i] *= 0.5 * attackOf(t, 0.003) * Math.min(1, (dur - t) / 0.03); }
+  return out;
+}
+
+// A round pluck bass with enough upper harmonics to carry on a phone.
+export function bass(freq, dur = 0.3) {
+  const n = Math.ceil(dur * SR), out = new Float32Array(n);
+  let ph = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    ph += freq / SR;
+    const env = attackOf(t, 0.004) * Math.exp(-t * 5) * Math.min(1, (dur - t) / 0.03);
+    out[i] = Math.tanh(1.8 * (sinp(ph) + 0.35 * sinp(ph * 2) * Math.exp(-t * 8) + 0.15 * sinp(ph * 3) * Math.exp(-t * 14)) * env) * 0.8;
+  }
+  return out;
+}
+
+// A clap: three quick bursts of band-limited noise and a short tail.
+export function clap(seed = 23) {
+  const n = Math.ceil(0.3 * SR), out = noise(n, seed, 0.85, 0.4);
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const bursts = [0, 0.011, 0.022].reduce((g, s) => g + (t >= s ? Math.exp(-(t - s) * 180) : 0), 0);
+    out[i] *= (bursts * 0.7 + Math.exp(-t * 16) * 0.45) * 1.3;
+  }
+  return out;
+}
+
+// A shaker: bright noise that swells in and dies away.
+export function shaker(seed = 29) {
+  const n = Math.ceil(0.09 * SR), out = noise(n, seed, 0.97);
+  for (let i = 0; i < n; i++) { const t = i / SR; out[i] *= attackOf(t, 0.012) * Math.exp(-t * 40) * 0.9; }
+  return out;
 }

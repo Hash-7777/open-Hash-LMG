@@ -71,8 +71,8 @@ const BPM = {
 
 // The music each mood leans to.
 const SCORES_FOR = {
-  calm: ['cinematic', 'soft'], luxury: ['soft', 'cinematic', 'pulse'], warm: ['soft', 'cinematic'], serious: ['cinematic', 'soft', 'pulse'],
-  technical: ['pulse', 'soft'], playful: ['soft', 'pulse'], bold: ['pulse', 'cinematic'], energetic: ['pulse'],
+  calm: ['keys', 'cinematic', 'soft'], luxury: ['keys', 'soft', 'cinematic'], warm: ['keys', 'bounce', 'soft'], serious: ['cinematic', 'keys', 'pulse'],
+  technical: ['arp', 'pulse', 'drive'], playful: ['bounce', 'keys'], bold: ['drive', 'pulse', 'cinematic'], energetic: ['drive', 'bounce', 'arp'],
 };
 
 // What each look may cut with and how its words may arrive; a film takes two

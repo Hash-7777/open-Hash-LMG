@@ -17,7 +17,7 @@ import { exportSize } from '../../src/core/export/sizes.js';
 const scene = normalizeScene(EXAMPLES.launch).scene;
 
 section('The score');
-for (const flavor of ['pulse', 'soft', 'cinematic']) {
+for (const flavor of ['pulse', 'soft', 'cinematic', 'bounce', 'drive', 'keys', 'arp']) {
   await claim(`${flavor}: about -14 LUFS, true peak at most -1 dBTP`, async () => {
     const st = await makeScore({ ...scene, sound: { ...scene.sound, score: flavor } });
     const lufs = integratedLufs(st.left, st.right);
@@ -25,6 +25,30 @@ for (const flavor of ['pulse', 'soft', 'cinematic']) {
     assert.ok(truePeakDb(st.left, st.right) <= -0.95);
   });
 }
+// How alike two tracks are, from -1 to 1, over their loudness from moment to
+// moment: one groove against another sounds different, not only louder.
+const likeness = (a, b) => {
+  const env = (x) => { const w = 2400, out = []; for (let i = 0; i + w <= x.length; i += w) { let e = 0; for (let j = i; j < i + w; j++) e += x[j] * x[j]; out.push(Math.sqrt(e / w)); } return out; };
+  const ea = env(a.left), eb = env(b.left), n = Math.min(ea.length, eb.length);
+  const mean = (v) => v.slice(0, n).reduce((s, x) => s + x, 0) / n;
+  const ma = mean(ea), mb = mean(eb);
+  let num = 0, da = 0, db = 0;
+  for (let i = 0; i < n; i++) { num += (ea[i] - ma) * (eb[i] - mb); da += (ea[i] - ma) ** 2; db += (eb[i] - mb) ** 2; }
+  return num / Math.sqrt(da * db);
+};
+await claim('every groove plays its own pattern, unlike the others', async () => {
+  const tracks = {};
+  for (const g of ['bounce', 'drive', 'keys', 'arp']) tracks[g] = await makeScore({ ...scene, sound: { ...scene.sound, score: g } });
+  const names = Object.keys(tracks);
+  for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) assert.ok(likeness(tracks[names[i]], tracks[names[j]]) < 0.9, `${names[i]} and ${names[j]}`);
+});
+await claim('two films in one groove get different tunes', async () => {
+  const a = await makeScore({ ...scene, seed: 11, sound: { ...scene.sound, score: 'bounce' } });
+  const b = await makeScore({ ...scene, seed: 12, sound: { ...scene.sound, score: 'bounce' } });
+  let diff = 0;
+  for (let i = 0; i < a.left.length; i += 101) diff += Math.abs(a.left[i] - b.left[i]);
+  assert.ok(diff / (a.left.length / 101) > 0.01);
+});
 await claim('no music and no voice is silence, not a track', async () => assert.equal(await makeScore({ ...scene, sound: { ...scene.sound, score: 'none' } }), null));
 await claim('the same film makes the same score', async () => {
   const a = await makeScore(scene), b = await makeScore(scene);

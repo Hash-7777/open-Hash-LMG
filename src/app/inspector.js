@@ -24,7 +24,7 @@ import { repeatSection } from './repeat-fields.js';
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ');
 const labelled = (list) => list.map((v) => [v, cap(v)]);
-const SCORE_LABELS = { pulse: 'Pulse: deep and minimal', soft: 'Soft: bright and light', cinematic: 'Cinematic: wide, no drums', none: 'No music' };
+const SCORE_LABELS = { pulse: 'Pulse: deep and minimal', soft: 'Soft: bright and light', cinematic: 'Cinematic: wide, no drums', bounce: 'Bounce: playful, mallets and claps', drive: 'Drive: fast, four on the floor', keys: 'Keys: warm electric piano', arp: 'Arp: running synth, precise', none: 'No music' };
 const FONT_LABELS = { sans: 'Sans', display: 'Display', condensed: 'Condensed', serif: 'Serif', mono: 'Mono', rounded: 'Rounded' };
 const WEIGHTS = [[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold'], [800, 'Heavy'], [900, 'Black']].map(([v, l]) => [String(v), l]);
 

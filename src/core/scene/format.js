@@ -58,7 +58,7 @@ export const HOLD_PRESETS = ['none', 'float', 'drift', 'underline', 'marker', 's
 export const TRANSITIONS = ['cut', 'fade', 'dip', 'push', 'slide', 'zoom', 'wipe', 'carry'];
 export const DIRECTIONS = ['left', 'right', 'up', 'down'];
 export const BACKGROUNDS = ['solid', 'grain', 'grid', 'dots', 'vignette', 'field'];
-export const SCORES = ['pulse', 'soft', 'cinematic', 'none'];
+export const SCORES = ['pulse', 'soft', 'cinematic', 'bounce', 'drive', 'keys', 'arp', 'none'];
 export const HIT_KINDS = ['boom', 'hit', 'swell', 'tick', 'chime', 'whoosh'];
 
 // Where narration comes from. chatterbox and kokoro run through the person's

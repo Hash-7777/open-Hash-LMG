@@ -45,6 +45,11 @@ newest first, grouped by what it does for the person making a film.
   local speech server or a cloud voice, timed word by word for captions.
 - The score plays in the film's own key and tempo; clips' own sound and
   imported music are mixed under the narration.
+- Four played grooves join the three designed scores, chosen by the brief's
+  mood: bounce (mallets, claps, a hopping bass), drive (four on the floor, a
+  rolling bass, a synth pluck), keys (electric-piano chords, a round bass)
+  and arp (a running arpeggio, a held bass, bells). Each film gets a melody
+  of its own.
 
 ### Export
 - Encoders built into the app, the same on macOS, Windows and Linux: MP4,
