@@ -201,4 +201,37 @@ await claim('a redesign is shown marks for the drawings and given the path data 
   assert.deepEqual(back.scenes[0].layers.filter((L) => L.shape === 'path').map((L) => L.d), scene.scenes[0].layers.filter((L) => L.shape === 'path').map((L) => L.d));
 });
 
+section('A redesign keeps the drawings');
+await claim('a redesign that dropped the drawings has those scenes put back as the app laid them out, with a note', async () => {
+  const { d, log } = director({
+    storyboard: STORY,
+    pictures: { pictures: [{ beat: 1, name: 'cup', ...CUP }, { beat: 2, name: 'ring', ...RING }] },
+    plan: () => { const { scene } = compileStoryboard(normalizeStoryboard(STORY).storyboard, { style: 'studio', targetDuration: 15 }); const s = sceneForModel(scene); s.title = 'Redesigned'; return s; },
+  });
+  const out = await d.make({ ...brief, tier: 'plan', rounds: 0 });
+  assert.equal(out.scene.title, 'Redesigned');
+  assert.equal(out.scene.scenes.filter((S) => S.layers.some((L) => L.shape === 'path')).length, 2);
+  assert.ok(log.some((e) => e.id === 'design' && e.status === 'note' && /keep their drawing/.test(e.detail)));
+});
+await claim('a redesign that kept them is used as written, and was shown no drawing data', async () => {
+  let shown = '';
+  const log = [];
+  const d2 = createDirector({
+    ask: async ({ purpose, messages }) => {
+      if (purpose === 'storyboard') return JSON.stringify(STORY);
+      if (purpose === 'pictures') return JSON.stringify({ pictures: [{ beat: 1, name: 'cup', ...CUP }] });
+      shown = messages[0].content;
+      const draft = JSON.parse(shown.split('A draft plan made from it by rule:\n')[1].split('\n\nImprove')[0]);
+      draft.scenes[0].layers.find((L) => L.id === 'picture').x = 0.4;
+      return JSON.stringify(draft);
+    },
+    measure: async ({ scene }, times) => measure(scene, times), trial: async () => ({ ok: true }), sheet: async () => null, log: (e) => log.push(e),
+  });
+  const out = await d2.make({ ...brief, tier: 'plan', rounds: 0 });
+  assert.equal(out.scene.scenes[0].layers.find((L) => L.id === 'picture').x, 0.4);
+  assert.ok(out.scene.scenes[0].layers.find((L) => L.id === 'picture').d.startsWith('M'));
+  assert.ok(!/"pictures":\{/.test(shown) && /kept:picture/.test(shown) && /keep every one/.test(shown));
+  assert.ok(!log.some((e) => /keep their drawing|keeps its drawing/.test(e.detail || '')));
+});
+
 done();

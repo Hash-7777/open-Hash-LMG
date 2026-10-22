@@ -183,8 +183,11 @@ The film: about ${Math.round(seconds)} seconds, aspect ${aspect}, style ${style}
 Reply with the complete scene plan as JSON only.`;
 }
 
+// Every plan a model rewrites is told the drawings stay.
+const DRAWINGS = 'Layers with an id starting "picture" are drawings of what the film is about: keep every one in its scene. You may move one, change when it arrives or set its opacity; its path data shows as "kept:" and stays as it is.';
+
 export function planFromDraftMessage(brief, storyboard, draft) {
-  return `Brief:\n${brief}\n\nStoryboard agreed:\n${JSON.stringify(storyboard)}\n\nA draft plan made from it by rule:\n${JSON.stringify(draft)}\n\nImprove the draft into a finished design for this brief alone: stronger composition and hierarchy, varied scale and placement from scene to scene, motion designed for each beat (custom keys, hairlines and rings that draw on, a repeat field that fills in, a counter, a chart), one element carried between scenes where it helps, and moments of stillness before reveals. Keep the words, the timing grid, the style and the palette. Reply with the complete scene plan as JSON only.`;
+  return `Brief:\n${brief}\n\nStoryboard agreed:\n${JSON.stringify(storyboard)}\n\nA draft plan made from it by rule:\n${JSON.stringify(draft)}\n\nImprove the draft into a finished design for this brief alone: stronger composition and hierarchy, varied scale and placement from scene to scene, motion designed for each beat (custom keys, hairlines and rings that draw on, a repeat field that fills in, a counter, a chart), one element carried between scenes where it helps, and moments of stillness before reveals. Keep the words, the timing grid, the style and the palette. ${DRAWINGS} Reply with the complete scene plan as JSON only.`;
 }
 
 // ---- free drawing code (strong models) -------------------------------------
@@ -274,7 +277,7 @@ export function issuesText(issues) {
 }
 
 export function revisePlanMessage(issues) {
-  return `The checks found these problems in your plan:\n${issuesText(issues)}\n\nFix every one and reply with the complete corrected scene plan as JSON only.`;
+  return `The checks found these problems in your plan:\n${issuesText(issues)}\n\nFix every one and keep the drawings. ${DRAWINGS} Reply with the complete corrected scene plan as JSON only.`;
 }
 
 export function reviseCodeMessage(problems) {
@@ -291,7 +294,7 @@ export function criticMessage(brief, times) {
 }
 
 export function applyCritiqueMessage(notes, tier) {
-  const what = tier === 'code' ? 'the complete corrected code in one ```js block' : 'the complete corrected scene plan as JSON only';
+  const what = tier === 'code' ? 'the complete corrected code in one ```js block' : `the complete corrected scene plan as JSON only. ${DRAWINGS}`;
   return `A creative director reviewed stills of your film and asks for these changes:\n${notes.map((n, k) => `${k + 1}. ${n}`).join('\n')}\n\nMake them and reply with ${what}.`;
 }
 
@@ -304,5 +307,5 @@ export function editMessage(tier, instruction, current) {
   if (tier === 'code') {
     return `Current code:\n\`\`\`js\n${current}\n\`\`\`\n\nChange it as asked: ${instruction}\n\nReply with the complete updated code in one \`\`\`js block.`;
   }
-  return `Current scene plan:\n${JSON.stringify(current)}\n\nChange it as asked: ${instruction}\n\nReply with the complete updated scene plan as JSON only.`;
+  return `Current scene plan:\n${JSON.stringify(current)}\n\nChange it as asked: ${instruction}\n\n${DRAWINGS} Reply with the complete updated scene plan as JSON only.`;
 }

@@ -12,6 +12,8 @@ newest first, grouped by what it does for the person making a film.
   beats with one take compositions built around it: the picture on a panel
   beside the line, above it, faint behind it, as the name's mark, beside a
   figure or a list. Plain lines gain a band across the frame and a poster.
+  A model redesigning the scenes is told the drawings stay, and a scene it
+  redesigns without its drawing is put back as the app laid it out.
 - Every film is directed from its own brief: a look, an accent colour, a
   tempo and musical key, transitions, entrances, camera moves and a
   composition for each scene, so two briefs, or two takes of one brief, never

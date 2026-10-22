@@ -57,6 +57,24 @@ export function restore(next, prev) {
   return doc;
 }
 
+// A model rewriting a plan may drop the drawings of the brief's subject, the
+// one thing in a film that shows what it is about. A rewritten scene that
+// lost the drawing its earlier version had is put back as it was: the same
+// scene id, else the scene in the same place. Returns { scene, kept, note },
+// kept being how many scenes were put back; the caller normalises the result.
+const drawn = (S) => (S?.layers || []).some((L) => L.shape === 'path' && /^picture/.test(L.id || ''));
+export function keepDrawings(next, prev) {
+  let kept = 0;
+  const scenes = (next.scenes || []).map((S, i) => {
+    const before = (prev.scenes || []).find((P) => P.id === S.id) || prev.scenes?.[i];
+    if (!drawn(before) || drawn(S)) return S;
+    kept++;
+    return { ...before, id: S.id };
+  });
+  const note = kept ? `${kept === 1 ? 'One scene keeps its' : `${kept} scenes keep their`} drawing as the app laid ${kept === 1 ? 'it' : 'them'} out, since the redesign left ${kept === 1 ? 'it' : 'them'} out.` : '';
+  return { scene: { ...next, scenes }, kept, note };
+}
+
 // How far a laid-out storyboard is from good: its problems by weight, and how
 // far it runs from the length asked for. Lower is better.
 export function draftScore(scene, issues, seconds) {

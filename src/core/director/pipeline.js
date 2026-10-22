@@ -32,7 +32,7 @@ import {
   STORYBOARD_SCHEMA, storyboardPrompt, planPrompt, planFromDraftMessage, codePrompt,
   revisePlanMessage, reviseCodeMessage, CRITIC_PROMPT, criticMessage, applyCritiqueMessage, editMessage,
 } from './prompts.js';
-import { sceneForModel, restore, draftScore } from './scene-io.js';
+import { sceneForModel, restore, draftScore, keepDrawings } from './scene-io.js';
 
 // The scene helpers are in scene-io.js; sceneForModel is re-exported for the checks.
 export { sceneForModel, draftScore } from './scene-io.js';
@@ -143,11 +143,14 @@ export function createDirector(deps) {
     return { scene, issues };
   }
 
+  // A rewritten plan with every drawing the model dropped put back.
+  const redrawn = (next, prev) => { const r = keepDrawings(next, prev); if (r.note) note('design', r.note); return r.scene; };
+
   async function designPlan(brief, storyboard, draft, opts) {
     const system = planPrompt({ seconds: opts.seconds, aspect: draft.aspect, style: draft.style });
-    const raw = await askJson(system, planFromDraftMessage(brief, storyboard, sceneForModel(draft)), { purpose: 'plan' });
+    const raw = await askJson(system, planFromDraftMessage(brief, storyboardForModel(storyboard), sceneForModel(draft)), { purpose: 'plan' });
     if (!raw) { note('design', 'The redesign could not be read; the rule-made design is kept.'); return draft; }
-    const { scene, notes } = normalizeScene(restore(raw, draft), { style: draft.style, aspect: draft.aspect });
+    const { scene, notes } = normalizeScene(redrawn(restore(raw, draft), draft), { style: draft.style, aspect: draft.aspect });
     if (!scene.scenes.length) { note('design', 'The redesign had no scenes; the rule-made design is kept.'); return draft; }
     for (const n of notes.slice(0, 8)) note('design', n);
     return scene;
@@ -157,7 +160,7 @@ export function createDirector(deps) {
     const system = planPrompt({ seconds: opts.seconds, aspect: scene.aspect, style: scene.style });
     const raw = await askJson(system, `${revisePlanMessage(issues)}\n\nThe plan:\n${JSON.stringify(sceneForModel(scene))}`, { purpose: 'revise' });
     if (!raw) return scene;
-    const next = normalizeScene(restore(raw, scene), { style: scene.style, aspect: scene.aspect }).scene;
+    const next = normalizeScene(redrawn(restore(raw, scene), scene), { style: scene.style, aspect: scene.aspect }).scene;
     return next.scenes.length ? next : scene;
   }
 
@@ -333,7 +336,7 @@ export function createDirector(deps) {
             const system = planPrompt({ seconds: opts.seconds, aspect: scene.aspect, style: scene.style });
             const raw = await askJson(system, `${applyCritiqueMessage(notes, 'plan')}\n\nThe plan:\n${JSON.stringify(sceneForModel(scene))}`, { purpose: 'apply review' });
             if (!raw) return scene;
-            const next = normalizeScene(restore(raw, scene), { style: scene.style, aspect: scene.aspect }).scene;
+            const next = normalizeScene(redrawn(restore(raw, scene), scene), { style: scene.style, aspect: scene.aspect }).scene;
             return next.scenes.length ? next : scene;
           });
           ({ scene, issues } = await step('check', 'Checking the changes', () => checkScene(scene, opts)));
@@ -382,7 +385,7 @@ export function createDirector(deps) {
     let scene = await step('edit', 'Changing the plan', async () => {
       const raw = await askJson(planPrompt({ seconds: project.scene.duration, aspect: project.scene.aspect, style: project.scene.style }), editMessage('plan', text, sceneForModel(project.scene)), { purpose: 'edit' });
       if (!raw) throw new Error('The model\'s answer could not be read as a plan. Nothing was changed.');
-      const next = normalizeScene(restore(raw, project.scene), { style: project.scene.style, aspect: project.scene.aspect }).scene;
+      const next = normalizeScene(redrawn(restore(raw, project.scene), project.scene), { style: project.scene.style, aspect: project.scene.aspect }).scene;
       if (!next.scenes.length) throw new Error('The changed plan had no scenes. Nothing was changed.');
       return next;
     });
