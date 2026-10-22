@@ -23,12 +23,15 @@ const NO_TEMPERATURE = /^(o\d|gpt-5)/i;
 const CLAUDE_SAMPLING = /^claude-(?:3|2|instant)|^claude-[a-z]+-4(?:-[0-6])?(?:-\d{8})?$/i;
 // Gemini models that think before answering, and count that in their budget.
 const GEMINI_THINKING = /gemini-(?:2\.5|[3-9])/i;
+// Models served in the chat shape whose names say they reason first.
+const THINKS_BY_NAME = /reason|think|deepseek-r1|qwq/i;
 // Room for thinking on top of the answer, for the models that do it.
-const THINKING_ROOM = 16000;
-const withRoom = (maxTokens) => Math.max(maxTokens, THINKING_ROOM);
+export const THINKING_ROOM = 16000;
+const withRoom = (maxTokens) => maxTokens + THINKING_ROOM;
 
 // req: { provider, model, key, base, system, messages: [{ role, content, images: [dataUrl] }],
-//        json: boolean, schema: object|null, temperature, maxTokens, stream, numCtx, numGpu, keepAlive }
+//        json: boolean, schema: object|null, temperature, maxTokens, stream, numCtx, numGpu, keepAlive,
+//        thinks: the model is known to think first, so it gets room for that }
 export function buildRequest(req) {
   const p = PROVIDERS[req.provider];
   if (!p) throw new Error(`Unknown model service: ${req.provider}`);
@@ -84,7 +87,7 @@ export function buildRequest(req) {
     const bare = String(req.model || '').replace(/^[^/]+\//, '');
     const reasons = NO_TEMPERATURE.test(bare);
     const sampling = !reasons && !(/^claude-/i.test(bare) && !CLAUDE_SAMPLING.test(bare));
-    const limit = reasons && p.newTokenField ? withRoom(maxTokens) : maxTokens;
+    const limit = (reasons && p.newTokenField) || req.thinks || THINKS_BY_NAME.test(bare) ? withRoom(maxTokens) : maxTokens;
     if (p.newTokenField) body.max_completion_tokens = limit; else body.max_tokens = limit;
     if (sampling) body.temperature = temperature;
     if (req.json) {
@@ -104,7 +107,7 @@ export function buildRequest(req) {
     const body = {
       model: req.model,
       stream,
-      max_tokens: sampling ? maxTokens : withRoom(maxTokens),
+      max_tokens: sampling && !req.thinks ? maxTokens : withRoom(maxTokens),
       ...(sampling ? { temperature } : {}),
       ...(req.system ? { system: req.system } : {}),
       messages: req.messages.map((m) => ({
@@ -131,7 +134,7 @@ export function buildRequest(req) {
           ...(m.images || []).map((u) => dataUrlParts(u)).filter(Boolean).map((d) => ({ inline_data: { mime_type: d.mime, data: d.data } })),
         ],
       })),
-      generationConfig: { temperature, maxOutputTokens: GEMINI_THINKING.test(model) ? withRoom(maxTokens) : maxTokens, ...(req.json ? { responseMimeType: 'application/json' } : {}) },
+      generationConfig: { temperature, maxOutputTokens: GEMINI_THINKING.test(model) || req.thinks ? withRoom(maxTokens) : maxTokens, ...(req.json ? { responseMimeType: 'application/json' } : {}) },
     };
     const action = stream ? 'streamGenerateContent?alt=sse' : 'generateContent';
     return { url: `${base}/v1beta/models/${encodeURIComponent(model)}:${action}`, init: { method: 'POST', headers, body: JSON.stringify(body) } };

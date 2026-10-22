@@ -40,15 +40,42 @@ function unreachable(providerId, base, err) {
   return new Error(`${p ? p.label : 'The service'} could not be reached. Check the connection to the internet, then try again.`);
 }
 
+// Models seen thinking until their answer ran out of room, kept while the app
+// runs, so every later question gives them that room at once.
+const thinkers = new Set();
+
 // Sends one question and returns the whole answer as text, with any thinking
 // a model wrote into it taken out.
 //   req     as for buildRequest, plus device for local models
 //   io      { fetch, signal, onText(chunk, all), onThinking(chunk), onStats({ speed, promptTokens }) }
+//
+// A model that thinks before it answers can spend the room given for the
+// answer on its thinking. When an answer is cut off that way, the question is
+// asked once more with room for the thinking on top. Ollama is left out: its
+// room is part of the reading window, sized before the question is sent.
 export async function ask(req, io) {
   const p = PROVIDERS[req.provider];
   if (!p) throw new Error(`Unknown model service: ${req.provider}`);
   if (!req.model) throw new Error('Choose a model in Settings first.');
   if (p.kind === 'cloud' && !req.key) throw new Error(`Add your ${p.label} key in Settings first.`);
+  const id = `${req.provider}|${req.model}`;
+  const thinks = !!req.thinks || thinkers.has(id);
+  let r = await askOnce({ ...req, thinks }, io, p);
+  if (r.stop === 'cut' && !thinks && p.style !== 'ollama' && (r.thought || !r.text.trim())) {
+    thinkers.add(id);
+    r = await askOnce({ ...req, thinks: true }, io, p);
+  }
+  if (!r.text.trim() && r.stop === 'declined') throw new Error(`${p.label} declined to answer this brief. Try other words, or another model.`);
+  if (!r.text.trim() && r.stop === 'cut') throw new Error(`${p.label} used all the room it was given before it wrote an answer. Try again, or choose another model.`);
+  if (!r.text.trim()) {
+    throw new Error(`${p.label} sent back an empty answer.${r.finished ? '' : ' It may have stopped early.'} Try again, or choose another model.`);
+  }
+  return r.text;
+}
+
+// One request and its reply: { text, stop, finished, thought }, thought being
+// whether the model sent any thinking.
+async function askOnce(req, io, p) {
   const numGpu = req.numGpu ?? (p.style === 'ollama' ? gpuLayers(req.device) : undefined);
   const { url, init } = buildRequest({ ...req, numGpu });
 
@@ -68,12 +95,13 @@ export async function ask(req, io) {
   let failure = null;
   let finished = false;
   let stop = null;
+  let thought = false;
   const take = (ev) => {
     if (ev && ev.__done) { finished = true; return; }
     if (p.style === 'ollama' && ev && ev.done && io.onStats) io.onStats({ speed: speedOf(ev), promptTokens: Number(ev.prompt_eval_count) || null });
     const r = readEvent(p.style, ev);
     if (r.error) { failure = r.error; return; }
-    if (r.thinking && io.onThinking) io.onThinking(r.thinking);
+    if (r.thinking) { thought = true; if (io.onThinking) io.onThinking(r.thinking); }
     if (r.text) { text += r.text; if (io.onText) io.onText(r.text, text); }
     if (r.stop) stop = r.stop;
     if (r.done) finished = true;
@@ -109,13 +137,8 @@ export async function ask(req, io) {
   }
 
   if (failure) throw new Error(onChipHint(req, `${p.label}: ${failure}`));
-  text = stripThinking(text);
-  if (!text.trim() && stop === 'declined') throw new Error(`${p.label} declined to answer this brief. Try other words, or another model.`);
-  if (!text.trim() && stop === 'cut') throw new Error(`${p.label} used all the room it was given before it wrote an answer. Try again, or choose another model.`);
-  if (!text.trim()) {
-    throw new Error(`${p.label} sent back an empty answer.${finished ? '' : ' It may have stopped early.'} Try again, or choose another model.`);
-  }
-  return text;
+  const answer = stripThinking(text);
+  return { text: answer, stop, finished, thought: thought || /<think>/i.test(text) };
 }
 
 // The models a service offers, as [{ id, label, meta }]. A cloud service with

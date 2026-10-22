@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
 import { ask, listModels, gpuLayers } from '../../src/core/providers/client.js';
 import { modelProfile, sortModels, defaultModel, parseModelList } from '../../src/core/providers/models.js';
-import { buildRequest } from '../../src/core/providers/request.js';
+import { buildRequest, THINKING_ROOM } from '../../src/core/providers/request.js';
 
 const stream = (chunks) => new Response(new ReadableStream({ start(c) { for (const x of chunks) c.enqueue(new TextEncoder().encode(x)); c.close(); } }));
 const q = (provider, extra = {}) => ({ provider, model: 'm', key: 'k', messages: [{ role: 'user', content: 'x' }], ...extra });
@@ -84,6 +84,48 @@ await claim('a Gemini model that thinks gets room to think', () => {
 await rejects('an answer declined by the model says so', q('anthropic'), { fetch: async () => stream(['data: {"type":"message_delta","delta":{"stop_reason":"refusal"}}\n\ndata: {"type":"message_stop"}\n\n']) }, /declined to answer/);
 await rejects('a model that answers only another request shape says to choose another', q('openai'), { fetch: async () => new Response('{"error":{"message":"This model is only supported in v1/responses and not in v1/chat/completions."}}', { status: 404 }) }, /does not answer chat requests/);
 await rejects('an answer cut off before any text says so', q('openai'), { fetch: async () => stream(['data: {"choices":[{"delta":{},"finish_reason":"length"}]}\n\n']) }, /used all the room/);
+
+section('A model that thinks first is given room for it');
+const thinkingCut = 'data: {"choices":[{"delta":{"reasoning_content":"Let me think"}}]}\n\ndata: {"choices":[{"delta":{},"finish_reason":"length"}]}\n\n';
+const answered = 'data: {"choices":[{"delta":{"content":"{\\"ok\\":1}"},"finish_reason":"stop"}]}\n\n';
+const recorder = (replies) => {
+  const limits = [];
+  return { limits, fetch: async (u, init) => { const b = JSON.parse(init.body); limits.push(b.max_tokens ?? b.max_completion_tokens); return stream([replies[limits.length - 1] ?? replies.at(-1)]); } };
+};
+await claim('an answer spent on thinking is asked once more with room on top, and comes back', async () => {
+  const r = recorder([thinkingCut, answered]);
+  assert.equal(await ask(q('deepseek', { model: 'ds-a', maxTokens: 600 }), r), '{"ok":1}');
+  assert.deepEqual(r.limits, [600, 600 + THINKING_ROOM]);
+});
+await claim('later questions to that model get the room at once', async () => {
+  const r = recorder([answered]);
+  await ask(q('deepseek', { model: 'ds-a', maxTokens: 7000 }), r);
+  assert.deepEqual(r.limits, [7000 + THINKING_ROOM]);
+});
+await claim('thinking written inside the answer counts too', async () => {
+  const r = recorder(['data: {"choices":[{"delta":{"content":"<think>hmm"},"finish_reason":"length"}]}\n\n', answered]);
+  assert.equal(await ask(q('openrouter', { model: 'or-b', maxTokens: 600 }), r), '{"ok":1}');
+  assert.equal(r.limits.length, 2);
+});
+await claim('a model still out of room with the extra room says so, after one more try only', async () => {
+  const r = recorder([thinkingCut]);
+  await assert.rejects(ask(q('deepseek', { model: 'ds-c', maxTokens: 600 }), r), /used all the room/);
+  assert.equal(r.limits.length, 2);
+});
+await claim('a long answer cut off without thinking is not asked again', async () => {
+  const r = recorder(['data: {"choices":[{"delta":{"content":"partial"},"finish_reason":"length"}]}\n\n']);
+  assert.equal(await ask(q('deepseek', { model: 'plain-a', maxTokens: 600 }), r), 'partial');
+  assert.equal(r.limits.length, 1);
+});
+await claim('Ollama is asked once, its room being part of the reading window', async () => {
+  let calls = 0;
+  await assert.rejects(ask(q('ollama', { model: 'ol-d' }), { fetch: async () => { calls++; return stream(['{"message":{"thinking":"hm","content":""},"done":true,"done_reason":"length"}\n']); } }), /empty answer/);
+  assert.equal(calls, 1);
+});
+await claim('a model whose name says it reasons gets the room from the start', () => {
+  assert.equal(body('deepseek', 'deepseek-reasoner').max_tokens, 1500 + THINKING_ROOM);
+  assert.equal(body('deepseek', 'deepseek-chat').max_tokens, 1500);
+});
 
 section('Model lists');
 await claim('Ollama lists chat models, sorted, without embedding models', async () => {

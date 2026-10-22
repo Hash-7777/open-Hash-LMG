@@ -44,6 +44,8 @@ newest first, grouped by what it does for the person making a film.
 ### Models
 - Current cloud models are sent only the settings they accept, with room to
   think; model lists come newest first.
+- A model that spends its answer's room on thinking is asked once more with
+  room for the thinking, and gets that room for the rest of the session.
 - LM Studio, llama.cpp and Moonshot are asked through the desktop side, so no
   server switch is needed.
 - Local models are sized to what they can read, report their speed and fit,
