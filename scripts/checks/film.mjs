@@ -14,6 +14,8 @@ import { STORYBOARD, measure } from './lib/fixtures.mjs';
 import { statUnits, normalizeStoryboard } from '../../src/core/scene/storyboard.js';
 import { autofix, motionTimes, beatTimes } from '../../src/core/scene/lint.js';
 import { resizeScene } from '../../src/core/scene/edit.js';
+import { forWorker } from '../../src/render/host.js';
+import { encodeWav, bytesToBase64 } from '../../src/core/audio/wav.js';
 
 section('Every beat kind, in every style and frame shape, compiles clean');
 for (const style of STYLE_NAMES) {
@@ -154,6 +156,22 @@ section('Footage and sound clips survive normalising');
   ok('a sound clip keeps every field; one with no asset is dropped', once.sound.clips.length === 1 && once.sound.clips[0].from === 10 && once.sound.clips[0].fadeOut === 2);
   ok('normalising twice changes nothing', JSON.stringify(normalizeScene(once).scene) === JSON.stringify(once));
   ok('a video layer fills the frame and starts with a cut by default', once.scenes[0].layers[0].w === 1920 && once.scenes[0].layers[0].h === 1080 && once.scenes[0].layers[0].in.preset === 'none');
+}
+
+section('Captions draw from what the render worker is sent');
+{
+  const silence = new Float32Array(48000);
+  const data = `data:audio/wav;base64,${bytesToBase64(encodeWav(silence, silence, 48000))}`;
+  const scene = normalizeScene({
+    assets: { said: { kind: 'audio', name: 'Invented line', data, duration: 1, words: [['Quiet', 0.1, 0.4], ['desk.', 0.45, 0.9]] } },
+    scenes: [{ id: 'a', duration: 3, layers: [{ type: 'text', text: 'Lumen', y: 0.3 }] }],
+    voice: { lines: [{ scene: 'a', text: 'Quiet desk.', at: 0.2, clip: 'said' }] },
+  }).scene;
+  const lean = forWorker(scene);
+  ok('the worker gets the word timings, not the sound', lean.assets.said?.words.length === 2 && !('data' in lean.assets.said));
+  let drew = [];
+  try { drew = measure(lean, [0.5])[0].boxes.filter((b) => b.kind === 'text').map((b) => b.text); } catch (err) { drew = [`threw: ${err.message}`]; }
+  ok('a narrated frame draws its caption in the worker', drew.some((t) => /Quiet|desk/.test(t)), drew.join(' / '));
 }
 
 section('Every example draws at every moment');

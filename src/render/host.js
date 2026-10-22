@@ -17,11 +17,16 @@ import { createFootage } from './footage.js';
 
 const FRAME_TIMEOUT_MS = 6000;
 
-// The scene as the worker needs it: no media bytes (pictures travel as bitmaps).
-function lean(scene) {
+// The scene as the worker needs it: no media bytes (pictures travel as
+// bitmaps, footage as frames), but each spoken clip's word timings, which the
+// captions are drawn from.
+export function forWorker(scene) {
   const { assets, ...rest } = scene;
-  return rest;
+  const spoken = Object.entries(assets || {}).filter(([, a]) => a.kind === 'audio')
+    .map(([id, a]) => [id, { kind: 'audio', duration: a.duration, words: a.words || [] }]);
+  return { ...rest, assets: Object.fromEntries(spoken) };
 }
+const lean = forWorker;
 
 async function decodeImages(scene) {
   const out = {};
