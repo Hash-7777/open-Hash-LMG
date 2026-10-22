@@ -70,6 +70,11 @@ await claim('known values kept, others dropped', () => {
   assert.deepEqual(storyboard.look, { mood: 'warm', accent: '#c2410c', tempo: null });
 });
 
+await claim('an end card with one stray lowercase word shows the film\u2019s name; a real name is kept', () => {
+  const sb = (text) => normalizeStoryboard({ title: 'Lumen Desk', beats: [{ kind: 'hook', text: 'Hi' }, { kind: 'end', text, sub: 'lumen.example' }] }).storyboard.beats[1].text;
+  assert.equal(sb('lamp'), 'Lumen Desk'); assert.equal(sb('lumen'), 'lumen'); assert.equal(sb('Lumen Desk'), 'Lumen Desk'); assert.equal(sb('Try it today'), 'Try it today');
+});
+
 section('A directed film keeps its key and chord order');
 await claim('sound key and progression survive normalising twice', () => {
   const d = chooseDirection({ brief: BRIEFS[4], take: 2 });

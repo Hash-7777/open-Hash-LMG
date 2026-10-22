@@ -157,7 +157,16 @@ export function normalizeStoryboard(input) {
   const beats = raw.slice(0, 40).map((b) => normBeat(b, notes)).filter(Boolean);
   if (!beats.length) notes.add('The storyboard has no beats.');
   const style = typeof doc.style === 'string' && STYLE_NAMES.includes(doc.style.toLowerCase()) ? doc.style.toLowerCase() : null;
-  return { storyboard: { title: s(doc.title, 120) || (beats[0]?.text || 'Untitled film').slice(0, 60), style, look: normLook(doc.look), beats }, notes: list };
+  const title = s(doc.title, 120) || (beats[0]?.text || 'Untitled film').slice(0, 60);
+  // The end card carries the name. A small model sometimes writes one stray
+  // lowercase word there instead ("lamp"); the film's title takes its place.
+  for (const b of beats) {
+    if ((b.kind === 'end' || b.kind === 'logo') && /^[a-z]+$/.test(b.text || '') && !title.toLowerCase().split(/\W+/).includes(b.text)) {
+      notes.add(`The end card said "${b.text}"; it shows the film's name instead.`);
+      b.text = title;
+    }
+  }
+  return { storyboard: { title, style, look: normLook(doc.look), beats }, notes: list };
 }
 
 // What the model suggests for the film's look: a mood, an accent colour and a
