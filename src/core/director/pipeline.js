@@ -17,10 +17,12 @@
 //   deps.measure({ scene, code }, times)                    -> [{ t, boxes }]
 //   deps.trial({ scene, code })                             -> { ok, error }
 //   deps.sheet({ scene, code }, times)                      -> image data URL or null
+//   deps.compose({ code, context })                         -> { ok, notes, error }, a model's score run locked down
 //   deps.log({ id, title, status, detail })                 status: run | done | fail | note
 
 import { normalizeStoryboard, storyboardForModel, keepPictures } from '../scene/storyboard.js';
 import { drawPictures } from './pictures.js';
+import { composeStep, rescore } from './music.js';
 import { compileStoryboard } from '../scene/compile.js';
 import { chooseDirection, describeDirection } from '../scene/direction.js';
 import { normalizeScene } from '../scene/normalize.js';
@@ -51,6 +53,8 @@ export function createDirector(deps) {
     }
   };
   const note = (id, detail) => log({ id, status: 'note', detail });
+  const music = { step, ask: deps.ask, compose: deps.compose, note: (n) => note('music', n) };
+  const moodOf = (project) => chooseDirection({ brief: project.brief, look: project.storyboard?.look, take: project.take || 0 }).mood;
 
   async function askJson(system, content, { schema = null, purpose, images = null, part = null, temperature }) {
     const text = await deps.ask({ system, messages: [{ role: 'user', content, ...(images ? { images } : {}) }], json: true, schema, purpose, part, temperature });
@@ -344,6 +348,8 @@ export function createDirector(deps) {
       }
     }
 
+    // The model composes the music for the film as it now stands.
+    if (opts.compose !== false) scene = await composeStep(music, brief, scene, direction.mood);
     // Code that never ran falls back to the scene plan, and the film says so.
     return { storyboard, scene, code, issues, brief: briefResults, tier: code ? 'code' : tier === 'code' ? 'plan' : tier, take: opts.take || 0, direction };
   }
@@ -368,7 +374,7 @@ export function createDirector(deps) {
       });
       scene = normalizeScene(restore(scene, project.scene)).scene;
       ({ scene } = await step('check', 'Checking stills and timing', () => checkScene(scene, opts)));
-      return { ...project, storyboard: sb, scene };
+      return { ...project, storyboard: sb, scene: await rescore(music, project.scene, scene, project.brief, moodOf(project)) };
     }
     if (route === 'code') {
       const code = await step('edit', 'Changing the code', async () => {
@@ -390,7 +396,7 @@ export function createDirector(deps) {
       return next;
     });
     ({ scene } = await step('check', 'Checking stills and timing', () => checkScene(scene, opts)));
-    return { ...project, scene };
+    return { ...project, scene: await rescore(music, project.scene, scene, project.brief, moodOf(project)) };
   }
 
   return { make, edit, checkScene };

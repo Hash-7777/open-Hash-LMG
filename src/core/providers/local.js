@@ -55,7 +55,7 @@ export function windowFor(need, { modelMax = null, previous = null } = {}) {
 
 // The longest answer each kind of question needs. Asking for more makes
 // the window, and the memory, bigger for nothing.
-export const ANSWER_TOKENS = { intent: 600, storyboard: 1500, pictures: 3000, plan: 7000, revise: 7000, edit: 7000, code: 8000, 'revise code': 8000, review: 1000, 'apply review': 7000 };
+export const ANSWER_TOKENS = { intent: 600, storyboard: 1500, pictures: 3000, music: 8000, 'revise music': 8000, plan: 7000, revise: 7000, edit: 7000, code: 8000, 'revise code': 8000, review: 1000, 'apply review': 7000 };
 export const answerTokens = (purpose) => ANSWER_TOKENS[purpose] || 4000;
 
 // ---- what a model can do -------------------------------------------------

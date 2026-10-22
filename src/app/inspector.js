@@ -24,7 +24,7 @@ import { repeatSection } from './repeat-fields.js';
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ');
 const labelled = (list) => list.map((v) => [v, cap(v)]);
-const SCORE_LABELS = { pulse: 'Pulse: deep and minimal', soft: 'Soft: bright and light', cinematic: 'Cinematic: wide, no drums', bounce: 'Bounce: playful, mallets and claps', drive: 'Drive: fast, four on the floor', keys: 'Keys: warm electric piano', arp: 'Arp: running synth, precise', none: 'No music' };
+const SCORE_LABELS = { composed: 'Composed by the model for this film', pulse: 'Pulse: deep and minimal', soft: 'Soft: bright and light', cinematic: 'Cinematic: wide, no drums', bounce: 'Bounce: playful, mallets and claps', drive: 'Drive: fast, four on the floor', keys: 'Keys: warm electric piano', arp: 'Arp: running synth, precise', none: 'No music' };
 const FONT_LABELS = { sans: 'Sans', display: 'Display', condensed: 'Condensed', serif: 'Serif', mono: 'Mono', rounded: 'Rounded' };
 const WEIGHTS = [[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold'], [800, 'Heavy'], [900, 'Black']].map(([v, l]) => [String(v), l]);
 
@@ -83,7 +83,7 @@ export function createInspector({ store, onVersion, settings = null }) {
         h('p', { class: 'insp-note', text: 'A version for another screen is laid out again for it, never cropped. It opens as a film of its own; this one stays in Films.' }),
         buttonRow(...Object.keys(ASPECTS).filter((k) => k !== s.aspect).map((k) => textButton(ASPECT_SHORT[k] || k, () => onVersion(k))))) : null,
       section('Sound',
-        field('Music', select(s.sound.score, SCORES.map((k) => [k, SCORE_LABELS[k]]), (v) => film((doc) => { doc.sound.score = v; }))),
+        field('Music', select(s.sound.score, SCORES.filter((k) => k !== 'composed' || s.sound.notes?.length).map((k) => [k, SCORE_LABELS[k]]), (v) => film((doc) => { doc.sound.score = v; }))),
         field('Music volume', numberInput(s.sound.volume, (v) => film((doc) => { doc.sound.volume = v; }), { min: 0, max: 1, step: 5, scale: 100, unit: '%', digits: 0 })),
         field('Captions', toggle(s.voice.captions, (v) => film((doc) => { doc.voice.captions = v; }), 'Show the narration as words on screen'))),
     ];

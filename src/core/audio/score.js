@@ -9,8 +9,10 @@
 //   pulse      deep and minimal: dark pad, round kick, off-beat sub, soft ticks
 //   soft       a brighter key, a half-time kick and a quiet glass arpeggio
 //   cinematic  wide slow chords, a low heartbeat, swells and bells, no drums
-// and four played grooves with a melody of each film's own (grooves.js):
-// bounce, drive, keys and arp.
+// four played grooves with a melody of each film's own (grooves.js): bounce,
+// drive, keys and arp; and 'composed', a score a model wrote as code for this
+// film alone (music-kit.js), played by notes.js. A composed score with no
+// notes plays as pulse.
 //
 // The arrangement follows the scene kinds: a hook builds, a reveal drops out
 // and lands a boom, feature scenes groove, a quote or a calm scene thins out,
@@ -19,6 +21,7 @@
 import { Bus, SR, pad, kick, sub, tick, hat, snap, boom, swell, bell, whoosh, hit, reverb } from './synth.js';
 import { master, integratedLufs } from './master.js';
 import { GROOVES, playGroove, grooveSounds, writeMelody } from './grooves.js';
+import { playNotes } from './notes.js';
 
 const A2 = 110;
 const semi = (k) => A2 * 2 ** (k / 12);
@@ -59,7 +62,8 @@ export function scorePlan(doc) {
 // beds: [{ t, left, right, gain }], stereo 48 kHz sound from imported footage
 // and music, already trimmed and faded, laid under the narration with the score.
 export async function makeScore(doc, { onStage = null, seed = 1, voices = [], beds = [] } = {}) {
-  const flavor = doc.sound.score;
+  const composed = doc.sound.score === 'composed' && doc.sound.notes?.length ? doc.sound.notes : null;
+  const flavor = doc.sound.score === 'composed' && !composed ? 'pulse' : doc.sound.score;
   if (flavor === 'none' && !voices.length && !beds.length) return null;
   const music = flavor !== 'none';
   const { beat, sections, drops } = scorePlan(doc);
@@ -84,7 +88,7 @@ export async function makeScore(doc, { onStage = null, seed = 1, voices = [], be
   // The pad: one chord every two bars (cinematic: four), overlapping a little.
   const chordBars = flavor === 'cinematic' ? 4 : 2;
   const nb = Math.ceil(doc.duration / BAR) + 1;
-  const padGain = groove ? groove.pad?.gain ?? 0 : 1;
+  const padGain = composed ? 0 : groove ? groove.pad?.gain ?? 0 : 1;
   for (let b = 0; music && padGain && b < nb; b += chordBars) {
     const t0 = b * BAR;
     if (t0 > doc.duration) break;
@@ -107,7 +111,8 @@ export async function makeScore(doc, { onStage = null, seed = 1, voices = [], be
   // A groove's own sounds, and the film's own melody from its seed and key.
   const sounds = groove ? grooveSounds(seed) : null;
   const mel = groove ? writeMelody((doc.seed || 7) * 13 + key * 7 + (doc.sound.progression || 0)) : null;
-  for (let i = 0; music && i < nbeats; i++) {
+  if (composed) playNotes(composed, { dry, send, duck, seed, beat });
+  for (let i = 0; music && !composed && i < nbeats; i++) {
     const t = i * beat, k = kindAt(t + 1e-3);
     if (k === 'tail') break;
     // A beat of near silence before each drop, and the two after it left open.
@@ -161,7 +166,8 @@ export async function makeScore(doc, { onStage = null, seed = 1, voices = [], be
   await step('beat');
 
   // Swells into each drop, a boom on it, and a three-note bell answer.
-  for (const d of music ? drops : []) {
+  // A composed score places its own; the others get them here.
+  for (const d of music && !composed ? drops : []) {
     dry.add(swell(2 * beat, seed + 13), d - 2 * beat - beat * 0.05, 0.22);
     send.add(swell(2 * beat, seed + 13), d - 2 * beat - beat * 0.05, 0.15);
     dry.add(boom(seed + 11), d, 0.95);

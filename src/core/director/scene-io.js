@@ -11,12 +11,13 @@ const hidePaths = (layers) => (layers || []).map((L) => ({
   ...(L.layers ? { layers: hidePaths(L.layers) } : {}),
 }));
 
-// What a model is shown of a scene: everything but the media bytes and the
-// drawings' path data.
+// What a model is shown of a scene: everything but the media bytes, the
+// drawings' path data and a composed score's notes.
 export function sceneForModel(scene) {
   const { assets, ...rest } = scene;
   const listed = Object.fromEntries(Object.entries(assets || {}).filter(([, a]) => a.kind === 'image').map(([id, a]) => [id, { kind: a.kind, name: a.name }]));
-  return { ...rest, scenes: (scene.scenes || []).map((S) => ({ ...S, layers: hidePaths(S.layers) })), assets: listed, voice: { ...scene.voice, lines: (scene.voice?.lines || []).map(({ clip, ...l }) => l) } };
+  const { notes, ...sound } = scene.sound || {};
+  return { ...rest, scenes: (scene.scenes || []).map((S) => ({ ...S, layers: hidePaths(S.layers) })), ...(scene.sound ? { sound } : {}), assets: listed, voice: { ...scene.voice, lines: (scene.voice?.lines || []).map(({ clip, ...l }) => l) } };
 }
 
 // Path data shown as a mark goes back from the scene it came from: the same

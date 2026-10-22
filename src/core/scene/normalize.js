@@ -15,6 +15,7 @@
 // the lists below and into the field guard in scripts/checks/scene-normalize.mjs
 // in the same commit. Running it twice gives the same scene twice.
 
+import { cleanNotes } from '../audio/music-kit.js';
 import { normAssets } from './assets.js';
 import { isObj, num, affix, str, slug } from './values.js';
 import {
@@ -493,6 +494,8 @@ export function normalizeScene(input, opts = {}) {
     // chords come in: set by the film's direction.
     key: Math.round(num(soundIn.key, 0, -6, 6)),
     progression: Math.round(num(soundIn.progression, 0, 0, 2)),
+    // A score a model composed for this film: its notes and drums in time order.
+    notes: cleanNotes(soundIn.notes),
   };
 
   // Narration: one spoken line per scene at most, placed a moment after the

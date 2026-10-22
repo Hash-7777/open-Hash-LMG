@@ -30,16 +30,16 @@ const LENGTHS = [15, 30, 45, 60, 90, 120];
 // The share of the bar each step takes, by way of working: the model writing
 // is most of the wait.
 const PLANS = {
-  guided: [['story', 6], ['pictures', 3], ['intent', 1], ['layout', 1], ['check', 2], ['verify', 1]],
-  plan: [['story', 3], ['pictures', 3], ['intent', 1], ['layout', 1], ['design', 5], ['check', 2], ['revise', 2], ['verify', 1], ['review', 1]],
-  code: [['story', 3], ['intent', 1], ['layout', 1], ['design', 6], ['check', 1], ['revise', 2], ['verify', 1], ['review', 1]],
+  guided: [['story', 6], ['pictures', 3], ['intent', 1], ['layout', 1], ['check', 2], ['verify', 1], ['music', 4]],
+  plan: [['story', 3], ['pictures', 3], ['intent', 1], ['layout', 1], ['design', 5], ['check', 2], ['revise', 2], ['verify', 1], ['review', 1], ['music', 4]],
+  code: [['story', 3], ['intent', 1], ['layout', 1], ['design', 6], ['check', 1], ['revise', 2], ['verify', 1], ['review', 1], ['music', 4]],
   edit: [['edit', 7], ['check', 3]],
 };
 // About how long a typical answer of each kind is, in characters, so the bar
 // can fill while the model writes.
 // What each kind of answer is called on the loading bar.
-const ANSWER_WORDS = { intent: 'list of what the brief asks for', storyboard: 'storyboard', pictures: 'drawings', plan: 'plan', revise: 'revised plan', edit: 'change', code: 'animation code', 'revise code': 'revised code', review: 'review', 'apply review': 'changes from the review' };
-const TYPICAL = { intent: 400, storyboard: 1400, pictures: 1800, plan: 9000, revise: 9000, edit: 5000, code: 7000, 'revise code': 7000, review: 500, 'apply review': 8000 };
+const ANSWER_WORDS = { intent: 'list of what the brief asks for', storyboard: 'storyboard', pictures: 'drawings', music: 'music', 'revise music': 'music', plan: 'plan', revise: 'revised plan', edit: 'change', code: 'animation code', 'revise code': 'revised code', review: 'review', 'apply review': 'changes from the review' };
+const TYPICAL = { intent: 400, storyboard: 1400, pictures: 1800, music: 5000, 'revise music': 5000, plan: 9000, revise: 9000, edit: 5000, code: 7000, 'revise code': 7000, review: 500, 'apply review': 8000 };
 const TIER_SHORT = { guided: 'Guided', plan: 'Plan', code: 'Code' };
 const TIER_HELP = {
   guided: 'The model writes the story and draws its pictures; the app designs, times and scores it.',
@@ -182,6 +182,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
       measure: async (target, times) => { await prep(target); return host.measure(times); },
       trial: async ({ scene, code }) => { await host.setScene(scene); return host.trial(code, sampleTimes(scene).slice(0, 4)); },
       sheet: async (target, times) => { await prep(target); return contactSheet(host, target.scene, times); },
+      compose: async ({ code, context }) => host.compose(code, context),
       log: onLog,
     });
     // Ends a run: the render host goes, and a local model is unloaded so the
@@ -249,7 +250,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
         // A new take each time: the same brief made again is a new film.
         take: Math.floor(Math.random() * 1e6),
         brief: text, tier: way, style: s.film.style, aspect: s.film.aspect, seconds: s.film.seconds, fps: s.film.fps,
-        narration: s.film.narration, vision: vision && s.model.review, drafts: s.model.drafts, verify: s.model.verify,
+        narration: s.film.narration, vision: vision && s.model.review, drafts: s.model.drafts, verify: s.model.verify, compose: s.model.compose,
       });
       store.patch({ brief: text, storyboard: out.storyboard, scene: out.scene, code: out.code, tier: out.tier, take: out.take, edited: false });
       store.select(null);

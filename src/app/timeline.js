@@ -17,7 +17,7 @@ import { resizeScene } from '../core/scene/edit.js';
 
 const LABEL_W = 148;
 const PAD_R = 80;
-const SCORE_NAMES = { pulse: 'Pulse score', soft: 'Soft score', cinematic: 'Cinematic score', bounce: 'Bounce score', drive: 'Drive score', keys: 'Keys score', arp: 'Arp score', none: 'No music' };
+const SCORE_NAMES = { composed: 'Composed score', pulse: 'Pulse score', soft: 'Soft score', cinematic: 'Cinematic score', bounce: 'Bounce score', drive: 'Drive score', keys: 'Keys score', arp: 'Arp score', none: 'No music' };
 
 function layerTitle(L) {
   if (L.name) return L.name;

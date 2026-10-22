@@ -15,6 +15,9 @@ const BUDGETS = {
   // The normaliser rebuilds every field of every layer type in one place, so
   // the field guard has one gate to hold.
   'src/core/scene/normalize.js': 560,
+  // The director lists every step of making and changing a film in order;
+  // each step's own work is in its module (pictures.js, music.js, intent.js).
+  'src/core/director/pipeline.js': 420,
 };
 
 const walk = (d) => readdirSync(d).flatMap((f) => { const p = join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; });

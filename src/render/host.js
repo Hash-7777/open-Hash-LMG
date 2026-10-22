@@ -155,6 +155,16 @@ export class WorkerHost {
     }
   }
 
+  // Runs a model's composing code; { ok, notes } or { ok: false, error }.
+  async compose(code, context) {
+    try {
+      const m = await this.send({ type: 'compose', code, context }, [], FRAME_TIMEOUT_MS * 2);
+      return { ok: true, notes: m.notes };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  }
+
   dispose() { this.worker.terminate(); this.pending.clear(); this.footage.dispose(); }
 }
 
@@ -202,6 +212,7 @@ export class InlineHost {
   }
 
   async trial() { return { ok: false, error: 'This system cannot run animation code.' }; }
+  async compose() { return { ok: false, error: 'This system cannot run composing code.' }; }
 
   dispose() { this.footage.dispose(); }
 }

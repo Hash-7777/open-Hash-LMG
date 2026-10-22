@@ -76,6 +76,9 @@ export function normalizeSettings(input) {
       drafts: int(model.drafts, 2, 1, 3),
       // Hold the finished film to what the brief asks to see.
       verify: model.verify === undefined ? true : Boolean(model.verify),
+      // The model composes each film's music as code; off, the app's own
+      // scores play.
+      compose: model.compose === undefined ? true : Boolean(model.compose),
     },
     local: {
       ports,

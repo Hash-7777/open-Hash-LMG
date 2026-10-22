@@ -25,8 +25,9 @@ const RULES = [
 export const MAX_CODE_CHARS = 60000;
 
 // Returns a list of problems, each a sentence a model can act on. Empty means
-// the code may be tried.
-export function checkCode(code) {
+// the code may be tried. entry names the function the code must export:
+// render for drawing code, compose for a score (src/core/director/music.js).
+export function checkCode(code, { entry = 'render' } = {}) {
   const problems = [];
   const src = String(code || '');
   if (!src.trim()) return ['There is no code.'];
@@ -36,19 +37,20 @@ export function checkCode(code) {
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .replace(/\/\/[^\n]*/g, ' ')
     .replace(/(["'`])(?:\\.|(?!\1)[^\\\n])*\1/g, '""');
-  for (const r of RULES) if (r.re.test(stripped)) problems.push(r.msg);
-  if (!/export\s+default\s+function|export\s+default\s+\(|export\s+default\s+render|export\s+function\s+render|function\s+render\s*\(/.test(stripped)) {
-    problems.push('It has no render function. Write: export default function render(t, lmg) { ... }');
+  // A score's code is handed its kit as m, a drawing's as lmg.
+  for (const r of RULES) if (r.re.test(stripped)) problems.push(entry === 'render' ? r.msg : r.msg.replace(/\blmg\b/g, 'm'));
+  const exported = new RegExp(`export\\s+default\\s+function|export\\s+default\\s+\\(|export\\s+default\\s+${entry}|export\\s+function\\s+${entry}|function\\s+${entry}\\s*\\(`);
+  if (!exported.test(stripped)) {
+    problems.push(entry === 'render' ? 'It has no render function. Write: export default function render(t, lmg) { ... }' : `It has no ${entry} function. Write: export default function ${entry}(m) { ... }`);
   }
   return [...new Set(problems)];
 }
 
-// Makes the code a module with a default render export, whatever form the
-// model chose, so the worker loads it one way.
-export function asModule(code) {
+// Makes the code a module with a default export of its entry function,
+// whatever form the model chose, so the worker loads it one way.
+export function asModule(code, entry = 'render') {
   let src = String(code || '').trim();
   if (/export\s+default/.test(src)) return src;
-  if (/export\s+function\s+render\s*\(/.test(src)) return src + '\nexport default render;\n';
-  if (/function\s+render\s*\(/.test(src)) return src + '\nexport default render;\n';
+  if (new RegExp(`function\\s+${entry}\\s*\\(`).test(src)) return `${src}\nexport default ${entry};\n`;
   return src;
 }

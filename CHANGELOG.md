@@ -41,6 +41,12 @@ newest first, grouped by what it does for the person making a film.
   splits a scene at the playhead; a scene's entrances can be staggered.
 
 ### Sound and voice
+- The model composes each film's music as code once the film is final: a
+  chord progression, a bass line, drums that suit the mood and a melody of
+  its own, placed on the film's beats and reveals with the music kit and
+  played by the app's instruments. A thin score goes back once; if it still
+  fails, the film keeps its built-in score. It can be turned off in
+  Settings, and a change that moves the film's timing composes it again.
 - Narration in a voice installed on this computer (Chatterbox, Kokoro), a
   local speech server or a cloud voice, timed word by word for captions.
 - The score plays in the film's own key and tempo; clips' own sound and

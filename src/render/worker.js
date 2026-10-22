@@ -3,12 +3,14 @@
 //
 // It draws either a scene plan (with the engine) or model-written code (a
 // module loaded after the lockdown, so that code meets a worker with no
-// network, storage, timers or threads). Every request carries an id and gets
+// network, storage, timers or threads). A model's composing code runs here
+// too, behind the same walls, and only hands back the notes it placed. Every request carries an id and gets
 // exactly one answer: { id, ok, ... } or { id, ok: false, error }.
 
 import { createKit } from '../core/engine/kit.js';
 import { renderPlan } from '../core/engine/render-plan.js';
 import { lockdown } from './lockdown.js';
+import { runComposition } from '../core/audio/music-kit.js';
 
 let canvas = null, ctx = null, scratch = null, sctx = null;
 let scene = null, kit = null, render = null, assets = {};
@@ -66,19 +68,19 @@ function frame(t, blur) {
   ctx.globalAlpha = 1;
 }
 
+async function loadModule(source) {
+  if (!keep.makeUrl || !keep.Blob) throw new Error('This system cannot load model-written code.');
+  const url = keep.makeUrl(new keep.Blob([source], { type: 'text/javascript' }));
+  try { return await import(url); } finally { if (keep.dropUrl) keep.dropUrl(url); }
+}
+
 async function loadCode(source) {
   render = null;
   if (!source) return;
-  if (!keep.makeUrl || !keep.Blob) throw new Error('This system cannot load drawing code.');
-  const url = keep.makeUrl(new keep.Blob([source], { type: 'text/javascript' }));
-  try {
-    const mod = await import(url);
-    const fn = mod.default || mod.render;
-    if (typeof fn !== 'function') throw new Error('The code has no render function.');
-    render = fn;
-  } finally {
-    if (keep.dropUrl) keep.dropUrl(url);
-  }
+  const mod = await loadModule(source);
+  const fn = mod.default || mod.render;
+  if (typeof fn !== 'function') throw new Error('The code has no render function.');
+  render = fn;
 }
 
 // Footage frames arrive with each request, named for the layer that shows
@@ -124,6 +126,9 @@ self.onmessage = async (e) => {
       ensureCanvas(scene.width, scene.height);
       const samples = m.times.map((t) => { const boxes = []; drawAt(ctx, t, boxes); return { t, boxes }; });
       reply({ id: m.id, ok: true, samples });
+    } else if (m.type === 'compose') {
+      const mod = await loadModule(m.code);
+      reply({ id: m.id, ok: true, notes: runComposition(mod.default || mod.compose, m.context) });
     } else if (m.type === 'trial') {
       ensureCanvas(scene.width, scene.height);
       for (const t of m.times) drawAt(ctx, t);

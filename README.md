@@ -35,7 +35,7 @@ Made by the model on your own computer, or by any cloud model on your own key.
 | **02 Storyboard** | The model writes the words and numbers, beat by beat: a hook, a statement, a stat, a list, a quote, an end card. Then it draws the few things the film is about, from the brief's own subject, as simple line drawings that draw themselves on in the film. |
 | **03 Design** | The app directs the film from the brief: a look, an accent colour, a tempo and key for the music, the transitions and camera moves it cuts with, and a composition for every scene, built around its drawing when it has one, so two briefs, or two takes of one brief, never come out alike. Then it times every line to how long it takes to read and starts every scene on the beat of the music. |
 | **04 Check** | Key moments are rendered and measured: text off the frame, outside a phone's safe area, too small, too faint, too fast to read, or a scene that sits still too long. What rules can fix, they fix. The film is also held to what the brief asks to see: what must appear, in what order, what counts up, what is on screen at the end. The rest goes back to the model. |
-| **05 Film** | An original score fitted to the cuts, narration if you want it, mastered to the loudness video platforms play at, written to MP4, MOV or GIF at 480p to 4K and 24 to 60 frames a second, by encoders built into the app, the same on macOS, Windows and Linux. A still (PNG) or the sound alone (WAV, MP3) can be exported too. |
+| **05 Film** | An original score fitted to the cuts, composed by the model as code for this film alone, narration if you want it, mastered to the loudness video platforms play at, written to MP4, MOV or GIF at 480p to 4K and 24 to 60 frames a second, by encoders built into the app, the same on macOS, Windows and Linux. A still (PNG) or the sound alone (WAV, MP3) can be exported too. |
 
 <br>
 
@@ -75,7 +75,7 @@ By default the look is matched to the brief: a calm brief, a technical one and a
 | **Your own footage** | Video (MP4, MOV, WebM), pictures and sound imported from this computer and linked where they are, never copied: a clip or a picture becomes a scene, trimmed by where it starts and how long it runs, split at the playhead, faded, titled over and set louder or quieter; a song plays as the film's music in place of the score |
 | **Templates** | Eight films to start from (a launch, an explainer, a year in numbers, an event teaser, a testimonial, a release, a quiet reveal, a calm app), each made whole at once with no model and directed like any other |
 | **Formats** | 16:9, 9:16, 1:1 and 4:5, at 24 to 60 frames a second |
-| **Sound** | Seven scores built from the film's own scenes, chosen by the brief's mood: three designed ones (deep pulse, soft, cinematic) and four played grooves (bounce, drive, keys, arp), each with its own instruments, drums and a melody written for that film. All in the film's own tempo and key with its chords in one of three orders: a build into the reveal, a boom on the drop, a fade on the end card |
+| **Sound** | Music the model composes for each film, written as code and played by the app's own instruments (mallet, plucked string, electric piano, synth, bass, pad, bells and drums), after the film's timing is final. Or seven built-in scores, chosen by the brief's mood: three designed ones (deep pulse, soft, cinematic) and four played grooves (bounce, drive, keys, arp), each with its own instruments, drums and a melody written for that film. All in the film's own tempo and key with its chords in one of three orders: a build into the reveal, a boom on the drop, a fade on the end card |
 | **Narration** | One line per scene, the music lowered under the voice, captions that light up word by word as they are said |
 
 <br>
@@ -133,7 +133,7 @@ src/
     engine/        easing, keyframes, paths, the drawing kit, motion, the renderer
     director/      prompts, the plan-check-revise loop, scene helpers, the code check
     providers/     model services, requests and streams, model sizes, voices
-    audio/         synth, score, grooves, narration mix, loudness, word timing, WAV
+    audio/         synth, score, grooves, the music kit and its player, narration mix, loudness, word timing, WAV
     export/        the MP4 and MOV writer
   render/          the locked-down render worker, its host, footage frames, video export
   platform/        the desktop app or a browser: projects, files, settings and keys

@@ -27,6 +27,8 @@ brief
                          what rules can repair, they repair; the rest goes back once
   -> brief check         what the brief asked to see is measured on the drawn film
   -> review (optional)   a model that can see reads a contact sheet and asks for changes
+  -> music               the model composes the score as code with the music kit; it
+                         runs locked down and only places notes, which the app plays
   -> narration           each line spoken in the chosen voice and timed word by word
   -> film                score, sound and frames, encoded and written to a file
 ```
@@ -48,12 +50,13 @@ src/
                          templates and examples
     engine/              easing, keyframes, paths, the drawing kit, entrances and exits,
                          the carry transition, repeated layers, the odometer, the renderer
-    director/            the prompts, the pipeline, the drawing step, the brief check, the
-                         code check, the scene helpers, the run record
+    director/            the prompts, the pipeline, the drawing step, the composing step,
+                         the brief check, the code check, the scene helpers, the run record
     providers/           the model services, request and stream shapes, local model
                          sessions, model profiles, speech requests
-    audio/               synthesis, the score and its played grooves, mastering, word
-                         timing, WAV
+    audio/               synthesis, the score and its played grooves, the music kit a
+                         model composes with and the player of its notes, mastering,
+                         word timing, WAV
     export/              the MP4 and MOV writer, H.264 sample shaping and MP3 frames,
                          export sizes
     util/                colour and JSON helpers

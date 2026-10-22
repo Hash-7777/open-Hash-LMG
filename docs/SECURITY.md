@@ -93,6 +93,12 @@ removed before the code is loaded (`src/render/lockdown.js`). A frame that
 does not come back in time stops that worker and starts a fresh one
 (`src/render/host.js`).
 
+A model's music is code too: it is read by the same check and run in the
+same worker (`src/core/director/music.js`, `src/render/worker.js`). It is
+handed only the music kit (`src/core/audio/music-kit.js`) and can only place
+notes and drums; each is checked, and the app plays them with its own
+instruments.
+
 ## Pictures drawn by a model
 
 A picture a model draws is read as path data only: drawing commands and
