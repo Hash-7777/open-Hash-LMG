@@ -15,10 +15,11 @@ import { modelProfile, parseModelList, defaultModel } from '../core/providers/mo
 import { listModels } from '../core/providers/client.js';
 import { KEEP_CHOICES, probeLocal, sizeText } from '../core/providers/local.js';
 import { appVersion, openExternal } from '../platform/index.js';
+import { createHistoryPane } from './history-pane.js';
 
 const SIZE_WORDS = { small: 'small', medium: 'mid-size', large: 'large', frontier: 'frontier' };
 const TIER_WORDS = { guided: 'Guided', plan: 'Plan', code: 'Code' };
-const SECTIONS = [['model', 'Model', 'chip'], ['local', 'This computer', 'monitor'], ['keys', 'Cloud keys', 'key'], ['look', 'Appearance', 'contrast'], ['about', 'About', 'info']];
+const SECTIONS = [['model', 'Model', 'chip'], ['local', 'This computer', 'monitor'], ['keys', 'Cloud keys', 'key'], ['look', 'Appearance', 'contrast'], ['history', 'Run history', 'history'], ['about', 'About', 'info']];
 // Models worth starting with on Ollama, smallest first.
 const STARTERS = [
   ['qwen2.5:3b', 'Small and quick, about 2 GB'],
@@ -52,6 +53,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
   const pane = h('div', { class: 'settings-pane' });
   d.body.append(h('div', { class: 'settings-layout' }, rail, pane));
   let current = SECTIONS.some(([k]) => k === start) ? start : 'model';
+  const historyPane = createHistoryPane();
   let models = [];
   let loading = null;
   const probes = {};
@@ -67,7 +69,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
   function paint() {
     paintRail();
     const s = settings.get();
-    clear(pane).append(...({ model: modelPane, local: localPane, keys: keysPane, look: lookPane, about: aboutPane }[current])(s));
+    clear(pane).append(...({ model: modelPane, local: localPane, keys: keysPane, look: lookPane, history: () => historyPane(), about: aboutPane }[current])(s));
   }
 
   // ---- model ------------------------------------------------------------------

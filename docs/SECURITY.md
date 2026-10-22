@@ -47,6 +47,11 @@ The page reaches the computer only through the commands in
   page sends raw pixels or sound under a session token and gets encoded
   bytes back; these commands read and write no file and take no path. Frame
   sizes are bounded (even sides, up to 4K).
+- The **run history** (Settings, Run history) keeps each run's brief,
+  settings, steps, and every question to the model with its answer, in the
+  web view's own database on this computer, the newest 60 runs. Keys are
+  never part of a run, and a picture sent to a model is noted by its size,
+  not kept. A run leaves the computer only when saved as Markdown.
 - A **debug build** started with `LMG_SELFTEST` naming a script runs that
   script in its window, for testing the app end to end. Release builds do not
   contain this.

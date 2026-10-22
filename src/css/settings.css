@@ -96,3 +96,26 @@
 .model-list button.on { background: var(--accent-soft); }
 .model-id { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .model-meta { color: var(--muted); font-size: var(--text-s); white-space: nowrap; }
+
+/* The run history: a list of runs, and one run in full. */
+.run-history { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.run-history li { border-bottom: 1px solid var(--line); }
+.run-history-row { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 2px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.run-history-row:hover { background: var(--panel-2); }
+.run-history-dot { flex: none; width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; background: var(--faint); }
+.run-history-dot.done { background: var(--ok); }
+.run-history-dot.failed { background: var(--danger); }
+.run-history-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.run-history-brief { color: var(--ink); font-size: var(--text-s); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-history-meta, .run-history-time { color: var(--muted); font-size: var(--text-xs); }
+.run-facts { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 4px 12px; margin: 0; font-size: var(--text-s); }
+.run-facts dt { color: var(--muted); }
+.run-facts dd { margin: 0; color: var(--ink); }
+.run-history-steps { margin: 0; padding-left: 18px; font-size: var(--text-s); display: flex; flex-direction: column; gap: 4px; }
+.run-history-steps li { display: flex; justify-content: space-between; gap: 12px; }
+.run-history-steps li.fail { color: var(--danger); }
+.run-request { border: 1px solid var(--line); border-radius: var(--r-m); padding: 6px 10px; }
+.run-request summary { display: flex; justify-content: space-between; gap: 12px; cursor: pointer; font-size: var(--text-s); }
+.run-request[open] summary { margin-bottom: 6px; }
+.run-pre { max-height: 220px; overflow: auto; margin: 2px 0 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--field); color: var(--ink-2); font-family: var(--mono); font-size: var(--text-xs); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.run-notes-list { margin: 0; padding-left: 18px; font-size: var(--text-s); color: var(--ink-2); }

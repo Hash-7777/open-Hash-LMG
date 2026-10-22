@@ -20,6 +20,9 @@ import { ASPECTS, STYLE_PACKS, STYLE_NAMES } from '../core/scene/format.js';
 import { select, toggle, ASPECT_SHORT } from './fields.js';
 import { createModelSession } from './model-session.js';
 import { createSuggestions, openIdeasDialog } from './suggestions.js';
+import { createRunRecord } from '../core/director/run-record.js';
+import { runs } from '../platform/runs.js';
+import { appVersion } from '../platform/index.js';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120];
 
@@ -129,10 +132,12 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
 
   // ---- progress and what is worth knowing ---------------------------------------
   let notes = [];
-  function note(text) { notes.push(text); progress.details(notes); }
+  function note(text) { notes.push(text); progress.details(notes); if (record && !record.run.notes.some((n) => n.text === text)) record.note(text); }
   function resetNotes() { notes = []; progress.details(notes); }
   // What the director says as it works: steps move the bar, notes land here.
+  let record = null; // the run history's record of the run under way
   function onLog({ id, title, status, detail }) {
+    if (record) { if (status === 'note') record.note(detail); else record.step(id, title, status, detail); }
     if (status === 'run') progress.step(id, title);
     else if (status === 'done') progress.stepDone(id);
     else if (status === 'note' && detail) note(detail);
@@ -154,17 +159,21 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
         first = false;
         const typical = TYPICAL[purpose] || 4000;
         const extra = await session.options(purpose, { system, messages });
-        const text = await ask({
-          provider: m.provider, model: m.model, key: settings.key(m.provider), base: settings.base(m.provider),
-          device: s.local.device, system, messages, json, schema, ...extra, ...(temperature !== undefined ? { temperature } : {}),
-        }, {
-          fetch: (u, i) => fetch(u, i), signal,
-          onThinking: () => progress.say('The model is thinking'),
-          onText: (_, all) => { progress.writing(all); progress.within(part ? (part.index + Math.min(1, all.length / typical)) / part.of : all.length / typical,
-            part ? `The model is writing storyboard ${part.index + 1} of ${part.of}` : `The model is writing the ${ANSWER_WORDS[purpose] || 'answer'}`); },
-          onStats: (st) => session.onStats(st),
-        });
-        return text;
+        const req = record ? record.ask({ purpose, system, messages, options: { ...extra, ...(temperature !== undefined ? { temperature } : {}) } }) : null;
+        try {
+          const text = await ask({
+            provider: m.provider, model: m.model, key: settings.key(m.provider), base: settings.base(m.provider),
+            device: s.local.device, system, messages, json, schema, ...extra, ...(temperature !== undefined ? { temperature } : {}),
+          }, {
+            fetch: (u, i) => fetch(u, i), signal,
+            onThinking: (chunk) => { req?.thinking(chunk); progress.say('The model is thinking'); },
+            onText: (_, all) => { progress.writing(all); progress.within(part ? (part.index + Math.min(1, all.length / typical)) / part.of : all.length / typical,
+              part ? `The model is writing storyboard ${part.index + 1} of ${part.of}` : `The model is writing the ${ANSWER_WORDS[purpose] || 'answer'}`); },
+            onStats: (st) => session.onStats(st),
+          });
+          req?.done(text);
+          return text;
+        } catch (err) { req?.fail(err); throw err; }
       },
       measure: async (target, times) => { await prep(target); return host.measure(times); },
       trial: async ({ scene, code }) => { await host.setScene(scene); return host.trial(code, sampleTimes(scene).slice(0, 4)); },
@@ -186,6 +195,25 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     return [m.model, PROVIDERS[m.provider]?.label, way ? TIER_SHORT[way] : null].filter(Boolean).join(' · ');
   }
 
+  // The run history: what this run used (never a key), kept when it ends.
+  async function beginRecord(kind, meta) {
+    const s = settings.get();
+    const v = await appVersion();
+    return createRunRecord({
+      kind, ...meta,
+      model: { provider: s.model.provider, model: s.model.model, label: PROVIDERS[s.model.provider]?.label },
+      settings: { film: s.film, model: { tier: s.model.tier, drafts: s.model.drafts, verify: s.model.verify, review: s.model.review }, local: { device: s.local.device, keep: s.local.keep, unload: s.local.unload } },
+      app: v ? `Hash LMG ${v}` : 'Hash LMG in a browser',
+      system: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+    });
+  }
+  function endRecord(outcome, extra) {
+    if (!record) return;
+    record.finish(outcome, extra);
+    runs.put(record.run).catch(() => {});
+    record = null;
+  }
+
   function ready() {
     const m = settings.get().model;
     if (!m.model) { toast('Choose a model in Settings first.'); openSettings('model'); return false; }
@@ -205,6 +233,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     resetNotes();
     const way = tier();
     progress.start(PLANS[way].map(([id, weight]) => ({ id, weight })), 'Starting', whoText(way));
+    record = await beginRecord('make', { brief: text, tier: way });
     const { director, session, done } = makeDirector(running.signal);
     try {
       // Ollama says itself whether a model can see pictures; its name is the fallback.
@@ -225,7 +254,9 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
       const fit = await session.fitNote();
       if (fit) note(fit);
       progress.finish(left.length || missing ? 'Made, with a few things to look at' : 'Made');
+      endRecord('done', { result: { tier: out.tier, direction: out.direction ? { style: out.direction.style, mood: out.direction.mood, palette: out.direction.palette, bpm: out.direction.bpm, score: out.direction.score } : null, scenes: out.scene.scenes.length, duration: out.scene.duration, codeChars: out.code ? out.code.length : 0, issues: out.issues.map((i) => `${i.level} ${i.code}: ${i.message}`), brief: out.brief || [] } });
     } catch (err) {
+      endRecord(err.stopped ? 'stopped' : 'failed', { error: err.stopped ? null : err });
       if (!err.stopped) toast(err.message || String(err), 'error');
       progress.finish(err.stopped ? 'Stopped' : 'Could not finish', false);
       if (!err.stopped) note(err.message || String(err));
@@ -247,13 +278,16 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     paintButtons();
     resetNotes();
     progress.start(PLANS.edit.map(([id, weight]) => ({ id, weight })), 'Starting the change', whoText());
+    record = await beginRecord('change', { brief: project.brief, instruction: text, tier: project.code ? 'code' : project.tier });
     const { director, done } = makeDirector(running.signal);
     try {
       const out = await director.edit(project, text, { seconds: s.film.seconds, narration: s.film.narration });
       store.patch({ storyboard: out.storyboard, scene: out.scene, code: out.code });
       askBox.value = '';
       progress.finish('Changed');
+      endRecord('done', { result: { scenes: out.scene.scenes.length, duration: out.scene.duration } });
     } catch (err) {
+      endRecord(err.stopped ? 'stopped' : 'failed', { error: err.stopped ? null : err });
       if (!err.stopped) toast(err.message || String(err), 'error');
       progress.finish(err.stopped ? 'Stopped' : 'Nothing was changed', false);
       if (!err.stopped) note(err.message || String(err));

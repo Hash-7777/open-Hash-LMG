@@ -47,7 +47,8 @@ export const ICONS = {
   info: svg('<circle cx="8" cy="8" r="5.5"/><path d="M8 7.2v3.6M8 5.2v.1"/>'),
   external: svg('<path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5"/><path d="M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3"/>'),
   search: svg('<circle cx="7" cy="7" r="4"/><path d="m10 10 3.5 3.5"/>'),
-  chip: svg('<rect x="4" y="4" width="8" height="8" rx="1.2"/><path d="M6.5 2v2M9.5 2v2M6.5 12v2M9.5 12v2M2 6.5h2M2 9.5h2M12 6.5h2M12 9.5h2"/>'),
+  chip: svg('<rect x="4.5" y="3" width="7" height="10" rx="1.2"/><rect x="6.5" y="5.5" width="3" height="5" rx=".5"/><path d="M2.5 5.5h2M2.5 8h2M2.5 10.5h2M11.5 5.5h2M11.5 8h2M11.5 10.5h2"/>'),
+  history: svg('<path d="M2.8 8a5.2 5.2 0 1 0 1.6-3.8"/><path d="M2.5 2.8v2.6h2.6"/><path d="M8 5.3V8l1.9 1.3"/>'),
   templates: svg('<rect x="2.5" y="2.5" width="4.5" height="4.5" rx=".8"/><rect x="9" y="2.5" width="4.5" height="4.5" rx=".8"/><rect x="2.5" y="9" width="4.5" height="4.5" rx=".8"/><rect x="9" y="9" width="4.5" height="4.5" rx=".8"/>'),
   code: svg('<path d="m5.5 4.5-3.5 3.5 3.5 3.5M10.5 4.5l3.5 3.5-3.5 3.5"/>'),
 };

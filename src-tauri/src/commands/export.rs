@@ -34,7 +34,7 @@ fn token() -> String {
     format!("{:016x}", h.finish())
 }
 
-const KINDS: [(&str, &str); 7] = [("mp4", "MP4 video"), ("mov", "QuickTime movie"), ("gif", "GIF animation"), ("wav", "WAV sound"), ("mp3", "MP3 sound"), ("png", "PNG picture"), ("zip", "ZIP of pictures")];
+const KINDS: [(&str, &str); 8] = [("mp4", "MP4 video"), ("mov", "QuickTime movie"), ("gif", "GIF animation"), ("wav", "WAV sound"), ("mp3", "MP3 sound"), ("png", "PNG picture"), ("zip", "ZIP of pictures"), ("md", "Markdown text")];
 
 /// A file name the dialog can suggest: no folders, no hidden or odd
 /// characters, and one of the kinds the app writes.
