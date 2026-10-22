@@ -224,7 +224,15 @@ export function createDirector(deps) {
     let code = null;
 
     if (tier === 'plan') {
-      scene = await step('design', 'Designing every scene', () => designPlan(brief, storyboard, scene, opts));
+      // A redesign that fails leaves the rule-made design, so the film is still made.
+      const draft = scene;
+      try {
+        scene = await step('design', 'Designing every scene', () => designPlan(brief, storyboard, draft, opts));
+      } catch (err) {
+        if (err?.stopped) throw err;
+        note('design', `${String(err.message || err)} The rule-made design is kept.`);
+        scene = draft;
+      }
     } else if (tier === 'code') {
       try {
         code = await step('design', 'Animating it in code', () => writeCode(brief, storyboard, scene, opts));

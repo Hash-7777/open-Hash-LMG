@@ -20,6 +20,8 @@ newest first, grouped by what it does for the person making a film.
   repeated by a rule; the Stage look adds a settling ease and figures that
   roll in on an odometer.
 - Eight templates make a whole film at once with no model.
+- When a model cannot finish redesigning the scenes, the film is still made
+  from the rule-made design, with a note saying why.
 - Ideas to start from sit under an empty brief, with all of them in a window.
 - Generate the Movie and New film live in the top bar; a new film starts
   empty and untitled.

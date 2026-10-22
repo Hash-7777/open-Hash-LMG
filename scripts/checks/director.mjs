@@ -99,6 +99,12 @@ await claim('a redesign that cannot be read keeps the rule-made film', async () 
   assert.ok(out.scene.scenes.length >= 8);
   assert.ok(log.some((e) => e.status === 'note' && /rule-made design is kept/.test(e.detail)));
 });
+await claim('a redesign the model could not finish keeps the rule-made film, saying why', async () => {
+  const { d, log } = director({ storyboard: STORYBOARD, plan: () => { throw new Error('The service used all the room it was given.'); } });
+  const out = await d.make({ ...opts, tier: 'plan', rounds: 0 });
+  assert.ok(out.scene.scenes.length >= 8);
+  assert.ok(log.some((e) => e.status === 'note' && /all the room.*rule-made design is kept/.test(e.detail)));
+});
 
 section('Code: the model writes its own drawing code');
 await claim('code that follows the rules is kept', async () => {
