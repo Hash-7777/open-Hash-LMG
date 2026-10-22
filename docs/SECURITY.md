@@ -72,8 +72,8 @@ The page reaches the computer only through the commands in
   never part of a run, and a picture sent to a model is noted by its size,
   not kept. A run leaves the computer only when saved as Markdown.
 - A **debug build** started with `LMG_SELFTEST` naming a script runs that
-  script in its window, for testing the app end to end. Release builds do not
-  contain this.
+  script in its window each time the page loads, for testing the app end to
+  end. Release builds do not contain this.
 
 The window holds only the permissions the page uses
 (`src-tauri/capabilities/default.json`): placing, sizing and showing its own

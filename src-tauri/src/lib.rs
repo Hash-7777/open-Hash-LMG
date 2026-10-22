@@ -42,33 +42,25 @@ pub fn run() {
             commands::relay::model_relay,
             commands::relay::model_relay_cancel,
         ])
-        .setup(|app| {
+        .on_page_load(|webview, payload| {
             #[cfg(debug_assertions)]
-            self_test(app);
-            let _ = app;
-            Ok(())
+            self_test(webview, payload);
+            let _ = (webview, payload);
         })
         .run(tauri::generate_context!())
         .expect("Hash LMG could not start");
 }
 
 // A debug build started with LMG_SELFTEST naming a script runs that script in
-// the window once the page has loaded, so the real app can be exercised end to
-// end without anyone at the keyboard. Release builds do not contain this.
+// the window each time the page finishes loading, so the real app can be
+// exercised end to end without anyone at the keyboard, across reloads.
+// Release builds do not contain this.
 #[cfg(debug_assertions)]
-fn self_test(app: &tauri::App) {
-    use tauri::Manager;
-    let Ok(path) = std::env::var("LMG_SELFTEST") else {
+fn self_test<R: tauri::Runtime>(webview: &tauri::Webview<R>, payload: &tauri::webview::PageLoadPayload<'_>) {
+    if payload.event() != tauri::webview::PageLoadEvent::Finished {
         return;
-    };
-    let Ok(script) = std::fs::read_to_string(&path) else {
-        return;
-    };
-    let Some(window) = app.get_webview_window("main") else {
-        return;
-    };
-    std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_secs(3));
-        let _ = window.eval(&script);
-    });
+    }
+    let Ok(path) = std::env::var("LMG_SELFTEST") else { return };
+    let Ok(script) = std::fs::read_to_string(&path) else { return };
+    let _ = webview.eval(&script);
 }
