@@ -67,7 +67,9 @@ const params = (name) => {
 for (const [cmd, args] of calls) {
   ok(`the page's ${cmd} is registered`, registered.includes(cmd));
   const want = params(cmd);
-  if (want && args) ok(`${cmd} takes the arguments the page sends (${want.join(', ') || 'raw bytes'})`, JSON.stringify([...args].sort()) === JSON.stringify([...want].sort()), `page sends ${args.join(', ')}`);
+  // Tauri hands the page's camelCase names to the Rust side's snake_case ones.
+  const snake = (a) => a.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+  if (want && args) ok(`${cmd} takes the arguments the page sends (${want.join(', ') || 'raw bytes'})`, JSON.stringify(args.map(snake).sort()) === JSON.stringify([...want].sort()), `page sends ${args.join(', ')}`);
 }
 for (const cmd of registered) ok(`Rust registers ${cmd} because the page calls it`, calls.has(cmd));
 

@@ -14,7 +14,7 @@ import { PROVIDERS, LOCAL_IDS, CLOUD_IDS } from '../core/providers/catalog.js';
 import { modelProfile, parseModelList, defaultModel } from '../core/providers/models.js';
 import { listModels } from '../core/providers/client.js';
 import { KEEP_CHOICES, probeLocal, sizeText } from '../core/providers/local.js';
-import { appVersion, openExternal } from '../platform/index.js';
+import { appVersion, openExternal, fetchFor, RELAYED, isApp } from '../platform/index.js';
 import { createHistoryPane } from './history-pane.js';
 import { createVoicePane } from './voice-pane.js';
 
@@ -28,7 +28,6 @@ const STARTERS = [
   ['qwen2.5:7b', 'Better writing, about 5 GB'],
 ];
 
-const fetchIt = (u, i) => fetch(u, i);
 
 function copyButton(text) {
   return textButton('Copy', async (e) => {
@@ -124,7 +123,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
     const mine = loading = {};
     if (current === 'model') paint();
     try {
-      const list = await listModels(id, { key: settings.key(id), base: settings.base(id), fetch: fetchIt });
+      const list = await listModels(id, { key: settings.key(id), base: settings.base(id), fetch: fetchFor(id) });
       if (loading !== mine || settings.get().model.provider !== id) return;
       models = list;
       if (!settings.get().model.model && list.length) settings.update({ model: { model: defaultModel(id, list) } });
@@ -140,7 +139,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
   async function probeAll() {
     await Promise.all(LOCAL_IDS.map(async (id) => {
       const p = PROVIDERS[id];
-      const r = await probeLocal(settings.base(id) + p.modelsPath, fetchIt);
+      const r = await probeLocal(settings.base(id) + p.modelsPath, fetchFor(id));
       probes[id] = { ...r, models: r.ok ? parseModelList(id, r.json) : [] };
     }));
     if (current === 'local') paint();
@@ -184,7 +183,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
         field('While a film is being made', select(s.local.keep, KEEP_CHOICES, (v) => settings.update({ local: { keep: v } })),
           'How long the model stays loaded between its answers. Longer answers the next question sooner.')),
       section('Other model apps on this computer', ...others,
-        h('div', { class: 'field-hint', text: 'LM Studio: start its local server, and turn on Enable CORS in its server settings so the app may ask it. They choose the processor or graphics chip themselves when a model is loaded.' })),
+        h('div', { class: 'field-hint', text: isApp && RELAYED.has('lmstudio') ? 'LM Studio: start its local server; the app asks it directly, with no switch to turn on. They choose the processor or graphics chip themselves when a model is loaded.' : 'LM Studio: start its local server, and turn on Enable CORS in its server settings so this page may ask it. They choose the processor or graphics chip themselves when a model is loaded.' })),
     ];
   }
 
@@ -198,7 +197,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
     checks[id] = { state: 'wait', text: 'Checking' };
     paint();
     try {
-      const list = await listModels(id, { key: settings.key(id), fetch: fetchIt });
+      const list = await listModels(id, { key: settings.key(id), fetch: fetchFor(id) });
       checks[id] = { state: 'ok', text: `Works. ${list.length} model${list.length === 1 ? '' : 's'} offered.` };
     } catch (err) {
       checks[id] = { state: 'bad', text: err.message || String(err) };

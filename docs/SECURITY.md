@@ -56,6 +56,12 @@ The page reaches the computer only through the commands in
   own interpreter and writes a WAV to the system's temporary folder, which is
   read back and removed. Nothing is installed or downloaded by the app. Lines
   sent to a cloud voice go to that service only when it is chosen.
+- **Model servers a web page may not ask** (LM Studio and llama.cpp on this
+  computer, Moonshot in the cloud) are asked by the desktop side instead. The
+  page names the service, the route (chat or models) and, on this computer,
+  a port from 1024 up; the address comes from a fixed table, no part of it
+  from the page, and redirects are not followed. The person's own key goes
+  in one header to that one host.
 - **Encoding** is done by encoders built into the app (H.264, GIF, MP3). The
   page sends raw pixels or sound under a session token and gets encoded
   bytes back; these commands read and write no file and take no path. Frame

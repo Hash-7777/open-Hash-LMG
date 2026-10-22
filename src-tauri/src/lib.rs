@@ -39,6 +39,8 @@ pub fn run() {
             commands::voice::voice_status,
             commands::voice::voice_folder,
             commands::voice::voice_speak,
+            commands::relay::model_relay,
+            commands::relay::model_relay_cancel,
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]

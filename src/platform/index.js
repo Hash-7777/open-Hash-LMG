@@ -203,6 +203,62 @@ export const media = {
   },
 };
 
+// ---- model servers a page may not ask directly ------------------------------
+//
+// A model app on this computer, until its own switch is on, and some cloud
+// services refuse requests from a web page. In the desktop app they are asked
+// by the desktop side instead (src-tauri/src/commands/relay.rs), which reaches
+// only a fixed table of addresses; the answer streams back through a channel.
+
+// A channel the desktop side sends messages down, delivered in order.
+function channel(onmessage) {
+  const pending = {};
+  let next = 0, end = -1, id = 0;
+  const done = () => tauri.unregisterCallback?.(id);
+  id = tauri.transformCallback((raw) => {
+    const i = raw.index;
+    if ('end' in raw) { if (i === next) done(); else end = i; return; }
+    if (i !== next) { pending[i] = raw.message; return; }
+    onmessage(raw.message);
+    next++;
+    while (next in pending) { onmessage(pending[next]); delete pending[next]; next++; }
+    if (next === end) done();
+  });
+  return { toJSON: () => `__CHANNEL__:${id}` };
+}
+
+export const RELAYED = new Set(['lmstudio', 'llamacpp', 'moonshot']);
+
+// A fetch for one service that goes through the desktop side, answering with
+// an ordinary Response whose body streams as the answer arrives.
+function relayFetch(provider) {
+  return (url, init = {}) => new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const route = init.method === 'POST' ? 'chat' : 'models';
+    const requestId = `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const text = new TextEncoder();
+    let started = false, body = null;
+    const stream = new ReadableStream({ start(c) { body = c; }, cancel() { invoke('model_relay_cancel', { requestId }).catch(() => {}); } });
+    const fail = (err) => { if (!started) reject(err); else { try { body.error(err); } catch { /* already closed */ } } };
+    const onEvent = channel((ev) => {
+      if (ev.kind === 'head') { started = true; resolve(new Response(stream, { status: ev.status, headers: { 'content-type': ev.mime || 'application/json' } })); }
+      else if (ev.kind === 'chunk') body.enqueue(text.encode(ev.text));
+      else if (ev.kind === 'end') { try { body.close(); } catch { /* already closed */ } }
+      else if (ev.kind === 'fail') fail(new TypeError(ev.message));
+    });
+    init.signal?.addEventListener('abort', () => { invoke('model_relay_cancel', { requestId }).catch(() => {}); fail(new DOMException('Stopped.', 'AbortError')); });
+    const key = String(init.headers?.Authorization || '').replace(/^Bearer\s+/, '');
+    const port = Number(u.port) || null;
+    invoke('model_relay', { provider, route, port, key, body: init.body ?? null, requestId, onEvent }).catch((err) => fail(new TypeError(err?.message || String(err))));
+  });
+}
+
+// The fetch to ask a service with: through the desktop side where a page may
+// not ask it, otherwise the page's own.
+export function fetchFor(provider) {
+  return isApp && RELAYED.has(provider) ? relayFetch(provider) : (u, i) => fetch(u, i);
+}
+
 // ---- voices installed on this computer --------------------------------------
 //
 // Chatterbox and Kokoro, through the person's own install, whose folder the

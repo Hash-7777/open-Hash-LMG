@@ -22,7 +22,7 @@ import { createModelSession } from './model-session.js';
 import { createSuggestions, openIdeasDialog } from './suggestions.js';
 import { createRunRecord } from '../core/director/run-record.js';
 import { runs } from '../platform/runs.js';
-import { appVersion } from '../platform/index.js';
+import { appVersion, fetchFor } from '../platform/index.js';
 import { speakLines } from './narration.js';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120];
@@ -149,7 +149,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     const s = settings.get();
     const m = s.model;
     const host = createHost();
-    const session = createModelSession(settings, (u, i) => fetch(u, i));
+    const session = createModelSession(settings, fetchFor(m.provider));
     let first = true;
     const prep = async ({ scene, code }) => { await host.setScene(scene); await host.setCode(code || null); };
     const director = createDirector({
@@ -165,7 +165,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
             provider: m.provider, model: m.model, key: settings.key(m.provider), base: settings.base(m.provider),
             device: s.local.device, system, messages, json, schema, ...extra, ...(temperature !== undefined ? { temperature } : {}),
           }, {
-            fetch: (u, i) => fetch(u, i), signal,
+            fetch: fetchFor(m.provider), signal,
             onThinking: (chunk) => { req?.thinking(chunk); progress.say('The model is thinking'); },
             onText: (_, all) => { progress.writing(all); progress.within(part ? (part.index + Math.min(1, all.length / typical)) / part.of : all.length / typical,
               part ? `The model is writing storyboard ${part.index + 1} of ${part.of}` : `The model is writing the ${ANSWER_WORDS[purpose] || 'answer'}`); },

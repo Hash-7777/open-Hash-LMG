@@ -82,7 +82,7 @@ By default the look is matched to the brief: a calm brief, a technical one and a
 
 ## Models and voices
 
-**On your computer:** Ollama, LM Studio and llama.cpp.<br>
+**On your computer:** Ollama, LM Studio and llama.cpp, asked by the desktop app where a server would refuse a web page, so no server switch is needed.<br>
 **In the cloud, on your own key:** Anthropic, OpenAI, Google Gemini, OpenRouter, Groq, DeepSeek, Mistral, xAI, Moonshot, Together AI, Fireworks AI and Cerebras.<br>
 **Voices:** Chatterbox and Kokoro through your own install, pointed at once in Settings, on the processor or the graphics chip; any local speech server; or OpenAI's voices. Lines are spoken when a film with narration is made, or from a scene's inspector.
 

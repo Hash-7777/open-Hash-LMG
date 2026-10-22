@@ -29,6 +29,9 @@ serde_json = "1"
 openh264 = "0.9"
 gif = "0.14"
 mp3lame-encoder = "0.2"
+# Requests to model servers a web page may not ask directly, with the
+# system's own TLS.
+ureq = { version = "3", default-features = false, features = ["native-tls"] }
 
 [profile.release]
 lto = "thin"

@@ -5,6 +5,11 @@
 // answer in JSON, and for a cloud service the page where its keys are made
 // (keyUrl), which Settings opens in the system browser. Local services need no key and never leave the computer.
 //
+// A service a web page may not ask (in src/platform/index.js, RELAYED) is
+// asked by the desktop side instead, from a fixed table of addresses
+// (src-tauri/src/commands/relay.rs): LM Studio and llama.cpp on this
+// computer, and Moonshot, whose servers refuse a page's request.
+//
 // The cloud hosts here and the connect-src list in src-tauri/tauri.conf.json
 // must name the same places: scripts/checks/policy.mjs fails if they
 // drift. A host the code calls that the policy does not list fails as an
