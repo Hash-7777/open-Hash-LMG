@@ -21,7 +21,9 @@ section('The content policy');
 const connect = directive('connect-src');
 const cloud = new Set([...CLOUD_IDS.map((id) => new URL(PROVIDERS[id].base).origin), new URL(VOICE_ENGINES_INFO.openai.base).origin]);
 for (const o of cloud) ok(`connect-src lets the page reach ${o}`, connect.includes(o));
-const allowedExtra = new Set(["'self'", 'ipc:', 'http://ipc.localhost', 'http://127.0.0.1:*', 'http://localhost:*']);
+// lmgmedia is the app's own address for imported files (src-tauri/src/commands/media.rs),
+// read to decode their sound; on Windows it is served as http://lmgmedia.localhost.
+const allowedExtra = new Set(["'self'", 'ipc:', 'http://ipc.localhost', 'http://127.0.0.1:*', 'http://localhost:*', 'lmgmedia:', 'http://lmgmedia.localhost']);
 for (const c of connect) ok(`connect-src names nothing the app does not call: ${c}`, cloud.has(c) || allowedExtra.has(c));
 ok('local services are reachable on any loopback port', connect.includes('http://127.0.0.1:*') && connect.includes('http://localhost:*'));
 const script = directive('script-src');

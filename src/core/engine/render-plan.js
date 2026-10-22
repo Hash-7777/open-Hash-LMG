@@ -142,10 +142,11 @@ function drawLayer(kit, doc, L, t) {
       break;
     }
     case 'shape': drawShape(kit, L, s); break;
-    case 'image': {
+    case 'image': case 'video': {
       const w = (s.w ?? L.w) * u, h = (s.h ?? L.h) * u;
       const [ax, ay] = anchorOffset(L.anchor, w, h);
-      kit.image(L.asset, ax, ay, w, h, { fit: L.fit, radius: L.radius * u });
+      // Footage is drawn from the frame the page sent for this layer.
+      kit.image(L.type === 'video' ? `video:${L.id}` : L.asset, ax, ay, w, h, { fit: L.fit, radius: L.radius * u });
       break;
     }
     case 'bars': {

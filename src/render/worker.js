@@ -81,8 +81,18 @@ async function loadCode(source) {
   }
 }
 
+// Footage frames arrive with each request, named for the layer that shows
+// them; the picture each replaces is let go.
+function takeFrames(frames) {
+  for (const [k, bmp] of Object.entries(frames || {})) {
+    if (assets[k] && assets[k] !== bmp) assets[k].close?.();
+    assets[k] = bmp;
+  }
+}
+
 self.onmessage = async (e) => {
   const m = e.data || {};
+  takeFrames(m.frames);
   try {
     if (m.type === 'scene') {
       scene = m.scene;

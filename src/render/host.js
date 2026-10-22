@@ -13,6 +13,7 @@
 import { createKit } from '../core/engine/kit.js';
 import { renderPlan } from '../core/engine/render-plan.js';
 import { base64ToBytes } from '../core/audio/wav.js';
+import { createFootage } from './footage.js';
 
 const FRAME_TIMEOUT_MS = 6000;
 
@@ -51,6 +52,9 @@ export class WorkerHost {
     this.code = null;
     this.images = {};
     this.imageKey = '';
+    this.footage = createFootage();
+    // While the preview plays, footage plays along instead of seeking.
+    this.live = false;
     this.start();
   }
 
@@ -114,13 +118,15 @@ export class WorkerHost {
   }
 
   async frame(t, blur = null) {
-    const m = await this.send({ type: 'frame', t, blur });
+    const frames = await this.footage.framesAt(this.scene, t, this.live);
+    const m = await this.send({ type: 'frame', t, blur, frames }, Object.values(frames));
     return m.bitmap;
   }
 
   // A frame as RGBA bytes, drawn in the worker and moved to the page.
   async pixels(t, blur = null) {
-    const m = await this.send({ type: 'pixels', t, blur });
+    const frames = await this.footage.framesAt(this.scene, t, false);
+    const m = await this.send({ type: 'pixels', t, blur, frames }, Object.values(frames));
     return new Uint8Array(m.pixels);
   }
 
@@ -144,7 +150,7 @@ export class WorkerHost {
     }
   }
 
-  dispose() { this.worker.terminate(); this.pending.clear(); }
+  dispose() { this.worker.terminate(); this.pending.clear(); this.footage.dispose(); }
 }
 
 export class InlineHost {
@@ -154,6 +160,8 @@ export class InlineHost {
     this.canvas = document.createElement('canvas');
     this.ctx = this.canvas.getContext('2d', { alpha: false });
     this.images = {};
+    this.footage = createFootage();
+    this.live = false;
   }
 
   async setScene(scene) {
@@ -173,11 +181,13 @@ export class InlineHost {
   }
 
   async frame(t) {
+    Object.assign(this.images, await this.footage.framesAt(this.scene, t, this.live));
     renderPlan(this.kit, this.scene, t);
     return createImageBitmap(this.canvas);
   }
 
   async pixels(t) {
+    Object.assign(this.images, await this.footage.framesAt(this.scene, t, false));
     renderPlan(this.kit, this.scene, t);
     return new Uint8Array(this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height).data.buffer);
   }
@@ -188,7 +198,7 @@ export class InlineHost {
 
   async trial() { return { ok: false, error: 'This system cannot run animation code.' }; }
 
-  dispose() {}
+  dispose() { this.footage.dispose(); }
 }
 
 export function createHost() {

@@ -36,7 +36,9 @@ export const FONT_STACKS = {
 };
 export const FONT_NAMES = Object.keys(FONT_STACKS);
 
-export const LAYER_TYPES = ['text', 'shape', 'image', 'counter', 'bars', 'line-chart', 'group'];
+// video: a clip of imported footage, drawn from its own time (`from` plus the
+// layer's local time), with its own sound at `volume`.
+export const LAYER_TYPES = ['text', 'shape', 'image', 'video', 'counter', 'bars', 'line-chart', 'group'];
 export const SHAPES = ['rect', 'circle', 'ellipse', 'line', 'ring', 'polygon', 'path', 'arrow'];
 export const ANCHORS = ['center', 'left', 'right', 'top', 'bottom', 'top-left', 'top-right', 'bottom-left', 'bottom-right'];
 export const ALIGNS = ['left', 'center', 'right'];

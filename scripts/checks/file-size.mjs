@@ -14,7 +14,7 @@ const BUDGETS = {
   'src/core/engine/kit.js': 700,
   // The normaliser rebuilds every field of every layer type in one place, so
   // the field guard has one gate to hold.
-  'src/core/scene/normalize.js': 580,
+  'src/core/scene/normalize.js': 560,
 };
 
 const walk = (d) => readdirSync(d).flatMap((f) => { const p = join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; });

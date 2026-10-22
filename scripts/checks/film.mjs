@@ -113,12 +113,14 @@ const FULL = {
   counter: { ...COMMON, type: 'counter', from: 1, to: 9, decimals: 1, prefix: '$', suffix: 'k', separator: false, size: 120, weight: 700, font: 'display', align: 'right', tracking: 0, count: 2, roll: true },
   bars: { ...COMMON, type: 'bars', values: [1, 2, 3], labels: ['a', 'b', 'c'], w: 600, h: 300, max: 5, min: 0, gap: 0.3, orientation: 'horizontal', showValues: false, labelSize: 22, track: 'surface', strokeWidth: 4, dots: false, area: true, decimals: 1, suffix: '%' },
   group: { ...COMMON, type: 'group', layers: [{ type: 'text', text: 'inside', id: 'inner' }] },
+  video: { ...COMMON, type: 'video', asset: 'clip', w: 1600, h: 900, fit: 'contain', radius: 12, from: 2.5, rate: 1.5, volume: 0.6, muted: true },
 };
+const FOOTAGE = { clip: { kind: 'video', name: 'Invented clip', media: '0123456789abcdef01234567', duration: 12, width: 1920, height: 1080, audio: true } };
 for (const type of LAYER_TYPES) {
   if (type === 'image' || type === 'line-chart') continue;
   const L = FULL[type];
   if (!L) { ok(`${type} has a full layer here`, false); continue; }
-  const doc = { scenes: [{ duration: 3, layers: [{ id: 'probe', ...L }] }] };
+  const doc = { assets: FOOTAGE, scenes: [{ duration: 3, layers: [{ id: 'probe', ...L }] }] };
   const once = normalizeScene(doc).scene.scenes[0].layers[0];
   const twice = normalizeScene(normalizeScene(doc).scene).scene.scenes[0].layers[0];
   const lost = Object.keys(L).filter((k) => !(k in once) || !(k in twice));
@@ -141,6 +143,17 @@ for (const style of STYLE_NAMES) {
   const { scene } = compileStoryboard(STORYBOARD, { style, targetDuration: 40 });
   const hits = lintScene(scene, { beats: measure(scene, beatTimes(scene)) }).filter((i) => i.code === 'frozen');
   ok(`${style}: a compiled film moves on every beat`, hits.length === 0, hits.map((i) => i.message).join(' / '));
+}
+
+section('Footage and sound clips survive normalising');
+{
+  const assets = { ...FOOTAGE, song: { kind: 'sound', name: 'Invented song', media: 'fedcba9876543210fedcba98', duration: 90 }, bad: { kind: 'video', media: '../../etc' } };
+  const doc = { assets, scenes: [{ duration: 6, layers: [{ type: 'video', asset: 'clip', from: 1 }] }], sound: { score: 'none', clips: [{ asset: 'song', at: 0, from: 10, length: 6, volume: 0.5, fadeIn: 1, fadeOut: 2 }, { asset: 'missing', at: 0 }] } };
+  const once = normalizeScene(doc).scene;
+  ok('footage and sound kept by id, a damaged id dropped', once.assets.clip?.media === FOOTAGE.clip.media && once.assets.song?.kind === 'sound' && !once.assets.bad);
+  ok('a sound clip keeps every field; one with no asset is dropped', once.sound.clips.length === 1 && once.sound.clips[0].from === 10 && once.sound.clips[0].fadeOut === 2);
+  ok('normalising twice changes nothing', JSON.stringify(normalizeScene(once).scene) === JSON.stringify(once));
+  ok('a video layer fills the frame and starts with a cut by default', once.scenes[0].layers[0].w === 1920 && once.scenes[0].layers[0].h === 1080 && once.scenes[0].layers[0].in.preset === 'none');
 }
 
 section('Every example draws at every moment');

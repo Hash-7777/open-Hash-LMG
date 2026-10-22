@@ -132,7 +132,7 @@ src/
     providers/     model services, requests and streams, model sizes, voices
     audio/         synth, score, narration mix, loudness, word timing, WAV
     export/        the MP4 and MOV writer
-  render/          the locked-down render worker, its host, video export
+  render/          the locked-down render worker, its host, footage frames, video export
   platform/        the desktop app or a browser: projects, files, settings and keys
   app/             the editor window: its state, panels and dialogs
 src-tauri/         the desktop side: films, exports, sound, the window's walls

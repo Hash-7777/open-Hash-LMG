@@ -234,8 +234,10 @@ export function lintScene(doc, opts = {}) {
     frozen.add(S.id);
     add('warn', 'frozen', `Nothing moves from ${run.from.toFixed(1)} s to ${run.to.toFixed(1)} s in scene ${doc.scenes.indexOf(S) + 1}. Something should move on every beat: a slow push, a line drawing on, a figure counting.`, { scene: S.id, t: run.from }, { kind: 'add-camera', scene: S.id });
   };
+  // Footage moves by itself, which the measured boxes cannot see.
+  const hasFootage = (S) => JSON.stringify(S.layers).includes('"type":"video"');
   for (let i = 1; i < beats.length; i++) {
-    if (frameShift(beats[i - 1].boxes, beats[i].boxes) < 0.75 && sceneAt(beats[i - 1].t) === sceneAt(beats[i].t)) {
+    if (frameShift(beats[i - 1].boxes, beats[i].boxes) < 0.75 && sceneAt(beats[i - 1].t) === sceneAt(beats[i].t) && !hasFootage(sceneAt(beats[i].t))) {
       run ||= { from: beats[i - 1].t };
       run.to = beats[i].t;
     } else { flush(); run = null; }

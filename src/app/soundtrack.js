@@ -7,13 +7,70 @@
 
 import { makeScore } from '../core/audio/score.js';
 import { decodeWav, toMono48k, base64ToBytes } from '../core/audio/wav.js';
+import { media } from '../platform/index.js';
 
 function keyOf(scene) {
   return JSON.stringify({
     d: scene.duration, b: scene.bpm, sd: scene.seed, s: scene.sound,
     sc: scene.scenes.map((S) => [S.name, S.start, S.duration]),
     v: scene.voice.lines.map((l) => [l.scene, l.at, l.clip]), duck: scene.voice.duck,
+    f: footageOf(scene).map((c) => [c.media, c.t, c.from, c.length, c.gain]),
   });
+}
+
+const SR = 48000;
+const flat = (layers) => layers.flatMap((L) => [L, ...flat(L.layers || [])]);
+
+// The sound each clip of footage brings, and the film's own sound clips:
+// [{ media, t, from, length, gain, fadeIn, fadeOut }] in film and file seconds.
+export function footageOf(scene) {
+  const out = [];
+  for (const S of scene.scenes) {
+    for (const L of flat(S.layers)) {
+      const a = scene.assets[L.asset];
+      // Sound plays at its own speed only: footage slowed or sped is drawn silent.
+      if (L.type !== 'video' || !a || a.kind !== 'video' || !a.audio || L.muted || L.volume <= 0 || L.rate !== 1) continue;
+      out.push({ media: a.media, t: S.start + L.at, from: L.from, length: L.until - L.at, gain: L.volume, fadeIn: 0.02, fadeOut: 0.02 });
+    }
+  }
+  for (const c of scene.sound.clips || []) {
+    const a = scene.assets[c.asset];
+    if (a) out.push({ media: a.media, t: c.at, from: c.from, length: c.length, gain: c.volume, fadeIn: Math.max(0.02, c.fadeIn), fadeOut: Math.max(0.02, c.fadeOut) });
+  }
+  return out;
+}
+
+// Files decoded to stereo at 48 kHz, kept while the app runs.
+const decoded = new Map();
+function decodeMedia(id) {
+  if (!decoded.has(id)) {
+    decoded.set(id, (async () => {
+      const file = await media.read(id);
+      const buf = await new OfflineAudioContext(2, SR, SR).decodeAudioData(await file.arrayBuffer());
+      const left = buf.getChannelData(0);
+      return { left, right: buf.numberOfChannels > 1 ? buf.getChannelData(1) : left };
+    })().catch((err) => { decoded.delete(id); throw err; }));
+  }
+  return decoded.get(id);
+}
+
+// Each piece of sound cut from its file and faded at both ends.
+async function bedsOf(scene) {
+  const out = [];
+  for (const c of footageOf(scene)) {
+    let src;
+    try { src = await decodeMedia(c.media); } catch { continue; }
+    const a = Math.round(c.from * SR), n = Math.max(0, Math.min(Math.round(c.length * SR), src.left.length - a));
+    if (n <= 0) continue;
+    const left = src.left.slice(a, a + n), right = src.right.slice(a, a + n);
+    const fi = Math.round(c.fadeIn * SR), fo = Math.round(c.fadeOut * SR);
+    for (let i = 0; i < n; i++) {
+      const g = Math.min(1, i / Math.max(1, fi), (n - 1 - i) / Math.max(1, fo));
+      left[i] *= g; right[i] *= g;
+    }
+    out.push({ t: c.t, left, right, gain: c.gain });
+  }
+  return out;
 }
 
 // Spoken clips placed at film time: [{ t, samples }] in mono at 48 kHz.
@@ -37,11 +94,12 @@ let cached = { key: '', promise: null };
 export function soundtrackFor(scene) {
   const key = keyOf(scene);
   if (cached.key === key && cached.promise) return cached.promise;
-  const promise = makeScore(scene, {
+  const promise = bedsOf(scene).then((beds) => makeScore(scene, {
     seed: scene.seed,
     voices: voicesOf(scene),
+    beds,
     onStage: () => new Promise((r) => setTimeout(r, 0)),
-  }).catch((err) => { if (cached.key === key) cached = { key: '', promise: null }; throw err; });
+  })).catch((err) => { if (cached.key === key) cached = { key: '', promise: null }; throw err; });
   cached = { key, promise };
   return promise;
 }

@@ -442,7 +442,7 @@ export function createKit(ctx, options = {}) {
   function image(id, x, y, w, h, o = {}) {
     const img = assets[id];
     if (!img) return;
-    const iw = img.width || w, ih = img.height || h;
+    const iw = img.width || img.displayWidth || w, ih = img.height || img.displayHeight || h;
     const k = o.fit === 'cover' ? Math.max(w / iw, h / ih) : Math.min(w / iw, h / ih);
     const dw = iw * k, dh = ih * k;
     ctx.save();

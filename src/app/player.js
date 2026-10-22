@@ -330,6 +330,7 @@ export function createPlayer({ store, host, prefs, onTemplates = null }) {
     if (a && a.ctx.state === 'suspended') a.ctx.resume();
     applyVolume();
     clock = { kind: 'wall', t0: t, at: performance.now() };
+    host.live = true;
     store.setPlaying(true);
     if (!startSource(t)) prepareSound();
     raf = requestAnimationFrame(tick);
@@ -339,6 +340,8 @@ export function createPlayer({ store, host, prefs, onTemplates = null }) {
     cancelAnimationFrame(raf);
     stopSource();
     clock = null;
+    host.live = false;
+    host.footage?.pause();
     store.setPlaying(false);
   }
 

@@ -15,6 +15,11 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(security::navigation::guard())
+        // Footage, pictures and sound the person imported, read by id in pieces.
+        .register_asynchronous_uri_scheme_protocol("lmgmedia", |ctx, request, responder| {
+            let app = ctx.app_handle().clone();
+            std::thread::spawn(move || responder.respond(commands::media::serve(&app, &request)));
+        })
         .manage(commands::export::Exports::default())
         .manage(commands::encode::Encoders::default())
         .invoke_handler(tauri::generate_handler![
@@ -30,6 +35,7 @@ pub fn run() {
             commands::encode::encoder_frame,
             commands::encode::encoder_close,
             commands::encode::mp3_encode,
+            commands::media::media_import,
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]

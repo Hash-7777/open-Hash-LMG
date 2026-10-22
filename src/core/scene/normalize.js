@@ -15,6 +15,8 @@
 // the lists below and into the field guard in scripts/checks/scene-normalize.mjs
 // in the same commit. Running it twice gives the same scene twice.
 
+import { normAssets } from './assets.js';
+import { isObj, num, affix, str, slug } from './values.js';
 import {
   FORMAT, ASPECTS, FPS_CHOICES, PALETTE_TOKENS, FONT_NAMES, LAYER_TYPES, SHAPES, ANCHORS, ALIGNS,
   IN_PRESETS, OUT_PRESETS, HOLD_PRESETS, TRANSITIONS, DIRECTIONS, BACKGROUNDS, SCORES, HIT_KINDS,
@@ -34,34 +36,6 @@ function makeNotes() {
     add(msg) { if (!seen.has(msg) && list.length < 200) { seen.add(msg); list.push(msg); } },
   };
 }
-
-const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
-
-function num(v, def, lo = -Infinity, hi = Infinity) {
-  if (typeof v === 'string') {
-    const s = v.trim();
-    if (s.endsWith('%')) v = parseFloat(s) / 100;
-    else if (/^-?[\d.]+(px|s|ms)?$/.test(s)) v = s.endsWith('ms') ? parseFloat(s) / 1000 : parseFloat(s);
-  }
-  if (typeof v !== 'number' || !Number.isFinite(v)) return def;
-  return Math.min(hi, Math.max(lo, v));
-}
-
-// A number's prefix or suffix keeps its own space (" million", "$ "), so it is
-// not trimmed; runs of space still become one.
-function affix(v, max) {
-  if (typeof v !== 'string' && typeof v !== 'number') return '';
-  return String(v).replace(/\s+/g, ' ').slice(0, max);
-}
-
-function str(v, def = '', max = 400) {
-  if (v === null || v === undefined) return def;
-  if (typeof v === 'number') v = String(v);
-  if (typeof v !== 'string') return def;
-  return v.replace(/\s+/g, ' ').trim().slice(0, max);
-}
-
-const slug = (s) => String(s || '').toLowerCase().replace(/[\s_]+/g, '-').replace(/[^a-z0-9-]/g, '');
 
 // Plain pixel amounts (stroke widths, radii, padding): never rescaled.
 function px(v, def, lo, hi) {
@@ -224,7 +198,7 @@ function normLayer(L, ctx, depth = 0) {
     ? (isTitle ? pack.enter.title : pack.enter.line)
     : type === 'shape' ? (['line', 'path', 'ring', 'arrow'].includes(L.shape) ? 'draw' : 'scale')
     : type === 'bars' || type === 'line-chart' ? 'grow'
-    : type === 'counter' ? 'rise' : 'fade';
+    : type === 'counter' ? 'rise' : type === 'video' ? 'none' : 'fade';
   const motionDefs = {
     preset: enterDef, duration: type === 'text' && ['letters', 'words', 'type'].includes(enterDef) ? 0.9 : 0.7,
     ease: pack.ease, stagger: enterDef === 'type' ? 0.035 : enterDef === 'words' ? 0.08 : 0.025, distance: 40,
@@ -302,6 +276,24 @@ function normLayer(L, ctx, depth = 0) {
       h: size(L.h ?? L.height, 400, 1, 8000),
       fit: oneOf(L.fit, ['contain', 'cover'], 'contain'),
       radius: px(L.radius, 0, 0, 2000),
+    });
+  } else if (type === 'video') {
+    const asset = str(L.asset ?? L.src, '', 80);
+    if (!asset || ctx.assets[asset]?.kind !== 'video') { notes.add(`A video layer pointing at missing footage${asset ? ` ("${asset}")` : ''} was left out.`); return null; }
+    // Sizes are in units of a 1080 short side, so a full frame is the frame
+    // over that unit.
+    const u = Math.min(W, H) / 1080;
+    Object.assign(base, {
+      asset,
+      w: size(L.w ?? L.width, Math.round(W / u), 1, 8000),
+      h: size(L.h ?? L.height, Math.round(H / u), 1, 8000),
+      fit: oneOf(L.fit, ['contain', 'cover'], 'cover'),
+      radius: px(L.radius, 0, 0, 2000),
+      // Where in the footage the layer starts, in seconds, and how fast it plays.
+      from: num(L.from ?? L.trim, 0, 0, 100000),
+      rate: num(L.rate, 1, 0.25, 4),
+      volume: num(L.volume, 1, 0, 2),
+      muted: Boolean(L.muted),
     });
   } else if (type === 'counter') {
     Object.assign(base, {
@@ -458,26 +450,7 @@ export function normalizeScene(input, opts = {}) {
     drift: num(bgIn.drift, pack.background.drift, 0, 1),
   };
 
-  // Pictures (image layers) and spoken clips (narration), carried inside the
-  // project as data so a project file is complete on its own.
-  const assets = {};
-  const assetsIn = isObj(doc.assets) ? doc.assets : {};
-  for (const [id, a] of Object.entries(assetsIn).slice(0, 200)) {
-    const key = slug(id);
-    if (!key || !isObj(a) || typeof a.data !== 'string') continue;
-    if (/^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,/.test(a.data)) {
-      assets[key] = { kind: 'image', name: str(a.name, key, 120), data: a.data, width: num(a.width, 0, 0, 20000), height: num(a.height, 0, 0, 20000) };
-    } else if (/^data:audio\/(wav|x-wav|wave);base64,/.test(a.data)) {
-      assets[key] = {
-        kind: 'audio', name: str(a.name, key, 120), data: a.data,
-        duration: num(a.duration, 0, 0, 600),
-        words: (Array.isArray(a.words) ? a.words : []).filter((w) => Array.isArray(w) && w.length >= 3)
-          .slice(0, 2000).map((w) => [str(w[0], '', 60), num(w[1], 0, 0, 600), num(w[2], 0, 0, 600)]),
-        text: str(a.text, '', 400),
-        voice: str(a.voice, '', 200),
-      };
-    }
-  }
+  const assets = normAssets(doc.assets);
 
   const ctx = { notes, pack, fonts, assets, W: width, H: height, counter: 0, sceneDur: 3, prevDuration: undefined };
   let scenesIn = Array.isArray(doc.scenes) ? doc.scenes : [];
@@ -511,6 +484,11 @@ export function normalizeScene(input, opts = {}) {
       .sort((a, b) => a.t - b.t)
       .slice(0, 200),
     sync: soundIn.sync === undefined ? true : Boolean(soundIn.sync),
+    // Sound placed on the film: music or a clip's own sound, from a point in
+    // the file, for a length, faded in and out.
+    clips: (Array.isArray(soundIn.clips) ? soundIn.clips : []).filter(isObj).slice(0, 100)
+      .map((c) => ({ asset: slug(c.asset), at: num(c.at, 0, 0, duration), from: num(c.from, 0, 0, 100000), length: num(c.length, duration, 0.05, 100000), volume: num(c.volume, 1, 0, 2), fadeIn: num(c.fadeIn, 0, 0, 30), fadeOut: num(c.fadeOut, 0, 0, 30) }))
+      .filter((c) => ['sound', 'video'].includes(assets[c.asset]?.kind)),
     // The key, in semitones from the score's home key, and the order its
     // chords come in: set by the film's direction.
     key: Math.round(num(soundIn.key, 0, -6, 6)),

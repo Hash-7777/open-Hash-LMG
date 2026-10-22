@@ -43,6 +43,12 @@ The page reaches the computer only through the commands in
   page never sees or names the path; a cancelled export leaves nothing.
 - **Sound** is encoded by the system's own AAC encoder (macOS), from a WAV
   the page sends, through temporary files that are removed straight after.
+- **Footage, pictures and sound** are picked in the system's own open
+  dialog and remembered by an id in a list in the app's data folder; the
+  page never sees a path. The window reads a file through the app's own
+  address (`lmgmedia`), by id only, in pieces of at most a few megabytes, and
+  only files on that list can be read. The content policy names that address
+  for media, pictures and reading sound, and nothing more.
 - **Encoding** is done by encoders built into the app (H.264, GIF, MP3). The
   page sends raw pixels or sound under a session token and gets encoded
   bytes back; these commands read and write no file and take no path. Frame

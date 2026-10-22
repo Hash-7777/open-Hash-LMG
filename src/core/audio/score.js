@@ -53,9 +53,11 @@ export function scorePlan(doc) {
 // music lowered under the voice. Yields to the caller between stages when
 // `onStage` is given, so a long film does not freeze the window while it is
 // made. voices: [{ t, samples }] with mono 48 kHz samples placed at film time t.
-export async function makeScore(doc, { onStage = null, seed = 1, voices = [] } = {}) {
+// beds: [{ t, left, right, gain }], stereo 48 kHz sound from imported footage
+// and music, already trimmed and faded, laid under the narration with the score.
+export async function makeScore(doc, { onStage = null, seed = 1, voices = [], beds = [] } = {}) {
   const flavor = doc.sound.score;
-  if (flavor === 'none' && !voices.length) return null;
+  if (flavor === 'none' && !voices.length && !beds.length) return null;
   const music = flavor !== 'none';
   const { beat, sections, drops } = scorePlan(doc);
   const BAR = beat * 4;
@@ -196,11 +198,21 @@ export async function makeScore(doc, { onStage = null, seed = 1, voices = [] } =
     let px = 0, py = 0;
     for (let i = 0; i < x.length; i++) { const y = hpA * (py + x[i] - px); px = x[i]; py = y; x[i] = y; }
   }
+  // Footage sound and music, as they were cut.
+  for (const b of beds) {
+    const i0 = Math.round(b.t * SR);
+    for (let i = 0; i < b.left.length && i0 + i < dry.n; i++) {
+      if (i0 + i < 0) continue;
+      dry.L[i0 + i] += b.left[i] * b.gain;
+      dry.R[i0 + i] += b.right[i] * b.gain;
+    }
+  }
+  if (beds.length) await step('beds');
   // Narration: the music is brought to a bed level, each line to a speaking
   // level, and the music is lowered under every line (eased in and out over a
   // third of a second) so the voice is clear without the music dropping out.
   if (voices.length) {
-    if (music) {
+    if (music || beds.length) {
       const ml = integratedLufs(dry.L, dry.R);
       if (Number.isFinite(ml)) { const g = 10 ** ((-21 - ml) / 20); for (let i = 0; i < dry.n; i++) { dry.L[i] *= g; dry.R[i] *= g; } }
       const duckGain = 10 ** (-(doc.voice?.duck ?? 8) / 20);
