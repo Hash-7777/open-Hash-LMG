@@ -119,3 +119,5 @@
 .run-request[open] summary { margin-bottom: 6px; }
 .run-pre { max-height: 220px; overflow: auto; margin: 2px 0 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--field); color: var(--ink-2); font-family: var(--mono); font-size: var(--text-xs); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 .run-notes-list { margin: 0; padding-left: 18px; font-size: var(--text-s); color: var(--ink-2); }
+
+.voice-folder { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-size: var(--text-s); align-self: center; }

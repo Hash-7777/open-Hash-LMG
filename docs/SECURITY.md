@@ -49,6 +49,13 @@ The page reaches the computer only through the commands in
   address (`lmgmedia`), by id only, in pieces of at most a few megabytes, and
   only files on that list can be read. The content policy names that address
   for media, pictures and reading sound, and nothing more.
+- **Voices installed on this computer** (Chatterbox, Kokoro) run through
+  the person's own install, whose folder is chosen in the system's folder
+  dialog and remembered by the desktop side; the page names only the engine.
+  A short script built into the app speaks each line with that install's
+  own interpreter and writes a WAV to the system's temporary folder, which is
+  read back and removed. Nothing is installed or downloaded by the app. Lines
+  sent to a cloud voice go to that service only when it is chosen.
 - **Encoding** is done by encoders built into the app (H.264, GIF, MP3). The
   page sends raw pixels or sound under a session token and gets encoded
   bytes back; these commands read and write no file and take no path. Frame

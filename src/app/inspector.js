@@ -6,6 +6,7 @@
 // The panel is drawn from the scene each time, and left alone while one of its
 // own fields has focus, so typing is never interrupted by a redraw.
 
+import { narrationSection } from './narration-fields.js';
 import { h, clear } from './dom.js';
 import { findLayer, layerSlot } from './store.js';
 import {
@@ -32,7 +33,7 @@ function allLayers(list, out = []) {
   return out;
 }
 
-export function createInspector({ store, onVersion }) {
+export function createInspector({ store, onVersion, settings = null }) {
   const body = h('div', { class: 'insp-body' });
   const title = h('span', { class: 'panel-title' });
   const el = h('aside', { class: 'inspector', 'aria-label': 'Inspector' }, h('div', { class: 'panel-head' }, title), body);
@@ -112,17 +113,8 @@ export function createInspector({ store, onVersion }) {
   function scenePanel(S) {
     const s = scene();
     const index = s.scenes.indexOf(S);
-    const line = s.voice.lines.find((l) => l.scene === S.id);
     title.textContent = `Scene ${index + 1} of ${s.scenes.length}`;
     const tr = S.transition;
-    const setLine = (text, live) => store.edit((doc) => {
-      const lines = doc.voice.lines;
-      const i = lines.findIndex((l) => l.scene === S.id);
-      const clean = text.trim();
-      if (!clean) { if (i >= 0) lines.splice(i, 1); else return false; return undefined; }
-      if (i >= 0) { if (lines[i].text === clean) return false; lines[i].text = clean; lines[i].clip = null; } else lines.push({ scene: S.id, text: clean, at: 0.15 });
-      return undefined;
-    }, { live });
     return [
       section('Scene',
         field('Name', textInput(S.name, (v) => inScene(S.id, (T) => { T.name = v; }), { placeholder: S.id, max: 60 })),
@@ -150,9 +142,7 @@ export function createInspector({ store, onVersion }) {
           field('Zoom to', numberInput(S.camera.zoom[1], (v) => inScene(S.id, (T) => { T.camera.zoom[1] = v; }), { min: 0.25, max: 4, step: 1, scale: 100, unit: '%', digits: 0 }))),
         h('div', { class: 'field-hint', text: 'A slow push of a few percent keeps a scene alive without drawing the eye.' })),
       staggerSection(S, inScene),
-      section('Narration',
-        field('Spoken line', textArea(line ? line.text : '', { onLive: (v) => setLine(v, true), onCommit: (v) => { setLine(v, true); store.commit(); }, rows: 3, placeholder: 'What the voice says in this scene', max: 300 }),
-          line && line.clip ? null : line ? 'Not spoken yet. Voices come with the voice settings.' : null)),
+      narrationSection(S, s, { store, settings }),
       section('Add to this scene',
         buttonRow(
           textButton('Text', () => addLayer(S, { type: 'text', text: 'New line', size: 72, weight: 700 })),
@@ -233,7 +223,7 @@ export function createInspector({ store, onVersion }) {
   // ---- layer ------------------------------------------------------------------------
   function layerPanel(S, L) {
     const s = scene();
-    title.textContent = { text: 'Text', shape: 'Shape', image: 'Picture', counter: 'Counter', bars: 'Bar chart', 'line-chart': 'Line chart', group: 'Group' }[L.type] || 'Layer';
+    title.textContent = { text: 'Text', shape: 'Shape', image: 'Picture', video: 'Clip', counter: 'Counter', bars: 'Bar chart', 'line-chart': 'Line chart', group: 'Group' }[L.type] || 'Layer';
     const set = (fn) => inLayer(S.id, L.id, fn);
     const parts = [];
 

@@ -96,7 +96,7 @@ async function boot() {
       toast(`${version.scene.title} is open. The film it came from is in Films.`);
     } catch (err) { toast(err.message || String(err), 'error'); }
   };
-  const inspector = createInspector({ store, onVersion });
+  const inspector = createInspector({ store, onVersion, settings });
   const progress = createProgress();
   const director = createDirectorPanel({ store, settings, openSettings, progress });
 

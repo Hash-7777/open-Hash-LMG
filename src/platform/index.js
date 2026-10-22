@@ -203,6 +203,21 @@ export const media = {
   },
 };
 
+// ---- voices installed on this computer --------------------------------------
+//
+// Chatterbox and Kokoro, through the person's own install, whose folder the
+// desktop side asks for and remembers (src-tauri/src/commands/voice.rs).
+export const voices = {
+  available: isApp,
+  // { set, name, ready, missing: [what the folder lacks] }
+  status: (engine) => invoke('voice_status', { engine }),
+  pickFolder: (engine) => invoke('voice_folder', { engine }),
+  async speak({ engine, text, voice = '', speed = 1, device = 'auto' }) {
+    const out = await invoke('voice_speak', { engine, text, voice, speed, device });
+    return out instanceof Uint8Array ? out : new Uint8Array(out);
+  },
+};
+
 // ---- system services -----------------------------------------------------
 
 // AAC through the operating system's own encoder, for web views that cannot

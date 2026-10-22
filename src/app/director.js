@@ -23,6 +23,7 @@ import { createSuggestions, openIdeasDialog } from './suggestions.js';
 import { createRunRecord } from '../core/director/run-record.js';
 import { runs } from '../platform/runs.js';
 import { appVersion } from '../platform/index.js';
+import { speakLines } from './narration.js';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120];
 
@@ -231,7 +232,9 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     paintButtons();
     resetNotes();
     const way = tier();
-    progress.start(PLANS[way].map(([id, weight]) => ({ id, weight })), 'Starting', whoText(way));
+    // With narration on and a voice chosen, the lines are spoken once the film is made.
+    const narrate = s.film.narration && s.voice.engine !== 'none';
+    progress.start([...PLANS[way], ...(narrate ? [['voice', 2]] : [])].map(([id, weight]) => ({ id, weight })), 'Starting', whoText(way));
     record = await beginRecord('make', { brief: text, tier: way });
     const { director, session, done } = makeDirector(running.signal);
     try {
@@ -252,6 +255,18 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
       for (const i of left.slice(0, 6)) note(i.message);
       const fit = await session.fitNote();
       if (fit) note(fit);
+      if (narrate) {
+        progress.step('voice', 'Speaking the narration');
+        record?.step('voice', 'Speaking the narration', 'run');
+        try {
+          const n = await speakLines({ store, settings, onLine: (i, of) => progress.within(i / of, `Speaking line ${i + 1} of ${of}`) });
+          record?.step('voice', 'Speaking the narration', 'done');
+          if (n) note(`Spoke ${n} line${n === 1 ? '' : 's'} of narration.`);
+        } catch (err) {
+          record?.step('voice', 'Speaking the narration', 'fail', err.message);
+          note(`The narration was not spoken: ${err.message || err}`);
+        }
+      }
       progress.finish(left.length || missing ? 'Made, with a few things to look at' : 'Made');
       endRecord('done', { result: { tier: out.tier, direction: out.direction ? { style: out.direction.style, mood: out.direction.mood, palette: out.direction.palette, bpm: out.direction.bpm, score: out.direction.score } : null, scenes: out.scene.scenes.length, duration: out.scene.duration, codeChars: out.code ? out.code.length : 0, issues: out.issues.map((i) => `${i.level} ${i.code}: ${i.message}`), brief: out.brief || [] } });
     } catch (err) {

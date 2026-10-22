@@ -84,7 +84,7 @@ By default the look is matched to the brief: a calm brief, a technical one and a
 
 **On your computer:** Ollama, LM Studio and llama.cpp.<br>
 **In the cloud, on your own key:** Anthropic, OpenAI, Google Gemini, OpenRouter, Groq, DeepSeek, Mistral, xAI, Moonshot, Together AI, Fireworks AI and Cerebras.<br>
-**Voices, planned:** Chatterbox and Kokoro through your own install, on the processor or the graphics chip; any local speech server; or OpenAI's voices.
+**Voices:** Chatterbox and Kokoro through your own install, pointed at once in Settings, on the processor or the graphics chip; any local speech server; or OpenAI's voices. Lines are spoken when a film with narration is made, or from a scene's inspector.
 
 <br>
 
@@ -94,12 +94,13 @@ Hash LMG is being built in the open. This is exactly what exists today:
 
 | Works today | Written, not yet run | Next |
 |---|---|---|
-| Scene format and its repair | Requests to every model service | Voices through Chatterbox and Kokoro |
+| Scene format and its repair | Requests to every model service | Windows and Linux runs |
 | The engine: type, shapes, charts, transitions | Motion blur | First release for macOS and Windows |
 | Film checks and automatic fixes | Films and exports kept by the desktop app | |
 | The storyboard compiler, in every style | Sound through the system's own encoder | |
 | The director, with a scripted model | Narration mix, word timing and captions | |
 | Score and mastering | Processor or graphics-chip choice for Ollama | |
+| Narration through a local speech server, with word timing | Voices through Chatterbox and Kokoro installs | |
 | The editor: preview, timeline, inspector, director, settings | | |
 | Rendering in a background worker; MP4, MOV, GIF and MP3 export by the app's own encoders, in the macOS app | | |
 | The macOS app: it builds and opens the editor | | |

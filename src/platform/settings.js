@@ -61,7 +61,6 @@ export function normalizeSettings(input) {
     const def = Number(new URL(PROVIDERS[id].base).port);
     ports[id] = int(isObj(local.ports) ? local.ports[id] : undefined, def, 1, 65535);
   }
-  const folders = isObj(voice.folders) ? voice.folders : {};
 
   return {
     version: 1,
@@ -92,9 +91,9 @@ export function normalizeSettings(input) {
       engine: pick(voice.engine, ['none', ...Object.keys(VOICE_ENGINES_INFO)], 'none'),
       voice: text(voice.voice, 200),
       speed: numIn(voice.speed, 1, 0.5, 2),
+      // Where an installed voice lives is remembered by the desktop side
+      // (src-tauri/src/commands/voice.rs), never kept here as a path.
       device: pick(voice.device, DEVICES, 'cpu'),
-      python: text(voice.python, 1000),
-      folders: { chatterbox: text(folders.chatterbox, 1000), kokoro: text(folders.kokoro, 1000) },
       serverPort: int(voice.serverPort, VOICE_ENGINES_INFO.server.defaultPort, 1, 65535),
     },
     film: {
