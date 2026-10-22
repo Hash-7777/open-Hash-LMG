@@ -141,6 +141,8 @@ src-tauri/         the desktop side: films, exports, sound, the window's walls
 scripts/checks/    the check suite: every script under it runs on npm run check
 ```
 
+How the parts fit together, the walls around them and how a film is made: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). What has changed: [CHANGELOG.md](CHANGELOG.md).
+
 <br>
 
 ## Licence
