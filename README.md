@@ -100,7 +100,7 @@ Hash LMG is being built in the open. This is exactly what exists today:
 | The storyboard compiler, in every style | Sound through the system's own encoder | |
 | The director, with a scripted model | Narration mix, word timing and captions | |
 | Score and mastering | Processor or graphics-chip choice for Ollama | |
-| Narration through a local speech server, with word timing | Voices through Chatterbox and Kokoro installs | |
+| Narration through a Kokoro install or a local speech server, with word-timed captions | Voices through a Chatterbox install | |
 | The editor: preview, timeline, inspector, director, settings | | |
 | Rendering in a background worker; MP4, MOV, GIF and MP3 export by the app's own encoders, in the macOS app | | |
 | The macOS app: it builds and opens the editor | | |
