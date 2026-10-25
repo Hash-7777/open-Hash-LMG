@@ -59,7 +59,7 @@ rules when it lays a storyboard out, so a guided film starts out passing them.
 | Rule | In the code | Source | Weight |
 |---|---|---|---|
 | Every film is designed for its own brief: no two briefs, and no two takes of one brief, share a look, a colour, a tempo or a set of compositions. | `chooseDirection` in `src/core/scene/direction.js`, read from the brief's words and the model's suggested look, turned by a take number. | The briefs behind the most directed model-made films all name their look and ban "anything that looks like a template". | Fair |
-| Vary scale and composition; never the same composition twice in a row. | Several compositions per kind of scene in `src/core/scene/layouts.js`, chosen by `layoutFor`. | Creator briefs for directed motion. | Lore |
+| Vary scale and composition; never the same composition twice in a row. | Several compositions per kind of scene in `src/core/scene/layouts.js`, chosen by `layoutFor`; hooks and statements turn through them together, a scene never takes the one just before it, and a line never arrives the way the line before it did (`src/core/scene/compile.js`, checked in `scripts/checks/direction.mjs`). | Creator briefs for directed motion. | Lore |
 | The accent colour reads on its field: 3 to 1 for large type. | `chooseDirection` keeps a suggested or brief-named colour only when it does; checked in `scripts/checks/direction.mjs`. | WCAG 2 contrast minimum, large text. | Strong |
 | Models that design their own motion are given the moves of the best directed films and a banned list. | `MOTION` and `BANNED` in `src/core/director/prompts.js`, in the plan and code prompts. | Repeated across the most detailed briefs behind model-made films. | Fair |
 

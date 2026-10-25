@@ -14,6 +14,9 @@ newest first, grouped by what it does for the person making a film.
 - No empty frames between scenes: each scene's words begin as it arrives,
   and across a fade or a zoom the words leaving lift away just before the
   new ones arrive.
+- Runs of lines look and move differently: hooks and statements turn through
+  their compositions together, so the same layout never comes back within
+  three scenes, and a line never arrives the way the line before it did.
 - Your pictures carry more of the film: a model may put one on lists, steps
   and figures too, which sit in a column beside it, and on several beats; a
   picture shown once gets a second, closer look on the next beat, standing as

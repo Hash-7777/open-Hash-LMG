@@ -22,7 +22,7 @@ import { beatLength } from '../engine/math.js';
 import { entranceSpan } from '../engine/motion.js';
 import { contrast } from '../util/color.js';
 import { preroll } from './samples.js';
-import { layoutFor, cameraFor } from './direction.js';
+import { layoutFor, cameraFor, LAYOUTS } from './direction.js';
 import { layBeat } from './layouts.js';
 import { layPictureBeat } from './picture-layouts.js';
 import { layMediaBeat } from './media-layouts.js';
@@ -31,6 +31,9 @@ import { placeNarration, BREATH, LEAD } from './narration-timing.js';
 
 // Each style says how it marks an accent word while it holds.
 const ACCENT_HOLD = { studio: 'underline', paper: 'marker', mono: 'none', vivid: 'none', editorial: 'none', tech: 'underline', stage: 'none' };
+
+// The second way lines arrive, by look (see lineEntrances below).
+const SECOND_LINE = { studio: ['soft', 'words'], paper: ['wipe', 'rise'], mono: ['wipe', 'type'], vivid: ['words', 'rise'], editorial: ['soft', 'focus'], stage: ['soft', 'focus'], tech: ['wipe', 'words'] };
 
 // Transitions in which both scenes share the frame for a moment.
 const HANDOFF = new Set(['fade', 'zoom', 'carry']);
@@ -79,6 +82,11 @@ export function compileStoryboard(input, opts = {}) {
   let pictured = 0;
   let shown = 0;
   const beats = storyboard.beats;
+  let lastLay = null;
+  // A line never arrives the way the line before it did: the film's own
+  // entrance and the ones that suit its look take turns.
+  const lineEntrances = [...new Set([E.line, E.title, ...(SECOND_LINE[style] || SECOND_LINE.studio)])];
+  let lastMove = null;
 
   beats.forEach((b, i) => {
     let layers, entrance, camera;
@@ -99,10 +107,18 @@ export function compileStoryboard(input, opts = {}) {
     const accentSmall = accentFor(sceneBg, 4.5);
     const muted = contrast(palette.muted, palette[sceneBg || 'bg']) < 4.5 ? ink : 'muted';
     const hold = accentWords.length ? accentHold : 'none';
-    // Which of this kind's compositions the scene takes.
-    const occurrence = (seen[b.kind] = (seen[b.kind] ?? -1) + 1);
-    const lay = layoutFor(D, b.kind, occurrence);
+    // Which of this kind's compositions the scene takes. Hooks and
+    // statements share their compositions, so they turn together, and a
+    // scene never takes the composition of the plain scene just before it.
+    const group = b.kind === 'hook' ? 'statement' : b.kind;
+    const occurrence = (seen[group] = (seen[group] ?? -1) + 1);
+    let lay = layoutFor(D, group, occurrence);
+    if (lastLay && lastLay.group === group && lastLay.lay === lay && (LAYOUTS[group] || 1) > 1) {
+      lay = (lay + 1) % LAYOUTS[group];
+      seen[group]++;
+    }
     const wide = !vertical;
+    const plainLine = !b.media && !b.picture && (b.kind === 'hook' || b.kind === 'statement');
     const again = Boolean(b.media && beats[i - 1]?.media === b.media);
     const c = { b, lay, X, cy, MW, left, vertical, wide, style, pack, E, ease, D, beat, opts, sceneBg, ink, accent, accentSmall, muted, hold, accentWords, aspect, inkOn: textColor, again };
     // A beat that shows the person's own picture or clip, or a picture the
@@ -112,6 +128,12 @@ export function compileStoryboard(input, opts = {}) {
     const pic = !own && b.picture ? cleanPicture(storyboard.pictures?.[b.picture]) : null;
     const laid = (own && layMediaBeat({ ...c, asset: own, key: b.media, occurrence: shown++ })) || (pic && layPictureBeat({ ...c, pic, occurrence: pictured++ }));
     ({ layers, entrance, camera } = laid || layBeat(c));
+    lastLay = laid ? null : { group, lay };
+    if (plainLine) {
+      const main = layers.find((L) => L.type === 'text' && L.text === b.text && L.in && typeof L.in === 'object');
+      if (main && main.in.preset === lastMove) main.in = { ...main.in, preset: lineEntrances.find((p) => p !== lastMove) };
+      lastMove = main?.in?.preset ?? lastMove;
+    }
 
     // The first words arrive as the scene does: a layout that waits before
     // its first line moves earlier as a whole, so the change between scenes

@@ -97,6 +97,24 @@ await claim('every kind turns through all its compositions', () => {
   }
 });
 
+await claim('a run of hooks and statements repeats no composition within three scenes, and lines arrive more than one way', () => {
+  const lines = ['Plans change', 'Your calendar should too', 'Meetings move on their own', 'Focus finds its hour', 'Nothing double-booked', 'The week, handled', 'One less tab'];
+  const sb = { title: 'Orbit', beats: [{ kind: 'hook', text: lines[0] }, ...lines.slice(1).map((text) => ({ kind: 'statement', text })), { kind: 'end', text: 'Orbit', sub: 'orbit.example' }] };
+  for (let take = 0; take < 4; take++) {
+    for (const style of ['studio', 'paper', 'editorial', 'tech']) {
+      const { scene } = compileStoryboard(sb, { direction: chooseDirection({ brief: BRIEFS[0], style, take }), aspect: '16:9' });
+      const plain = scene.scenes.slice(0, lines.length);
+      const shape = (S) => JSON.stringify(S.layers.map((L) => [L.type, L.shape || '', L.anchor, Math.round(L.x * 20), Math.round(L.y * 20), L.type === 'text' ? [Math.round((L.size || 0) / 12), L.in.preset] : '']));
+      const entrance = (S) => S.layers.find((L) => L.type === 'text' && L.text === sb.beats[scene.scenes.indexOf(S)].text)?.in.preset;
+      for (let i = 1; i < plain.length; i++) {
+        for (let j = Math.max(0, i - 2); j < i; j++) assert.notEqual(shape(plain[i]), shape(plain[j]), `${style} take ${take}: scenes ${j + 1} and ${i + 1} share a composition`);
+      }
+      const moves = plain.map(entrance);
+      for (let i = 2; i < moves.length; i++) assert.ok(new Set(moves.slice(i - 2, i + 1)).size >= 2, `${style} take ${take}: lines ${i - 1} to ${i + 1} arrive the same way`);
+    }
+  }
+});
+
 section('Every composition, in every look and frame shape, lays out clean');
 for (const style of STYLE_NAMES) {
   for (const aspect of Object.keys(ASPECTS)) {
