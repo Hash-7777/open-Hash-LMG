@@ -46,7 +46,8 @@ const thinkers = new Set();
 
 // Sends one question and returns the whole answer as text, with any thinking
 // a model wrote into it taken out.
-//   req     as for buildRequest, plus device for local models
+//   req     as for buildRequest, plus device for local models, and keyHeld
+//           when the desktop side adds the key to the request itself
 //   io      { fetch, signal, onText(chunk, all), onThinking(chunk), onStats({ speed, promptTokens }) }
 //
 // A model that thinks before it answers can spend the room given for the
@@ -57,7 +58,7 @@ export async function ask(req, io) {
   const p = PROVIDERS[req.provider];
   if (!p) throw new Error(`Unknown model service: ${req.provider}`);
   if (!req.model) throw new Error('Choose a model in Settings first.');
-  if (p.kind === 'cloud' && !req.key) throw new Error(`Add your ${p.label} key in Settings first.`);
+  if (p.kind === 'cloud' && !req.key && !req.keyHeld) throw new Error(`Add your ${p.label} key in Settings first.`);
   const id = `${req.provider}|${req.model}`;
   const thinks = !!req.thinks || thinkers.has(id);
   let r = await askOnce({ ...req, thinks }, io, p);
@@ -143,10 +144,10 @@ async function askOnce(req, io, p) {
 
 // The models a service offers, as [{ id, label, meta }]. A cloud service with
 // a built-in fallback list returns that list when its own cannot be read.
-export async function listModels(providerId, { key = '', base = '', fetch, signal } = {}) {
+export async function listModels(providerId, { key = '', keyHeld = false, base = '', fetch, signal } = {}) {
   const p = PROVIDERS[providerId];
   if (!p) throw new Error(`Unknown model service: ${providerId}`);
-  if (p.kind === 'cloud' && !key) throw new Error(`Add your ${p.label} key first.`);
+  if (p.kind === 'cloud' && !key && !keyHeld) throw new Error(`Add your ${p.label} key first.`);
   const { url, init } = modelsRequest(providerId, key, base);
   let res;
   try {

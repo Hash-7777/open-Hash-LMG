@@ -6,7 +6,7 @@
 import { VOICE_ENGINES_INFO, speechRequest, clipId } from '../core/providers/speech.js';
 import { decodeWav, toMono48k, bytesToBase64 } from '../core/audio/wav.js';
 import { timeWords } from '../core/audio/words.js';
-import { voices } from '../platform/index.js';
+import { voices, isApp, speakInCloud } from '../platform/index.js';
 
 const SR = 48000;
 
@@ -21,6 +21,8 @@ export async function speakText(settings, text) {
   }
   if (v.engine === 'openai' && !settings.hasKey('openai')) throw new Error('Add your OpenAI key under Cloud keys first.');
   const { url, init } = speechRequest(v.engine, { text, voice: v.voice, speed: v.speed, key: settings.key('openai'), port: v.serverPort });
+  // A cloud voice is asked by the desktop side, which adds the key.
+  if (v.engine === 'openai' && isApp) return speakInCloud('openai', init.body);
   let res;
   try { res = await fetch(url, init); } catch {
     throw new Error(v.engine === 'server' ? `No speech server answered on port ${v.serverPort}. Start it, or check the port in Settings.` : 'The voice service could not be reached.');

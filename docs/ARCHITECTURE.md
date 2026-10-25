@@ -6,8 +6,8 @@ directing and laying out films, drawing frames and writing files. The desktop
 side (Rust, `src-tauri/`) does only what a web page cannot or should not:
 keep films and remembered files in the app's own folder, show the system's
 open and save dialogs, read imported media in pieces, encode video and sound
-with encoders built into the app, run an installed voice, and relay requests
-to model servers that refuse a web page.
+with encoders built into the app, run an installed voice, keep the keys for
+cloud services, and make every request to a cloud service, adding its key.
 
 The same page also runs in a plain browser while it is built and checked.
 Everything that differs between the two goes through `src/platform/index.js`.
@@ -65,7 +65,7 @@ src/
   platform/              the desktop app or a browser: films, files, media, voices, the
                          relay, settings and keys, the run history, the window
   app/                   the editor: its state, panels, dialogs and the director panel
-src-tauri/src/commands/  films, exports, sound, encoders, media, voices, the relay
+src-tauri/src/commands/  films, exports, sound, encoders, media, voices, keys, the relay
 scripts/checks/          the check suite: every script runs on npm run check
 ```
 
@@ -75,10 +75,12 @@ scripts/checks/          the check suite: every script runs on npm run check
   after `src/render/lockdown.js` has taken away every way to reach the network,
   storage, timers, threads or the clock. The page sends it frames of imported
   footage as pictures; it never reads a file.
-- **The content policy** (`src-tauri/tauri.conf.json`) lets the page reach the
-  cloud services in `src/core/providers/catalog.js`, model servers on this
-  computer, and the app's own media address, and nothing else.
-  `scripts/checks/policy.mjs` holds the two lists together.
+- **The content policy** (`src-tauri/tauri.conf.json`) lets the page reach
+  model servers on this computer and the app's own media address, and
+  nothing on the internet. Cloud services are asked by the desktop side
+  (`src-tauri/src/commands/relay.rs`), from a fixed table, with the keys only
+  it holds (`src-tauri/src/commands/keys.rs`). `scripts/checks/policy.mjs`
+  holds the policy, the table, the catalog and the kept keys together.
 - **No paths from the page.** Films are named by id, exports and imports go
   through the system's dialogs, imported files and voice installs are
   remembered by the desktop side, and the relay reaches a fixed table of

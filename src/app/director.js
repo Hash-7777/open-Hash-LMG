@@ -166,7 +166,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
         const req = record ? record.ask({ purpose, system, messages, options: { ...extra, ...(temperature !== undefined ? { temperature } : {}) } }) : null;
         try {
           const text = await ask({
-            provider: m.provider, model: m.model, key: settings.key(m.provider), base: settings.base(m.provider),
+            provider: m.provider, model: m.model, key: settings.key(m.provider), keyHeld: settings.keyHeld(), base: settings.base(m.provider),
             device: s.local.device, system, messages, json, schema, ...extra, ...(temperature !== undefined ? { temperature } : {}),
           }, {
             fetch: fetchFor(m.provider), signal,

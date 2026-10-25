@@ -124,7 +124,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
     const mine = loading = {};
     if (current === 'model') paint();
     try {
-      const list = await listModels(id, { key: settings.key(id), base: settings.base(id), fetch: fetchFor(id) });
+      const list = await listModels(id, { key: settings.key(id), keyHeld: settings.keyHeld(), base: settings.base(id), fetch: fetchFor(id) });
       if (loading !== mine || settings.get().model.provider !== id) return;
       models = list;
       if (!settings.get().model.model && list.length) settings.update({ model: { model: defaultModel(id, list) } });
@@ -198,7 +198,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
     checks[id] = { state: 'wait', text: 'Checking' };
     paint();
     try {
-      const list = await listModels(id, { key: settings.key(id), fetch: fetchFor(id) });
+      const list = await listModels(id, { key: settings.key(id), keyHeld: settings.keyHeld(), fetch: fetchFor(id) });
       checks[id] = { state: 'ok', text: `Works. ${list.length} model${list.length === 1 ? '' : 's'} offered.` };
     } catch (err) {
       checks[id] = { state: 'bad', text: err.message || String(err) };
@@ -213,11 +213,13 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
       const p = PROVIDERS[id];
       const saved = settings.hasKey(id);
       const check = checks[id];
-      const input = h('input', { class: 'input', type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: saved ? 'Saved. Paste a new key to replace it.' : 'Paste your key', 'aria-label': `${p.label} key` });
-      input.addEventListener('change', () => {
-        if (!input.value.trim()) return;
-        settings.setKey(id, input.value.trim());
+      const hint = settings.keyHint(id);
+      const input = h('input', { class: 'input', type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: saved ? `Saved${hint && hint !== 'saved' ? `, ${hint}` : ''}. Paste a new key to replace it.` : 'Paste your key', 'aria-label': `${p.label} key` });
+      input.addEventListener('change', async () => {
+        const value = input.value.trim();
         input.value = '';
+        if (!value) return;
+        try { await settings.setKey(id, value); } catch (err) { toast(err.message || String(err), 'error'); return; }
         toast(`${p.label} key saved`);
         checkKey(id);
       });
@@ -228,13 +230,15 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
           h('span', { class: 'key-link' }, saved ? null : 'Get a key at ', webLink(p.keyUrl))),
         h('div', { class: 'key-field' }, input,
           saved ? textButton(check?.state === 'wait' ? 'Checking' : 'Check', () => checkKey(id)) : null,
-          saved ? textButton('Forget', () => { settings.setKey(id, ''); delete checks[id]; paint(); }, 'danger') : null),
+          saved ? textButton('Forget', async () => { try { await settings.setKey(id, ''); } catch (err) { toast(err.message || String(err), 'error'); } delete checks[id]; paint(); }, 'danger') : null),
         check && check.state !== 'wait' ? h('div', { class: `field-hint key-check ${check.state}`, text: check.text }) : null);
       row.hidden = Boolean(filter.trim()) && !row.dataset.name.includes(filter.trim().toLowerCase());
       return row;
     });
     return [section('Cloud keys',
-      h('p', { class: 'insp-note', text: 'Each key is kept on this computer, in the app\u2019s own storage, apart from your other settings. It is not encrypted. It is sent only to the service it belongs to. Each link opens that service\u2019s key page in your browser.' }),
+      h('p', { class: 'insp-note', text: settings.keyHeld()
+        ? 'Each key is kept on this computer by the app, in a file only your account can read, apart from your other settings. Once saved, a key is never shown again, even to the app\u2019s own window: only its last four characters. It is sent only to the service it belongs to. Each link opens that service\u2019s key page in your browser.'
+        : 'In a browser, each key is kept in this page\u2019s own storage, apart from your other settings, and is not encrypted. The desktop app keeps keys in a file only your account can read. Each key is sent only to the service it belongs to.' }),
       search,
       h('div', { class: 'key-list' }, ...rows))];
   }

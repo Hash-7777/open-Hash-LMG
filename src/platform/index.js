@@ -203,12 +203,13 @@ export const media = {
   },
 };
 
-// ---- model servers a page may not ask directly ------------------------------
+// ---- model services, asked by the desktop side ------------------------------
 //
-// A model app on this computer, until its own switch is on, and some cloud
-// services refuse requests from a web page. In the desktop app they are asked
-// by the desktop side instead (src-tauri/src/commands/relay.rs), which reaches
-// only a fixed table of addresses; the answer streams back through a channel.
+// In the desktop app the page reaches no host on the internet itself. Cloud
+// services, and model apps on this computer that refuse a web page, are asked
+// by the desktop side (src-tauri/src/commands/relay.rs), which reaches only a
+// fixed table of addresses and adds the key for the service itself; the
+// answer streams back through a channel.
 
 // A channel the desktop side sends messages down, delivered in order.
 function channel(onmessage) {
@@ -227,14 +228,19 @@ function channel(onmessage) {
   return { toJSON: () => `__CHANNEL__:${id}` };
 }
 
-export const RELAYED = new Set(['lmstudio', 'llamacpp', 'moonshot']);
+// Every service asked through the desktop side in the app: all of them but
+// Ollama, which the page asks on this computer directly.
+export const RELAYED = new Set(['lmstudio', 'llamacpp', 'anthropic', 'openai', 'gemini', 'openrouter', 'groq', 'deepseek', 'mistral', 'xai', 'moonshot', 'together', 'fireworks', 'cerebras']);
 
 // A fetch for one service that goes through the desktop side, answering with
 // an ordinary Response whose body streams as the answer arrives.
 function relayFetch(provider) {
   return (url, init = {}) => new Promise((resolve, reject) => {
     const u = new URL(url);
-    const route = init.method === 'POST' ? 'chat' : 'models';
+    const once = /:generateContent$/.test(u.pathname);
+    const route = init.method === 'POST' ? (once ? 'chat-once' : 'chat') : 'models';
+    // A service that names the model in its address: the name alone goes over.
+    const model = decodeURIComponent((/\/models\/([^/:]+):/.exec(u.pathname) || [])[1] || '') || null;
     const requestId = `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const text = new TextEncoder();
     let started = false, body = null;
@@ -247,9 +253,8 @@ function relayFetch(provider) {
       else if (ev.kind === 'fail') fail(new TypeError(ev.message));
     });
     init.signal?.addEventListener('abort', () => { invoke('model_relay_cancel', { requestId }).catch(() => {}); fail(new DOMException('Stopped.', 'AbortError')); });
-    const key = String(init.headers?.Authorization || '').replace(/^Bearer\s+/, '');
     const port = Number(u.port) || null;
-    invoke('model_relay', { provider, route, port, key, body: init.body ?? null, requestId, onEvent }).catch((err) => fail(new TypeError(err?.message || String(err))));
+    invoke('model_relay', { provider, route, port, model, body: init.body ?? null, requestId, onEvent }).catch((err) => fail(new TypeError(err?.message || String(err))));
   });
 }
 
@@ -257,6 +262,22 @@ function relayFetch(provider) {
 // not ask it, otherwise the page's own.
 export function fetchFor(provider) {
   return isApp && RELAYED.has(provider) ? relayFetch(provider) : (u, i) => fetch(u, i);
+}
+
+// Keys for cloud services, kept by the desktop side (src-tauri/src/commands/keys.rs).
+// The page hands a key over and gets back only which services have one, each
+// with a hint such as "ends in 3456"; nothing returns a key. null in a
+// browser, where Settings keeps keys in the page's own storage.
+export const keyVault = isApp ? {
+  status: () => invoke('keys_status'),
+  set: (service, key) => invoke('key_set', { service, key }),
+} : null;
+
+// One line spoken by a cloud voice, through the desktop side, which adds the
+// key: the request body in, the sound's bytes out.
+export async function speakInCloud(provider, body) {
+  const out = await invoke('speech_relay', { provider, body });
+  return out instanceof Uint8Array ? out : new Uint8Array(out);
 }
 
 // ---- voices installed on this computer --------------------------------------

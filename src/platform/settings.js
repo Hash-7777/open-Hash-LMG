@@ -5,12 +5,14 @@
 // hand-edited file or a typo comes back as a valid setting, never as a value
 // the rest of the app has to check again.
 //
-// Keys live apart from the settings, under their own storage entry, so that
-// settings can be shown, exported or reset without a key ever travelling with
-// them. In the desktop app the storage is the web view's own, kept in the
-// app's data folder and keyed by the app's identifier; in a browser it is the
-// page's local storage. Neither is encrypted, and Settings says so beside
-// the place a key is typed.
+// Keys live apart from the settings, so that settings can be shown, exported
+// or reset without a key ever travelling with them. In the desktop app they
+// are kept by the desktop side (src-tauri/src/commands/keys.rs) in a file
+// only this account can read, and the page never holds one: it hands a key
+// over once and learns only which services have one, with its last four
+// characters. Requests to cloud services go through the desktop side, which
+// adds the key. In a browser, while the app is built and checked, keys are
+// kept in the page's local storage under their own entry.
 
 import { PROVIDERS, PROVIDER_IDS, LOCAL_IDS, CLOUD_IDS } from '../core/providers/catalog.js';
 import { VOICE_ENGINES_INFO } from '../core/providers/speech.js';
@@ -120,11 +122,14 @@ export function normalizeSettings(input) {
   };
 }
 
-// Keys, one per cloud service and one for cloud voices. Anything else is dropped.
+// Keys for services that are not model services: web search.
+export const EXTRA_KEYS = ['tavily'];
+
+// Keys, one per cloud service and for web search. Anything else is dropped.
 export function normalizeKeys(input) {
   const k = isObj(input) ? input : {};
   const out = {};
-  for (const id of CLOUD_IDS) {
+  for (const id of [...CLOUD_IDS, ...EXTRA_KEYS]) {
     const v = text(k[id], 400);
     if (v) out[id] = v;
   }
@@ -144,14 +149,42 @@ function writeJson(storage, key, value) {
 
 // A store over any object with getItem and setItem (local storage in the page,
 // a map in the checks). Listeners hear every change.
-export function createSettingsStore(storage) {
+//
+// vault, in the desktop app: { status() -> { id: hint }, set(id, key) -> status }.
+// With a vault, keys never enter the storage, and key(id) is always empty:
+// the desktop side adds the key to each request itself. A key left in the
+// storage by an older version is handed to the vault once and removed.
+export function createSettingsStore(storage, vault = null) {
   let settings = normalizeSettings(readJson(storage, SETTINGS_KEY));
-  let keys = normalizeKeys(readJson(storage, KEYS_KEY));
+  let keys = vault ? {} : normalizeKeys(readJson(storage, KEYS_KEY));
+  // Which services have a key, with the hint to show for each.
+  let hints = vault ? {} : Object.fromEntries(Object.keys(keys).map((id) => [id, 'saved']));
   const listeners = new Set();
   const emit = () => { for (const fn of listeners) fn(settings); };
+  const known = (id) => CLOUD_IDS.includes(id) || EXTRA_KEYS.includes(id);
+  const takeStatus = (st) => { hints = {}; for (const [id, hint] of Object.entries(st || {})) if (known(id)) hints[id] = String(hint).slice(0, 40); };
+
+  // Loads what the vault holds, moving any key an older version kept in the
+  // page's storage into the vault first.
+  const ready = vault ? (async () => {
+    const old = normalizeKeys(readJson(storage, KEYS_KEY));
+    const left = { ...old };
+    for (const [id, v] of Object.entries(old)) {
+      try { await vault.set(id, v); delete left[id]; } catch { /* kept for the next start */ }
+    }
+    if (Object.keys(old).length) {
+      if (Object.keys(left).length) writeJson(storage, KEYS_KEY, left);
+      else { try { storage.removeItem(KEYS_KEY); } catch { writeJson(storage, KEYS_KEY, {}); } }
+    }
+    try {
+      takeStatus(await vault.status());
+    } catch { /* no status: every service reads as having no key */ }
+    emit();
+  })() : Promise.resolve();
 
   return {
     get: () => settings,
+    ready: () => ready,
     // A partial change, merged one level deep: update({ film: { style: 'paper' } }).
     update(patch) {
       const next = { ...settings };
@@ -168,11 +201,25 @@ export function createSettingsStore(storage) {
       writeJson(storage, SETTINGS_KEY, settings);
       emit();
     },
-    key: (id) => keys[id] || '',
-    hasKey: (id) => Boolean(keys[id]),
-    setKey(id, value) {
+    // The key to put in a request: only ever in a browser.
+    key: (id) => (vault ? '' : keys[id] || ''),
+    hasKey: (id) => Boolean(hints[id]),
+    // How Settings names a saved key: "ends in 3456", or "saved".
+    keyHint: (id) => hints[id] || '',
+    // Whether the desktop side adds the key itself.
+    keyHeld: () => Boolean(vault),
+    // Saves a key (an empty one forgets it). Resolves true when it was kept.
+    async setKey(id, value) {
+      if (vault) {
+        takeStatus(await vault.set(id, String(value || '').trim()));
+        emit();
+        return true;
+      }
       keys = normalizeKeys({ ...keys, [id]: value });
-      return writeJson(storage, KEYS_KEY, keys);
+      hints = Object.fromEntries(Object.keys(keys).map((k) => [k, 'saved']));
+      const ok = writeJson(storage, KEYS_KEY, keys);
+      emit();
+      return ok;
     },
     // Where a local service listens, from its port in Settings.
     base(id) {

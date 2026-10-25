@@ -5,26 +5,45 @@ here points at the code that makes it true.
 
 ## Where your keys live
 
-Keys for cloud model services are kept in the app's own web storage on this
-computer (`src/platform/settings.js`), in an entry of their own, apart from
-every other setting, so settings can be shown or reset without a key moving
-with them. In the desktop app that storage sits in the app's data folder,
-keyed by the identifier `com.hashlmg.app`. **It is not encrypted.** Anyone
-who can read your user folder can read the keys. A key is sent only to the
-service it belongs to, with each request (`src/core/providers/request.js`).
+Keys for cloud services are kept by the desktop side
+(`src-tauri/src/commands/keys.rs`), in one file in the app's data folder
+(keyed by the identifier `com.hashlmg.app`), apart from every other setting.
+On macOS and Linux the file can be read and written by your account alone,
+and its folder opened by your account alone. **It is not encrypted**: it is
+protected by those permissions, so anyone signed in as you, or any program
+you run, can still read it.
+
+The page hands a key over once, when you paste it in Settings, and never
+holds it again: no command returns a key, and the page learns only which
+services have one, with its last four characters. Every request to a cloud
+service is made by the desktop side, which adds the key for that one service,
+in that service's own header (`src-tauri/src/commands/relay.rs`). So nothing
+running in the window, and no code a model writes, can read a key.
+
+A key saved by an earlier version in the page's own storage is moved to the
+desktop side the next time the app opens, and removed from the page's
+storage (`src/platform/settings.js`).
 
 ## Where requests go
 
 There is no account and no server of ours. The desktop app's content policy
-(`src-tauri/tauri.conf.json`) lets the page reach:
+(`src-tauri/tauri.conf.json`) lets the page reach `127.0.0.1` and `localhost`
+on any port, for model and speech servers running on your own computer, and
+nothing on the internet.
 
-- the cloud model services listed in `src/core/providers/catalog.js`, and
-  nothing else on the internet;
-- `127.0.0.1` and `localhost` on any port, for model and speech servers
-  running on your own computer.
+Cloud model services, and the cloud voice, are reached by the desktop side
+from a fixed table of addresses (`src-tauri/src/commands/relay.rs`), one per
+service listed in `src/core/providers/catalog.js`. The page names the
+service and a route (chat, models or speech); for a service that puts the
+model in its address, the model's name, held to letters, digits, dots,
+dashes and underscores; and for a model app on this computer a port from
+1024 up. No part of an address comes from the page, and redirects are not
+followed.
 
-`scripts/checks/policy.mjs` fails if the policy and the list of services
-drift apart in either direction.
+`scripts/checks/policy.mjs` fails if the policy names any host on the
+internet, if a service in the catalog is missing from the desktop side's
+table, or if the services the desktop side keeps keys for and the ones the
+page offers keys for drift apart.
 
 ## The window shows the app and nothing else
 
@@ -56,12 +75,12 @@ The page reaches the computer only through the commands in
   own interpreter and writes a WAV to the system's temporary folder, which is
   read back and removed. Nothing is installed or downloaded by the app. Lines
   sent to a cloud voice go to that service only when it is chosen.
-- **Model servers a web page may not ask** (LM Studio and llama.cpp on this
-  computer, Moonshot in the cloud) are asked by the desktop side instead. The
-  page names the service, the route (chat or models) and, on this computer,
-  a port from 1024 up; the address comes from a fixed table, no part of it
-  from the page, and redirects are not followed. The person's own key goes
-  in one header to that one host.
+- **Model services** in the cloud, and LM Studio and llama.cpp on this
+  computer, are asked by the desktop side, as described above under Where
+  requests go. Ollama on this computer is asked by the page directly.
+- **Keys** are kept by the desktop side, as described above under Where your
+  keys live: the page can save or forget a key, and ask which services have
+  one, and nothing else.
 - **Encoding** is done by encoders built into the app (H.264, GIF, MP3). The
   page sends raw pixels or sound under a session token and gets encoded
   bytes back; these commands read and write no file and take no path. Frame
@@ -110,4 +129,6 @@ like any other shape. A drawing with anything else in it is set aside.
 
 - The app is not signed or notarised. macOS will warn the first time it is
   opened.
-- Keys are not encrypted at rest.
+- Keys are protected by file permissions, not encrypted at rest. The
+  system's own keychain asks for a password on every update while the app
+  is unsigned, so it waits for signing.

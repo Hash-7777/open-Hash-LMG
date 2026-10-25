@@ -1,6 +1,7 @@
 // The desktop app's walls, held to what the code actually does:
-//   - the content policy lets the page reach every cloud service the app
-//     offers, loopback for local ones, and nothing else;
+//   - the content policy lets the page reach loopback, for local model
+//     servers, and nothing on the internet: every cloud service is asked by
+//     the desktop side, from its own table, with the key it keeps;
 //   - script and style rules stay strict, and the page carries no inline
 //     script, style block or style attribute for the policy to relax for;
 //   - every command the page calls exists on the Rust side with the same
@@ -12,6 +13,7 @@ import { join } from 'node:path';
 import { root, ok, section, done } from './lib/check.mjs';
 import { PROVIDERS, CLOUD_IDS } from '../../src/core/providers/catalog.js';
 import { VOICE_ENGINES_INFO } from '../../src/core/providers/speech.js';
+import { EXTRA_KEYS } from '../../src/platform/settings.js';
 
 const conf = JSON.parse(readFileSync(join(root, 'src-tauri', 'tauri.conf.json'), 'utf8'));
 const csp = conf.app.security.csp;
@@ -20,11 +22,27 @@ const directive = (name) => (csp.split(';').map((d) => d.trim()).find((d) => d.s
 section('The content policy');
 const connect = directive('connect-src');
 const cloud = new Set([...CLOUD_IDS.map((id) => new URL(PROVIDERS[id].base).origin), new URL(VOICE_ENGINES_INFO.openai.base).origin]);
-for (const o of cloud) ok(`connect-src lets the page reach ${o}`, connect.includes(o));
+for (const o of cloud) ok(`connect-src does not let the page reach ${o} itself`, !connect.includes(o));
 // lmgmedia is the app's own address for imported files (src-tauri/src/commands/media.rs),
 // read to decode their sound; on Windows it is served as http://lmgmedia.localhost.
 const allowedExtra = new Set(["'self'", 'ipc:', 'http://ipc.localhost', 'http://127.0.0.1:*', 'http://localhost:*', 'lmgmedia:', 'http://lmgmedia.localhost']);
-for (const c of connect) ok(`connect-src names nothing the app does not call: ${c}`, cloud.has(c) || allowedExtra.has(c));
+for (const c of connect) ok(`connect-src names only this app and this computer: ${c}`, allowedExtra.has(c));
+ok('connect-src names no host on the internet', !connect.some((c) => /^https?:\/\/(?!127\.0\.0\.1|localhost|ipc\.localhost|lmgmedia\.localhost)/.test(c) || c === 'https:' || c === 'http:' || c === '*'));
+
+section('Every cloud service is asked by the desktop side, which keeps the keys');
+const relayRs = readFileSync(join(root, 'src-tauri', 'src', 'commands', 'relay.rs'), 'utf8');
+const keysRs = readFileSync(join(root, 'src-tauri', 'src', 'commands', 'keys.rs'), 'utf8');
+const platformJs = readFileSync(join(root, 'src', 'platform', 'index.js'), 'utf8');
+const relayed = new Set(((platformJs.match(/export const RELAYED = new Set\(\[([^\]]*)\]/) || [, ''])[1].match(/'([a-z]+)'/g) || []).map((x) => x.slice(1, -1)));
+for (const id of CLOUD_IDS) {
+  ok(`${PROVIDERS[id].label} is asked through the desktop side in the app`, relayed.has(id));
+  ok(`the desktop side's table reaches ${PROVIDERS[id].label} at ${PROVIDERS[id].base}`, relayRs.includes(`"${PROVIDERS[id].base}`) || relayRs.includes(`https://${new URL(PROVIDERS[id].base).host}`));
+  if (PROVIDERS[id].chatPath) ok(`and at its chat path ${PROVIDERS[id].chatPath}`, relayRs.includes(PROVIDERS[id].chatPath));
+}
+const services = ((keysRs.match(/pub const SERVICES: &\[&str\] = &\[([\s\S]*?)\];/) || [, ''])[1].match(/"([a-z]+)"/g) || []).map((x) => x.slice(1, -1)).sort();
+ok('the desktop side keeps a key for exactly the services the page offers one for', JSON.stringify(services) === JSON.stringify([...CLOUD_IDS, ...EXTRA_KEYS].sort()), services.join(', '));
+ok('no command hands a key back to the page', !/pub (?:async )?fn \w+\([^)]*\)\s*->\s*(?:Result<)?(?:Option<)?String/.test(keysRs.replace(/fn (hint|lookup)[\s\S]*?\n\}/g, '')) && !/#\[tauri::command\]\s*pub fn lookup/.test(keysRs));
+ok('the page never sends a key to the relay', !/invoke\('model_relay',[^)]*\bkey\b/.test(platformJs));
 ok('local services are reachable on any loopback port', connect.includes('http://127.0.0.1:*') && connect.includes('http://localhost:*'));
 const script = directive('script-src');
 ok("script-src has no 'unsafe-eval' or 'unsafe-inline'", !script.includes("'unsafe-eval'") && !script.includes("'unsafe-inline'"));

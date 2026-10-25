@@ -5,7 +5,13 @@ import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
 import { normalizeSettings, normalizeKeys, createSettingsStore, SETTINGS_KEY, KEYS_KEY } from '../../src/platform/settings.js';
 
-const memory = () => { const m = new Map(); return { m, getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v) }; };
+const memory = () => { const m = new Map(); return { m, getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
+// A stand-in for the desktop side's key store: it keeps keys and answers with hints only.
+const fakeVault = () => {
+  const kept = {};
+  const status = () => Object.fromEntries(Object.entries(kept).map(([k, v]) => [k, `ends in ${v.slice(-4)}`]));
+  return { kept, status: async () => status(), set: async (id, key) => { if (key) kept[id] = key; else delete kept[id]; return status(); } };
+};
 
 section('Settings normalise');
 await claim('the defaults are sane', () => {
@@ -54,5 +60,39 @@ await claim('everything is there after reopening', () => {
 await claim('a damaged stored entry reads as the defaults', () => {
   const mem = memory(); mem.setItem(SETTINGS_KEY, '{broken');
   assert.equal(createSettingsStore(mem).get().film.style, 'auto');
+});
+
+section('Keys kept by the desktop side');
+await claim('a key goes to the vault, never into the page\u2019s storage, and is never handed back', async () => {
+  const mem = memory(); const vault = fakeVault(); const st = createSettingsStore(mem, vault);
+  await st.ready();
+  await st.setKey('openai', 'sk-test-0000aaaa1111');
+  assert.equal(vault.kept.openai, 'sk-test-0000aaaa1111');
+  assert.ok(![...mem.m.values()].some((v) => String(v).includes('sk-test')));
+  assert.equal(st.key('openai'), '');
+  assert.ok(st.hasKey('openai') && st.keyHeld());
+  assert.equal(st.keyHint('openai'), 'ends in 1111');
+});
+await claim('forgetting a key empties it in the vault', async () => {
+  const vault = fakeVault(); const st = createSettingsStore(memory(), vault);
+  await st.setKey('groq', 'gsk-test-0000aaaa'); await st.setKey('groq', '');
+  assert.ok(!vault.kept.groq && !st.hasKey('groq'));
+});
+await claim('a key an older version left in the page\u2019s storage moves to the vault once, and leaves the storage', async () => {
+  const mem = memory(); mem.setItem(KEYS_KEY, JSON.stringify({ deepseek: 'sk-test-old0key9' }));
+  const vault = fakeVault(); const st = createSettingsStore(mem, vault);
+  await st.ready();
+  assert.equal(vault.kept.deepseek, 'sk-test-old0key9');
+  assert.equal(mem.getItem(KEYS_KEY), null);
+  assert.ok(st.hasKey('deepseek'));
+});
+await claim('a key the vault would not take stays where it was, for the next start', async () => {
+  const mem = memory(); mem.setItem(KEYS_KEY, JSON.stringify({ mistral: 'm-test-key-123' }));
+  const vault = { status: async () => ({}), set: async () => { throw new Error('busy'); } };
+  await createSettingsStore(mem, vault).ready();
+  assert.ok(mem.getItem(KEYS_KEY).includes('m-test-key-123'));
+});
+await claim('a search key is kept like a model service\u2019s key', () => {
+  assert.deepEqual(normalizeKeys({ tavily: 't', nobody: 'x' }), { tavily: 't' });
 });
 done();

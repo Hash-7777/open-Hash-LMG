@@ -70,8 +70,13 @@ newest first, grouped by what it does for the person making a film.
   think; model lists come newest first.
 - A model that spends its answer's room on thinking is asked once more with
   room for the thinking, and gets that room for the rest of the session.
-- LM Studio, llama.cpp and Moonshot are asked through the desktop side, so no
-  server switch is needed.
+- LM Studio, llama.cpp and every cloud service are asked through the desktop
+  side, so no server switch is needed, and the app's window reaches no host
+  on the internet itself.
+- Keys for cloud services are kept by the desktop side, in a file only your
+  account can read, and added to each request there; once saved, a key is
+  never shown again, only its last four characters. Keys saved by an earlier
+  version move there on the next start.
 - Local models are sized to what they can read, report their speed and fit,
   and are unloaded once a film is made.
 
