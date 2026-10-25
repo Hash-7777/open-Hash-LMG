@@ -34,7 +34,7 @@ fn token() -> String {
     format!("{:016x}", h.finish())
 }
 
-const KINDS: [(&str, &str); 8] = [("mp4", "MP4 video"), ("mov", "QuickTime movie"), ("gif", "GIF animation"), ("wav", "WAV sound"), ("mp3", "MP3 sound"), ("png", "PNG picture"), ("zip", "ZIP of pictures"), ("md", "Markdown text")];
+const KINDS: [(&str, &str); 9] = [("mp4", "MP4 video"), ("mov", "QuickTime movie"), ("webm", "WebM video"), ("gif", "GIF animation"), ("wav", "WAV sound"), ("mp3", "MP3 sound"), ("png", "PNG picture"), ("zip", "ZIP of pictures"), ("md", "Markdown text")];
 
 /// A file name the dialog can suggest: no folders, no hidden or odd
 /// characters, and one of the kinds the app writes.
@@ -90,6 +90,7 @@ mod tests {
     fn names_keep_only_a_file_name_of_a_known_kind() {
         assert_eq!(safe_name("Harbor-Notes.mp4").0, "Harbor-Notes.mp4");
         assert_eq!(safe_name("film.MOV").0, "film.mov");
+        assert_eq!(safe_name("film.webm").0, "film.webm");
         assert_eq!(safe_name("../../somewhere/film.mp4").0, "film.mp4");
         assert_eq!(safe_name("C:\\x\\film.wav").0, "film.wav");
         assert_eq!(safe_name(".hidden.mp4").0, "hidden.mp4");

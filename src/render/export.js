@@ -4,7 +4,8 @@
 // blur when asked), at the export's own size and frame rate, and go to an
 // encoder sink (src/render/encoders.js): in the desktop app always the app's
 // own encoders, the same on every system. H.264 is arranged into an MP4 or MOV
-// by src/core/export/mp4.js; a GIF comes back whole. The soundtrack (score and
+// by src/core/export/mp4.js, AV1 with Vorbis sound into a WebM by
+// src/core/export/webm.js; a GIF comes back whole. The soundtrack (score and
 // narration, already mastered) is encoded to AAC where the web view or the
 // operating system can, otherwise to MP3 by the app's own encoder, otherwise
 // the film is written silent with its soundtrack saved beside it as a WAV,
@@ -12,7 +13,8 @@
 
 import { muxMp4, aacConfig, adtsFrames } from '../core/export/mp4.js';
 import { mp3Frames } from '../core/export/h264.js';
-import { videoSink, gifSink } from './encoders.js';
+import { videoSink, gifSink, av1Sink } from './encoders.js';
+import { muxWebm } from '../core/export/webm.js';
 import { nativeEncoder } from '../platform/index.js';
 import { encodeWav } from '../core/audio/wav.js';
 import { createZipWriter } from '../core/export/zip.js';
@@ -90,7 +92,28 @@ async function encodeSound(st, encodeAacNative, notes) {
   return { wav: encodeWav(st.left, st.right, st.sampleRate) };
 }
 
-// opts: { host (already given the scene at the export's size), scene, format: 'mp4'|'mov'|'gif',
+// The film's sound for a WebM: Vorbis by the app's own encoder, its packets
+// each with the sample it starts on.
+async function encodeVorbis(st, notes) {
+  try {
+    const bytes = await nativeEncoder.vorbis(st.left, st.right, st.sampleRate);
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const cpLen = dv.getUint32(0, true);
+    const packets = [];
+    for (let at = 4 + cpLen; at + 12 <= bytes.length;) {
+      const len = dv.getUint32(at, true);
+      const start = dv.getUint32(at + 4, true) + dv.getUint32(at + 8, true) * 2 ** 32;
+      packets.push({ start, data: bytes.slice(at + 12, at + 12 + len) });
+      at += 12 + len;
+    }
+    return { audio: { sampleRate: st.sampleRate, channels: 2, codecPrivate: bytes.slice(4, 4 + cpLen), packets } };
+  } catch (err) {
+    notes.push(`The app's sound encoder failed (${err.message || err}), so the film is silent and its soundtrack is saved beside it as a WAV file.`);
+    return { wav: encodeWav(st.left, st.right, st.sampleRate) };
+  }
+}
+
+// opts: { host (already given the scene at the export's size), scene, format: 'mp4'|'mov'|'webm'|'gif',
 //         width, height, fps, quality, blur: { samples, shutter } | null,
 //         soundtrack: { left, right, sampleRate } | null, encodeAacNative(wavBytes) -> adts | null,
 //         onProgress({ phase, done, total }), signal }
@@ -105,7 +128,11 @@ export async function renderVideo(opts) {
   const blur = opts.blur && opts.blur.samples > 1 ? opts.blur : null;
   const notes = [];
   if (format !== 'gif' && !canEncodeVideo()) throw new Error('There is no video encoder here. Export from the desktop app, which carries its own.');
-  const sink = format === 'gif' ? await gifSink({ width, height, fps }) : await videoSink({ width, height, fps, bitrate: bitrateFor(width, height, fps, opts.quality), keyint: gop });
+  const rate = bitrateFor(width, height, fps, opts.quality);
+  // AV1 keeps the same picture at well under the rate H.264 needs.
+  const sink = format === 'gif' ? await gifSink({ width, height, fps })
+    : format === 'webm' ? await av1Sink({ width, height, fps, bitrate: Math.round(rate * 0.45), keyint: gop * 2 })
+      : await videoSink({ width, height, fps, bitrate: rate, keyint: gop });
 
   // The next frame is drawn while the one before is encoded.
   let encoding = null;
@@ -136,9 +163,14 @@ export async function renderVideo(opts) {
   const st = opts.soundtrack;
   if (st && st.left?.length) {
     onProgress({ phase: 'sound', done: 0, total: 1 });
-    ({ audio = null, wav = null } = await encodeSound(st, opts.encodeAacNative, notes));
+    ({ audio = null, wav = null } = format === 'webm' ? await encodeVorbis(st, notes) : await encodeSound(st, opts.encodeAacNative, notes));
   }
   onProgress({ phase: 'file', done: 0, total: 1 });
+  if (format === 'webm') {
+    const file = muxWebm({ video: { width, height, fps, av1C: video.av1C, packets: video.packets }, audio });
+    onProgress({ phase: 'done', done: 1, total: 1 });
+    return { file, notes, wav, encoder: sink.kind };
+  }
   const file = muxMp4({ video: { width, height, fps, avcC: video.avcC, packets: video.packets }, audio, mov: format === 'mov' });
   onProgress({ phase: 'done', done: 1, total: 1 });
   return { file, notes, wav, encoder: sink.kind };

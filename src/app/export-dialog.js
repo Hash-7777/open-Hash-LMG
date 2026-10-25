@@ -1,4 +1,4 @@
-// Export: the film written to a video (MP4, MOV), an animation (GIF), a still
+// Export: the film written to a video (MP4, MOV, WebM), an animation (GIF), a still
 // (PNG) or its sound alone (WAV, MP3), at a chosen size and frame rate.
 //
 // Frames are drawn by a render host of the export's own, at the export's size,
@@ -21,13 +21,14 @@ const BLUR = [['0', 'Off'], ['4', 'Soft'], ['8', 'Full']];
 const FORMATS = {
   mp4: { label: 'MP4 video', hint: 'Plays everywhere and uploads to every platform.', mime: 'video/mp4' },
   mov: { label: 'MOV video', hint: 'For video editing apps. To send to a phone or a chat app, choose MP4.', mime: 'video/quicktime' },
+  webm: { label: 'WebM video', hint: 'AV1 with Vorbis sound: small files for the web, played by Chrome, Edge and Firefox. Slower to make than MP4.', mime: 'video/webm' },
   gif: { label: 'GIF animation', hint: 'Loops by itself, with no sound. Kept small: GIFs grow large quickly.', mime: 'image/gif' },
   png: { label: 'PNG picture', hint: 'The frame under the playhead, as a picture.', mime: 'image/png' },
   zip: { label: 'PNG frames (ZIP)', hint: 'Every frame as a PNG picture, with the soundtrack as a WAV, for editing and compositing apps. Large: each frame is a full picture.', mime: 'application/zip' },
   wav: { label: 'WAV sound', hint: 'The soundtrack alone, at full quality.', mime: 'audio/wav' },
   mp3: { label: 'MP3 sound', hint: 'The soundtrack alone, small.', mime: 'audio/mpeg' },
 };
-const VIDEO = new Set(['mp4', 'mov', 'gif', 'zip']);
+const VIDEO = new Set(['mp4', 'mov', 'webm', 'gif', 'zip']);
 // GIFs stay small: a short side of 480 and 15 frames a second unless chosen smaller.
 const GIF_SIDE = 480, GIF_FPS = 15;
 
@@ -37,7 +38,7 @@ function fileName(title, ext) {
 }
 
 function available(fmt) {
-  if (fmt === 'gif' || fmt === 'mp3') return nativeEncoder.available && (fmt !== 'gif' || canEncodeGif());
+  if (fmt === 'gif' || fmt === 'mp3' || fmt === 'webm') return nativeEncoder.available && (fmt !== 'gif' || canEncodeGif());
   if (fmt === 'mp4' || fmt === 'mov') return canEncodeVideo();
   return true;
 }
@@ -75,7 +76,7 @@ export function openExportDialog({ store, settings, playhead = () => 0 }) {
       s.container !== 'wav' && s.container !== 'mp3' ? pair(
         field('Size', select(String(s.size), RESOLUTIONS.map((r) => [String(r), r ? sizeLabel(r) : `The film’s own, ${scene.width} × ${scene.height}`]), (v) => set({ size: Number(v) }))),
         video ? field('Frame rate', select(String(s.fps), EXPORT_FPS.map((f) => [String(f), f ? `${f} a second` : `The film’s own, ${scene.fps}`]), (v) => set({ fps: Number(v) }))) : h('span')) : null,
-      s.container === 'mp4' || s.container === 'mov' ? pair(
+      s.container === 'mp4' || s.container === 'mov' || s.container === 'webm' ? pair(
         field('Quality', select(s.quality, QUALITY, (v) => set({ quality: v }))),
         field('Motion blur', select(String(s.blur), BLUR, (v) => set({ blur: Number(v) })))) : null,
       h('p', { class: 'insp-note', text: s.container === 'wav' || s.container === 'mp3'

@@ -26,7 +26,7 @@ export const TIERS = ['auto', 'guided', 'plan', 'code'];
 export const THEMES = ['system', 'dark', 'light'];
 // What an export writes: a video (MP4, MOV), an animation (GIF), a still
 // (PNG), every frame as PNG pictures in a ZIP, or the sound alone (WAV, MP3).
-export const CONTAINERS = ['mp4', 'mov', 'gif', 'png', 'zip', 'wav', 'mp3'];
+export const CONTAINERS = ['mp4', 'mov', 'webm', 'gif', 'png', 'zip', 'wav', 'mp3'];
 // The export's short side in pixels, or 0 for the film's own size.
 export const RESOLUTIONS = [0, 480, 720, 1080, 1440, 2160];
 // Frames a second, or 0 for the film's own.

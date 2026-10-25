@@ -77,7 +77,7 @@ src/
     audio/               synthesis, the score and its played grooves, the music kit a
                          model composes with and the player of its notes, mastering,
                          word timing, WAV
-    export/              the MP4 and MOV writer, the ZIP writer, H.264 sample shaping and MP3 frames,
+    export/              the MP4 and MOV writer, the WebM writer, the ZIP writer, H.264 sample shaping and MP3 frames,
                          export sizes
     util/                colour and JSON helpers
   render/                the locked-down render worker and its host, footage frames,
@@ -115,10 +115,12 @@ one hidden video element a clip of footage. For the preview it asks for a
 frame as a picture; for an export it asks for RGBA pixels, which move from
 the worker without copying. In the desktop app every export is encoded by
 the app's own encoders (`src-tauri/src/commands/encode.rs`): H.264 for MP4
-and MOV, GIF, and MP3; the next frame is drawn while the last is encoded.
-The page shapes the H.264 stream into samples and writes MP4 and MOV itself
-(`src/core/export/mp4.js`). Sound goes in as AAC where the web view or the
-system can encode it, otherwise as MP3.
+and MOV, AV1 for WebM (`av1.rs`), GIF, and MP3 and Vorbis (`vorbis.rs`) for
+sound; the next frame is drawn while the last is encoded. The page shapes
+the H.264 stream into samples and writes MP4 and MOV itself
+(`src/core/export/mp4.js`), and WebM from the AV1 packets and Vorbis packets
+(`src/core/export/webm.js`). Sound goes into MP4 and MOV as AAC where the
+web view or the system can encode it, otherwise as MP3.
 
 ## Checks
 

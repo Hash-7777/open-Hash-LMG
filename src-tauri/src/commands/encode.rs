@@ -2,8 +2,9 @@
 //
 // A web view's video encoder is missing on some systems and unreliable on
 // others, so the film is encoded here instead, by encoders built into the app
-// from source: H.264 for MP4 and MOV, GIF, and MP3 for sound where
-// the system has no AAC encoder of its own. The page draws each frame, sends
+// from source: H.264 for MP4 and MOV, AV1 for WebM (av1.rs), GIF, and MP3
+// for sound where the system has no AAC encoder of its own (Vorbis for WebM
+// is in vorbis.rs). The page draws each frame, sends
 // its pixels under a session token, and gets back the encoded stream; it then
 // writes the file itself with its own MP4 and MOV writer. Nothing here reads
 // or writes a file, and nothing takes a path.
@@ -35,6 +36,7 @@ enum Session {
         width: u32,
         height: u32,
     },
+    Av1(Box<super::av1::Av1>),
     Gif {
         enc: gif::Encoder<Vec<u8>>,
         width: u16,
@@ -127,7 +129,7 @@ fn header(request: &Request<'_>, name: &str) -> Option<String> {
         .map(|s| s.to_string())
 }
 
-/// Starts an encoding session. kind: "h264" or "gif".
+/// Starts an encoding session. kind: "h264", "av1" or "gif".
 #[tauri::command]
 pub fn encoder_open(
     encoders: State<'_, Encoders>,
@@ -148,6 +150,7 @@ pub fn encoder_open(
                 height,
             }
         }
+        "av1" => Session::Av1(Box::new(super::av1::Av1::open(width, height, fps, bitrate, keyint)?)),
         "gif" => {
             check_size(width, height)?;
             let (w, h) = (width as u16, height as u16);
@@ -177,7 +180,8 @@ pub fn encoder_open(
 
 /// One frame of RGBA pixels, sent raw with the session in x-encoder and
 /// x-key: 1 for a key frame. H.264 answers with one byte (1 for a key frame)
-/// and the frame's stream; GIF answers with nothing until the session closes.
+/// and the frame's stream; AV1 with the packets ready so far, framed as av1.rs
+/// describes; GIF with nothing until the session closes.
 #[tauri::command]
 pub fn encoder_frame(
     encoders: State<'_, Encoders>,
@@ -202,6 +206,7 @@ pub fn encoder_frame(
             out.extend_from_slice(&bytes);
             Ok(Response::new(out))
         }
+        Session::Av1(enc) => Ok(Response::new(enc.frame(rgba)?)),
         Session::Gif {
             enc,
             width,
@@ -222,8 +227,9 @@ pub fn encoder_frame(
     }
 }
 
-/// Ends a session. A GIF answers with the whole file; H.264 with nothing, as
-/// it holds no frames back.
+/// Ends a session. A GIF answers with the whole file; AV1 with its stream's
+/// description and the frames it still held; H.264 with nothing, as it holds
+/// no frames back.
 #[tauri::command]
 pub fn encoder_close(encoders: State<'_, Encoders>, token: String) -> Result<Response, String> {
     let session = encoders
@@ -232,6 +238,7 @@ pub fn encoder_close(encoders: State<'_, Encoders>, token: String) -> Result<Res
         .map_err(|_| "Busy.".to_string())?
         .remove(&token);
     match session {
+        Some(Session::Av1(enc)) => Ok(Response::new(enc.finish()?)),
         Some(Session::Gif { enc, .. }) => {
             Ok(Response::new(enc.into_inner().map_err(|e| {
                 format!("The GIF could not be finished: {e}")

@@ -1,3 +1,4 @@
+pub mod av1;
 pub mod encode;
 pub mod export;
 pub mod keys;
@@ -7,4 +8,5 @@ pub mod relay;
 pub mod sound;
 pub mod usage;
 pub mod voice;
+pub mod vorbis;
 pub mod web;

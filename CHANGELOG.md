@@ -106,6 +106,10 @@ newest first, grouped by what it does for the person making a film.
   the brief; a change asked for in words can still switch it.
 
 ### Export
+- WebM: AV1 video with Vorbis sound, by encoders built into the desktop app
+  from source, written with seek points so the film can be scrubbed in a
+  browser, at under half the bit rate an MP4 of the same quality setting
+  gets; slower to make.
 - Encoders built into the app, the same on macOS, Windows and Linux: MP4,
   MOV and GIF at 480p to 4K and 24 to 60 frames a second, a PNG still, and
   the sound alone as WAV or MP3.

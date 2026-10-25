@@ -90,7 +90,7 @@ The page reaches the computer only through the commands in
 - **Keys** are kept by the desktop side, as described above under Where your
   keys live: the page can save or forget a key, and ask which services have
   one, and nothing else.
-- **Encoding** is done by encoders built into the app (H.264, GIF, MP3). The
+- **Encoding** is done by encoders built into the app (H.264, AV1, GIF, MP3, Vorbis). The
   page sends raw pixels or sound under a session token and gets encoded
   bytes back; these commands read and write no file and take no path. Frame
   sizes are bounded (even sides, up to 4K).
