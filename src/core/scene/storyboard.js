@@ -96,6 +96,10 @@ function normBeat(b, notes) {
   // The name of the picture this beat shows, from the film's pictures.
   const picture = s(b.picture, 40).toLowerCase();
   if (picture && PICTURE_KINDS.includes(kind)) out.picture = picture;
+  // The person's own picture or clip this beat shows: its number in the list
+  // the model was given, turned into the asset's key by placeMedia (media.js).
+  const media = typeof b.media === 'number' ? String(b.media) : s(b.media, 80);
+  if (media) out.media = media;
   switch (kind) {
     case 'stat': {
       const v = num(b.value ?? b.number ?? b.to ?? text0);

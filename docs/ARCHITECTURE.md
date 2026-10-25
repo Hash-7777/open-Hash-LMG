@@ -53,6 +53,7 @@ src/
     scene/               the scene format (lmg.scene/1) and its normaliser, assets and
                          value cleaners, the storyboard, the direction, the compositions,
                          the pictures and the compositions built around them,
+                         the person's own media and the compositions that show it,
                          the compiler, the film checks and when they look, editing helpers,
                          templates and examples
     engine/              easing, keyframes, paths, the drawing kit, entrances and exits,

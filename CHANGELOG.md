@@ -39,6 +39,13 @@ newest first, grouped by what it does for the person making a film.
   in pieces. A clip or a picture becomes a scene; a song becomes the music.
 - Clips have a start point, speed, volume and fit; the timeline's blade
   splits a scene at the playhead; a scene's entrances can be staggered.
+- A film made by a model shows the pictures and clips you imported: the
+  model is told what each is and which beats may show it, a model that can
+  see is shown your pictures, and anything it leaves out is placed on a
+  suitable beat. Each is shown whole at its own shape in a thin frame, with
+  the beat's words beside or above it; a clip may fill the frame behind its
+  words. Your media, and a song chosen as the music, carry over into each
+  new film.
 
 ### Sound and voice
 - The model composes each film's music as code once the film is final: a

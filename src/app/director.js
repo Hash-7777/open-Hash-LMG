@@ -26,6 +26,7 @@ import { createRunRecord, runUsage } from '../core/director/run-record.js';
 import { runs } from '../platform/runs.js';
 import { appVersion, fetchFor, logUsage } from '../platform/index.js';
 import { speakLines } from './narration.js';
+import { mediaFor, withMusic } from './film-media.js';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120];
 
@@ -247,13 +248,17 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
       // Ollama says itself whether a model can see pictures; its name is the fallback.
       const caps = await session.describe();
       const vision = typeof caps.vision === 'boolean' && session.local ? caps.vision : Boolean(p?.vision);
+      // The person's own media goes into the film; a song chosen as the music stays it.
+      const own = await mediaFor(store.get().project.scene, { vision });
       const out = await director.make({
+        assets: own.assets, media: own.media, mediaImages: own.mediaImages,
         // A new take each time: the same brief made again is a new film.
         take: Math.floor(Math.random() * 1e6),
         brief: text, tier: way, style: s.film.style, aspect: s.film.aspect, seconds: s.film.seconds, fps: s.film.fps,
-        narration: s.film.narration, vision: vision && s.model.review, drafts: s.model.drafts, verify: s.model.verify, compose: s.model.compose,
+        narration: s.film.narration, vision: vision && s.model.review, drafts: s.model.drafts, verify: s.model.verify, compose: s.model.compose && !own.music.length,
       });
-      store.patch({ brief: text, storyboard: out.storyboard, scene: out.scene, code: out.code, tier: out.tier, take: out.take, edited: false });
+      if (own.music.length) note('Your song stays the film\u2019s music.');
+      store.patch({ brief: text, storyboard: out.storyboard, scene: withMusic(out.scene, own.music), code: out.code, tier: out.tier, take: out.take, edited: false });
       store.select(null);
       store.setTime(0);
       const left = out.issues.filter((i) => i.level !== 'info');

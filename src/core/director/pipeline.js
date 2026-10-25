@@ -36,6 +36,7 @@ import {
 } from './prompts.js';
 import { designInParts, reviseInParts, compact } from './design.js';
 import { sceneForModel, restore, draftScore, keepDrawings } from './scene-io.js';
+import { mediaPromptText, placeMedia } from '../scene/media.js';
 
 // The scene helpers are in scene-io.js; sceneForModel is re-exported for the checks.
 export { sceneForModel, draftScore } from './scene-io.js';
@@ -63,8 +64,10 @@ export function createDirector(deps) {
   }
 
   async function writeStoryboard(brief, opts, part = null, temperature) {
-    const system = storyboardPrompt({ seconds: opts.seconds, narration: opts.narration });
-    let raw = await askJson(system, `Brief:\n${brief}`, { schema: STORYBOARD_SCHEMA, purpose: 'storyboard', part, temperature });
+    // The person's own media is listed for the model, and shown to one that can see.
+    const system = storyboardPrompt({ seconds: opts.seconds, narration: opts.narration }) + mediaPromptText(opts.media || []);
+    const images = opts.mediaImages?.length ? opts.mediaImages : null;
+    let raw = await askJson(system, `Brief:\n${brief}`, { schema: STORYBOARD_SCHEMA, purpose: 'storyboard', part, temperature, images });
     let { storyboard, notes } = normalizeStoryboard(raw || {});
     if (!storyboard.beats.length) {
       note('story', 'The first answer had no usable beats; asking again.');
@@ -180,7 +183,8 @@ export function createDirector(deps) {
   async function writeCode(brief, storyboard, draft, opts) {
     const system = codePrompt({ seconds: draft.duration, aspect: draft.aspect, timing: timingText(draft) });
     const d = directionFor(storyboard, opts);
-    let content = `Brief:\n${brief}\n\nStoryboard:\n${JSON.stringify(storyboardForModel(storyboard))}\n\nDirection: ${describeDirection(d)}. Fonts: ${JSON.stringify(draft.fonts)}. Palette (lmg.palette holds it): ${JSON.stringify(draft.palette)}`;
+    const own = (opts.media || []).filter((m) => m.kind === 'image').map((m) => `"${m.key}" (${m.name})`);
+    let content = `Brief:\n${brief}\n\nStoryboard:\n${JSON.stringify(storyboardForModel(storyboard))}\n\nDirection: ${describeDirection(d)}. Fonts: ${JSON.stringify(draft.fonts)}. Palette (lmg.palette holds it): ${JSON.stringify(draft.palette)}${own.length ? `\n\nThe person's own pictures, each shown whole with lmg.image(id, x, y, w, h, {fit: 'contain', radius}) on the beat whose "media" names it: ${own.join(', ')}.` : ''}`;
     let code = '';
     for (let attempt = 0; attempt < 3; attempt++) {
       const text = await deps.ask({ system, messages: [{ role: 'user', content }], purpose: attempt ? 'revise code' : 'code' });
@@ -211,7 +215,8 @@ export function createDirector(deps) {
     return notes;
   }
 
-  // opts: { brief, tier, style, aspect, seconds, fps, narration, voice, vision, rounds, assets, palette, score, drafts, verify }
+  // opts: { brief, tier, style, aspect, seconds, fps, narration, voice, vision, rounds, assets, palette, score, drafts, verify,
+  //         media: the person's own pictures and clips (media.js mediaList), mediaImages: them as pictures, for a model that sees }
   async function make(opts) {
     const brief = String(opts.brief || '').trim();
     if (!brief) throw new Error('Describe the film first.');
@@ -230,6 +235,13 @@ export function createDirector(deps) {
         if (err?.stopped) throw err;
         note('pictures', `${String(err.message || err)} The film is laid out without pictures.`);
       }
+    }
+    // The person's own pictures and clips, on the beats the model chose, and
+    // every one it left out on a beat that suits it.
+    if (opts.media?.length) {
+      const placed = placeMedia(storyboard, opts.media);
+      storyboard = placed.storyboard;
+      for (const n of placed.notes) note('story', n);
     }
     // What the brief asks to see, as statements the finished film is held to.
     let intent = [];
