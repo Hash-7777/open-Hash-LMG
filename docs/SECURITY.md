@@ -100,8 +100,9 @@ The page reaches the computer only through the commands in
   answers with must be on the public internet, and the connection is made to
   those very addresses; each redirect is checked again. Only text comes back,
   at most a megabyte, and what the storyboard step is given of it is a few
-  thousand characters of plain words. Nothing is sent but the search's
-  words, or the request for the page.
+  thousand characters of plain words, fenced and marked as material to draw
+  facts from and never as instructions (`src/core/research/research.js`).
+  Nothing is sent but the search's words, or the request for the page.
 - The **usage log** (`src-tauri/src/commands/usage.rs`) appends one line per
   request to a model to `usage.jsonl` in the app's data folder: the time,
   the service and model, and how many tokens were read and written. Never a
