@@ -29,7 +29,11 @@ newest first, grouped by what it does for the person making a film.
   inspector still turns them on for any film.
 - The model draws the few things a film is about, from the brief's own
   subject, as line drawings that draw themselves on: a cup for a cafe, a bike
-  for a bike service. Each drawing is checked and fitted, or set aside, and
+  for a bike service. It picks one everyday object for each and builds it
+  from a few simple shapes, as icons are built, which small local models do
+  far more cleanly than drawing curves; a frame drawn round the whole picture
+  is left out, and a worked example copied under another object's name is
+  set aside. Each drawing is checked and fitted, or set aside, and
   beats with one take compositions built around it: the picture on a panel
   beside the line, above it, faint behind it, as the name's mark, beside a
   figure or a list. Plain lines gain a band across the frame and a poster.

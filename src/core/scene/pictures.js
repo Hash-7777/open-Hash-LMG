@@ -2,8 +2,11 @@
 // subject, drawn as a few pen strokes, so a film about a lamp shows a lamp and
 // a film about a bike shows a bike, instead of the same type and shapes.
 //
-// A drawing arrives as SVG path data on a 100 by 100 grid. It is read here as
-// data only: path commands and numbers, nothing else. A drawing too small, too
+// A drawing arrives on a 100 by 100 grid as simple shapes (rounded boxes,
+// circles, lines, outlines and arcs, which small models place far better than
+// they write curves) or as SVG path data. It is read here as data only: shape
+// names and numbers, path commands and numbers, nothing else. A box drawn
+// round the whole picture is a frame, not part of the thing, and is left out. A drawing too small, too
 // busy or out of its grid is set aside. What is kept is fitted to the grid,
 // centred, flattened to straight segments and stored once in the storyboard
 // (storyboard.pictures, by name); a beat names the picture it shows.
@@ -53,12 +56,59 @@ function boxOf(d) {
   return { x: r1(b.x), y: r1(b.y), w: r1(b.w), h: r1(b.h) };
 }
 
-// A drawing as the model wrote it, { strokes, accent }, to what a film keeps:
+const num = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= -100 && v <= 200 ? v : NaN);
+const n1 = (v) => +v.toFixed(1);
+
+// Shapes as path data: ["rect", x, y, w, h, radius], ["circle", cx, cy, r],
+// ["line", x1, y1, x2, y2], ["poly", x1, y1, ...] closed, ["arc", cx, cy, r,
+// fromDegrees, toDegrees] clockwise from pointing right. Anything else is
+// left out. With `frames` false, a rect covering most of the grid is left
+// out too when other shapes are drawn inside it.
+export function shapesToStrokes(list, { frames = false } = {}) {
+  const shapes = (Array.isArray(list) ? list : []).filter((sh) => Array.isArray(sh) && typeof sh[0] === 'string').slice(0, MAX_STROKES);
+  const isFrame = (sh) => sh[0] === 'rect' && num(sh[3]) >= 80 && num(sh[4]) >= 80;
+  const out = [];
+  for (const sh of shapes) {
+    if (!frames && shapes.length > 1 && isFrame(sh)) continue;
+    const v = sh.slice(1).map(num);
+    if (v.some(Number.isNaN)) continue;
+    const kind = sh[0].toLowerCase();
+    if (kind === 'rect' && v.length >= 4 && v[2] > 0 && v[3] > 0) {
+      const [x, y, w, h] = v;
+      const r = Math.max(0, Math.min(v[4] || 0, w / 2, h / 2));
+      out.push(r > 0
+        ? `M${n1(x + r)} ${n1(y)}H${n1(x + w - r)}A${n1(r)} ${n1(r)} 0 0 1 ${n1(x + w)} ${n1(y + r)}V${n1(y + h - r)}A${n1(r)} ${n1(r)} 0 0 1 ${n1(x + w - r)} ${n1(y + h)}H${n1(x + r)}A${n1(r)} ${n1(r)} 0 0 1 ${n1(x)} ${n1(y + h - r)}V${n1(y + r)}A${n1(r)} ${n1(r)} 0 0 1 ${n1(x + r)} ${n1(y)}Z`
+        : `M${n1(x)} ${n1(y)}H${n1(x + w)}V${n1(y + h)}H${n1(x)}Z`);
+    } else if (kind === 'circle' && v.length >= 3 && v[2] > 0) {
+      const [cx, cy, r] = v;
+      out.push(`M${n1(cx - r)} ${n1(cy)}A${n1(r)} ${n1(r)} 0 1 1 ${n1(cx + r)} ${n1(cy)}A${n1(r)} ${n1(r)} 0 1 1 ${n1(cx - r)} ${n1(cy)}Z`);
+    } else if (kind === 'line' && v.length >= 4) {
+      out.push(`M${n1(v[0])} ${n1(v[1])}L${n1(v[2])} ${n1(v[3])}`);
+    } else if ((kind === 'poly' || kind === 'polygon') && v.length >= 6) {
+      const pts = [];
+      for (let i = 0; i + 1 < v.length && pts.length < 40; i += 2) pts.push(`${n1(v[i])} ${n1(v[i + 1])}`);
+      out.push(`M${pts[0]}L${pts.slice(1).join('L')}Z`);
+    } else if (kind === 'arc' && v.length >= 5 && v[2] > 0) {
+      const [cx, cy, r, a0, a1] = v;
+      const sweep = (((a1 - a0) % 360) + 360) % 360;
+      if (sweep < 1) continue;
+      const at = (deg) => [cx + r * Math.cos((deg * Math.PI) / 180), cy + r * Math.sin((deg * Math.PI) / 180)];
+      const [x0, y0] = at(a0), [x1, y1] = at(a0 + sweep);
+      out.push(`M${n1(x0)} ${n1(y0)}A${n1(r)} ${n1(r)} 0 ${sweep > 180 ? 1 : 0} 1 ${n1(x1)} ${n1(y1)}`);
+    }
+  }
+  return out;
+}
+
+// Path strokes and shapes alike, from one field of a drawing.
+const strokesAndShapes = (v, opts) => [...strokesOf(Array.isArray(v) ? v.filter((x) => !Array.isArray(x)) : v), ...shapesToStrokes(Array.isArray(v) ? v.filter(Array.isArray) : [], opts)];
+
+// A drawing as the model wrote it, { shapes or strokes, accent }, to what a film keeps:
 // { d, accent, box, accentBox } on the grid, or null with why.
 export function normalizeDrawing(raw) {
   if (!isObj(raw)) return { picture: null, why: 'not a drawing' };
-  const main = polylines(strokesOf(raw.strokes ?? raw.paths ?? raw.d));
-  const lit = polylines(strokesOf(raw.accent));
+  const main = polylines([...strokesAndShapes(raw.shapes), ...strokesAndShapes(raw.strokes ?? raw.paths ?? raw.d)]);
+  const lit = polylines(strokesAndShapes(raw.accent, { frames: true }));
   const all = [...main, ...lit];
   if (all.length < 2 && !(all.length === 1 && all[0].length >= 8)) return { picture: null, why: 'too few strokes' };
   if (all.length > MAX_STROKES) return { picture: null, why: 'too many strokes' };

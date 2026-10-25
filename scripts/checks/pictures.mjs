@@ -10,9 +10,9 @@
 import assert from 'node:assert/strict';
 import { section, claim, ok, attempt, done } from './lib/check.mjs';
 import { STORYBOARD, measure } from './lib/fixtures.mjs';
-import { normalizeDrawing, cleanPicture, PICTURE_GRID } from '../../src/core/scene/pictures.js';
+import { normalizeDrawing, cleanPicture, PICTURE_GRID, shapesToStrokes } from '../../src/core/scene/pictures.js';
 import { normalizeStoryboard, storyboardForModel, keepPictures } from '../../src/core/scene/storyboard.js';
-import { applyPictures, picturesMessage, pictureCount } from '../../src/core/director/pictures.js';
+import { applyPictures, picturesMessage, pictureCount, picturesPrompt, PICTURE_EXAMPLES, copiedExample } from '../../src/core/director/pictures.js';
 import { compileStoryboard } from '../../src/core/scene/compile.js';
 import { chooseDirection } from '../../src/core/scene/direction.js';
 import { lintScene, sampleTimes } from '../../src/core/scene/lint.js';
@@ -238,4 +238,31 @@ await claim('a redesign that kept them is used as written, and was shown no draw
   assert.ok(!log.some((e) => /keep their drawing|keeps its drawing/.test(e.detail || '')));
 });
 
+section('Pictures built from simple shapes');
+await claim('each shape becomes a stroke; unknown shapes and numbers off the grid are left out', () => {
+  const st = shapesToStrokes([['rect', 10, 10, 30, 20, 4], ['circle', 50, 50, 10], ['line', 0, 0, 10, 10], ['poly', 1, 1, 9, 1, 5, 9], ['arc', 50, 50, 20, 0, 90], ['star', 1, 2, 3], ['line', 0, 0, 'x', 1], ['circle', 50, 50, 9999]]);
+  assert.equal(st.length, 5);
+  assert.ok(st.every((d) => /^M/.test(d)));
+});
+await claim('a box round the whole drawing is a frame and is left out, but a lone box is kept', () => {
+  assert.equal(shapesToStrokes([['rect', 2, 2, 96, 96, 8], ['circle', 50, 50, 20]]).length, 1);
+  assert.equal(shapesToStrokes([['rect', 2, 2, 96, 96, 8]]).length, 1);
+});
+await claim('a drawing of shapes is kept and fitted like one of strokes, its accent too', () => {
+  const { picture } = normalizeDrawing(PICTURE_EXAMPLES[1]);
+  assert.ok(picture && picture.d && picture.accent);
+  assert.ok(picture.box.w > 60 || picture.box.h > 60, 'it fills the grid');
+});
+await claim('an example copied under another object\u2019s name is set aside; drawn for its own object it is kept', () => {
+  assert.equal(copiedExample({ ...PICTURE_EXAMPLES[0], name: 'city skyline' }), true);
+  assert.equal(copiedExample({ ...PICTURE_EXAMPLES[0], name: 'reading lamp' }), false);
+  const sb = normalizeStoryboard({ title: 'T', beats: [{ kind: 'hook', text: 'Night falls' }, { kind: 'statement', text: 'A lamp that rests your eyes' }] }).storyboard;
+  const out = applyPictures(sb, { pictures: [{ ...PICTURE_EXAMPLES[0], beat: 1, name: 'city skyline' }, { ...PICTURE_EXAMPLES[0], beat: 2, name: 'lamp' }] }, 2);
+  assert.equal(out.kept, 1); assert.equal(out.storyboard.beats[1].picture, 'lamp');
+});
+await claim('the prompt asks for one everyday object built from shapes, with its examples', () => {
+  const p = picturesPrompt(3);
+  assert.match(p, /\["rect", x, y, width, height, cornerRadius\]/); assert.match(p, /no frame or border/); assert.match(p, /copy one only when you draw that same object/);
+  for (const e of PICTURE_EXAMPLES) assert.ok(p.includes(JSON.stringify(e)));
+});
 done();

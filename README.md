@@ -107,7 +107,7 @@ Hash LMG is being built in the open. This is exactly what exists today:
 | Score and mastering | Processor or graphics-chip choice for Ollama | |
 | Narration through a Kokoro install or a local speech server, with word-timed captions | Voices through a Chatterbox install | |
 | The editor: preview, timeline, inspector, the director's conversation, settings | | |
-| Pictures: each drawing checked and fitted, and the compositions built around it | Pictures drawn by a real model | |
+| Pictures: each drawing checked and fitted, and the compositions built around it | Pictures drawn by a real model inside the app (the drawing prompt was tried on small local models outside it) | |
 | Rendering in a background worker; MP4, MOV, GIF and MP3 export by the app's own encoders, in the macOS app | | |
 | The macOS app: it builds and opens the editor | WebM export from the app (its encoders and file were checked outside it: the file plays in a browser) | |
 | The check suite, `npm run check`, run on every push | | |
