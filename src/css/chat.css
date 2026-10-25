@@ -1,0 +1,57 @@
+/* The director's conversation in the left panel: the model picker on top,
+   the thread, then the film's settings folded into one line over the box
+   to write in. */
+
+.chat { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.chat[hidden] { display: none; }
+.chat-top { flex: none; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+
+.chat-thread { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 14px 14px 18px; }
+/* Messages keep their own height; the thread scrolls instead of squeezing them. */
+.chat-thread > * { flex: none; }
+
+.chat-empty { display: flex; flex-direction: column; gap: 8px; }
+.chat-empty h2 { margin: 2px 0 0; font-size: var(--text-l); font-weight: 600; color: var(--ink); }
+.chat-empty p { margin: 0 0 8px; font-size: var(--text-s); line-height: 1.5; color: var(--muted); }
+
+.msg { max-width: 100%; font-size: var(--text-m); line-height: 1.5; overflow-wrap: anywhere; }
+.msg-text { white-space: pre-wrap; }
+.msg.person { align-self: flex-end; max-width: 88%; padding: 8px 11px; border: 1px solid var(--line); border-radius: var(--r-l); background: var(--raised); color: var(--ink); }
+.msg.director { align-self: stretch; color: var(--ink-2); }
+.msg.director.note { font-size: var(--text-s); color: var(--muted); }
+.msg.director.made, .msg.director.changed { padding-top: 10px; border-top: 1px solid var(--line); color: var(--ink); }
+
+.msg-brief { margin-top: 6px; }
+.msg-brief summary { cursor: pointer; font-size: var(--text-xs); color: var(--muted); }
+.msg-brief p { margin: 6px 0 0; padding: 8px 10px; border-left: 2px solid var(--line-strong); font-size: var(--text-s); color: var(--ink-2); white-space: pre-wrap; }
+
+.chat-qs { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.chat-q-ask { font-size: var(--text-s); color: var(--ink); margin-bottom: 6px; }
+.chat-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { padding: 5px 10px; border: 1px solid var(--line-strong); border-radius: var(--r-m); background: transparent; color: var(--ink-2); font-size: var(--text-s); cursor: pointer; }
+.chip:hover:not(:disabled) { border-color: var(--muted); color: var(--ink); }
+.chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+.chip:disabled { cursor: default; opacity: 0.55; }
+.chip.on:disabled { opacity: 0.8; }
+.chat-answer { align-self: flex-start; height: 28px; padding: 0 12px; font-size: var(--text-s); }
+
+/* Three dots while the director thinks; the element, and its motion, go when the reply comes. */
+.msg.thinking .dots { display: inline-flex; gap: 4px; padding: 6px 0; }
+.msg.thinking .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); animation: chat-dot 1.2s ease-in-out infinite; }
+.msg.thinking .dots i:nth-child(2) { animation-delay: 0.15s; }
+.msg.thinking .dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes chat-dot { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .msg.thinking .dots i { animation: none; opacity: 0.6; } }
+
+.chat-bottom { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 12px; border-top: 1px solid var(--line); }
+.film-settings summary { list-style: none; display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: var(--text-xs); color: var(--muted); }
+.film-settings summary::-webkit-details-marker { display: none; }
+.film-settings summary::after { content: ''; width: 6px; height: 6px; margin-left: auto; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-135deg) translateY(-1px); }
+.film-settings[open] summary::after { transform: rotate(45deg) translateY(-2px); }
+.film-settings summary:hover { color: var(--ink); }
+.film-settings .dir-options { margin-top: 10px; }
+
+.chat-compose { display: flex; align-items: flex-end; gap: 6px; }
+.chat-input { flex: 1; resize: none; min-height: 40px; max-height: 140px; line-height: 1.45; padding-top: 8px; padding-bottom: 8px; }
+.attach-btn { width: 32px; height: 32px; border-radius: var(--r-m); border: 1px solid var(--line); background: transparent; color: var(--muted); }
+.attach-btn:hover { color: var(--ink); }

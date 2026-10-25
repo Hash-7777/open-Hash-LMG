@@ -127,5 +127,5 @@ export function createModelPicker({ settings, lists, openSettings }) {
   settings.subscribe(paintButton);
   lists.subscribe(paintMenu);
   paintButton();
-  return { el: button, close };
+  return { el: button, close, open: () => { if (!menu) openMenu(); } };
 }

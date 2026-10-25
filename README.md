@@ -31,7 +31,7 @@ Made by the model on your own computer, or by any cloud model on your own key.
 
 | Step | What happens |
 |---|---|
-| **01 Brief** | You describe the film in a sentence or two: what it is for, how long, landscape or vertical. |
+| **01 Brief** | You tell the director, in the left panel, what the film is for, in your own words. It asks for what is missing, a few questions at a time with answers to tap (how long, which frame, the look, whether a voice narrates it, whether to show the pictures you gave it), writes the brief and the film's settings, and makes the film. Afterwards you ask for changes in the same conversation, which is kept with the film. |
 | **02 Storyboard** | The model writes the words and numbers, beat by beat: a hook, a statement, a stat, a list, a quote, an end card. Then it draws the few things the film is about, from the brief's own subject, as simple line drawings that draw themselves on in the film. |
 | **03 Design** | The app directs the film from the brief: a look, an accent colour, a tempo and key for the music, the transitions and camera moves it cuts with, and a composition for every scene, built around its drawing when it has one, so two briefs, or two takes of one brief, never come out alike. Then it times every line to how long it takes to read and starts every scene on the beat of the music. |
 | **04 Check** | Key moments are rendered and measured: text off the frame, outside a phone's safe area, too small, too faint, too fast to read, or a scene that sits still too long. What rules can fix, they fix. The film is also held to what the brief asks to see: what must appear, in what order, what counts up, what is on screen at the end. The rest goes back to the model. |
@@ -87,7 +87,7 @@ By default the look is matched to the brief: a calm brief, a technical one and a
 **On your computer:** Ollama, LM Studio and llama.cpp, asked by the desktop app where a server would refuse a web page, so no server switch is needed.<br>
 **In the cloud, on your own key:** Anthropic, OpenAI, Google Gemini, OpenRouter, Groq, DeepSeek, Mistral, xAI, Moonshot, Together AI, Fireworks AI and Cerebras.<br>
 **Looking things up:** before the storyboard, the model may ask to search the web or read a page named in the brief. You see every search and page and say yes first; a search key (Tavily) gives better results, and Wikipedia is searched without one.<br>
-**Choosing:** one list in the director panel holds every model you can use now, grouped by service and asked of each service when it opens, so it is always that service's current list. Each service remembers the model last chosen on it.<br>
+**Choosing:** one list at the top of the director's conversation holds every model you can use now, grouped by service and asked of each service when it opens, so it is always that service's current list. Each service remembers the model last chosen on it.<br>
 **Voices:** Chatterbox and Kokoro through your own install, pointed at once in Settings, on the processor or the graphics chip; any local speech server; or OpenAI's voices. Lines are spoken when a film with narration is made, or from a scene's inspector.
 
 <br>
@@ -105,7 +105,7 @@ Hash LMG is being built in the open. This is exactly what exists today:
 | The director, with a scripted model | Narration mix, word timing and captions | |
 | Score and mastering | Processor or graphics-chip choice for Ollama | |
 | Narration through a Kokoro install or a local speech server, with word-timed captions | Voices through a Chatterbox install | |
-| The editor: preview, timeline, inspector, director, settings | | |
+| The editor: preview, timeline, inspector, the director's conversation, settings | | |
 | Pictures: each drawing checked and fitted, and the compositions built around it | Pictures drawn by a real model | |
 | Rendering in a background worker; MP4, MOV, GIF and MP3 export by the app's own encoders, in the macOS app | | |
 | The macOS app: it builds and opens the editor | | |

@@ -14,6 +14,12 @@ Everything that differs between the two goes through `src/platform/index.js`.
 
 ## The way a film is made
 
+The person talks with the director in the left panel
+(`src/app/chat-panel.js`, `src/core/director/chat.js`): each turn sends a short
+system text, the film's state in a few lines and the last few messages, and
+the reply either asks a few questions with answers to tap, or writes the
+brief and the film's settings, or names a change to an existing film. Then:
+
 ```
 brief
   -> research (asked)    the model names what it would look up; with the person's
@@ -61,7 +67,7 @@ src/
                          templates and examples
     engine/              easing, keyframes, paths, the drawing kit, entrances and exits,
                          the carry transition, repeated layers, the odometer, the renderer
-    director/            the prompts, the pipeline, the drawing step, the composing step,
+    director/            the conversation, the prompts, the pipeline, the drawing step, the composing step,
                          the brief check, the code check, the scene helpers, the run record
     research/            what to look up, a page read as text, the notes
     providers/           the model services, request and stream shapes, local model
@@ -76,8 +82,8 @@ src/
                          encoder sinks, export
   platform/              the desktop app or a browser: films, files, media, voices, the
                          relay, settings and keys, the run history, the window
-  app/                   the editor: its state, panels, dialogs, the director panel and
-                         its model picker
+  app/                   the editor: its state, panels, dialogs, the director's
+                         conversation and its model picker
 src-tauri/src/commands/  films, exports, sound, encoders, media, voices, keys, the relay,
                          the usage log, web search and page reading
 scripts/checks/          the check suite: every script runs on npm run check

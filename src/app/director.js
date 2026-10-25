@@ -1,5 +1,6 @@
-// The director panel: the brief, the few choices that shape the film, and a
-// box to ask for a change afterwards. Each step of the making shows on the
+// The director panel: a conversation (src/app/chat-panel.js) that asks for
+// what a film needs, then makes it, and takes changes afterwards in the same
+// words; the model picker above it. Each step of the making shows on the
 // loading bar under the top bar, and what is worth knowing about the result
 // (what the checks fixed, what is left to look at, where the model ran) is
 // kept with the bar's last message, shown when the pointer rests on it.
@@ -8,7 +9,7 @@
 // of its own, so checking stills never disturbs the preview. Stop aborts the
 // model's answer in flight; whatever was finished before stays in the project.
 
-import { h, clear, iconButton, toast } from './dom.js';
+import { h, clear, toast } from './dom.js';
 import { ICONS } from './icons.js';
 import { createDirector } from '../core/director/pipeline.js';
 import { ask } from '../core/providers/client.js';
@@ -16,20 +17,20 @@ import { PROVIDERS } from '../core/providers/catalog.js';
 import { modelProfile } from '../core/providers/models.js';
 import { createHost, contactSheet } from '../render/host.js';
 import { sampleTimes } from '../core/scene/lint.js';
-import { ASPECTS, STYLE_PACKS, STYLE_NAMES } from '../core/scene/format.js';
-import { select, toggle, ASPECT_SHORT } from './fields.js';
 import { createModelSession } from './model-session.js';
 import { createModelLists } from './model-lists.js';
 import { createModelPicker } from './model-picker.js';
-import { createSuggestions, openIdeasDialog } from './suggestions.js';
 import { createRunRecord, runUsage } from '../core/director/run-record.js';
 import { runs } from '../platform/runs.js';
 import { appVersion, fetchFor, logUsage, web } from '../platform/index.js';
 import { askToLookUp } from './web-permission.js';
 import { speakLines } from './narration.js';
 import { mediaFor, withMusic } from './film-media.js';
+import { createChatPanel } from './chat-panel.js';
+import { CHAT_SCHEMA, chatPrompt, chatMessages, filmState, normalizeChatReply, ASKS_FOR_NARRATION } from '../core/director/chat.js';
+import { mediaList } from '../core/scene/media.js';
+import { extractJson } from '../core/util/json.js';
 
-const LENGTHS = [15, 30, 45, 60, 90, 120];
 
 // The share of the bar each step takes, by way of working: the model writing
 // is most of the wait.
@@ -51,42 +52,11 @@ const TIER_HELP = {
   code: 'The model writes its own animation code, run with no network or storage.',
 };
 
-export function createDirectorPanel({ store, settings, openSettings, progress }) {
-  const brief = h('textarea', { class: 'input textarea brief', rows: '3', maxlength: '4000', placeholder: 'Describe the film: what it is for, who will watch it, and what it must say.', 'aria-label': 'Brief' });
-  brief.value = store.get().project.brief;
-  const keepBrief = () => { if (brief.value !== store.get().project.brief) store.patch({ brief: brief.value }, { record: false }); };
-  let briefTimer = 0;
-  brief.addEventListener('input', () => { clearTimeout(briefTimer); briefTimer = setTimeout(keepBrief, 600); });
-  brief.addEventListener('change', keepBrief);
-  // Command or Control with Return makes the film from the brief.
-  brief.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); make(); } });
-  // Ideas to start from, while the brief is empty.
-  const useIdea = (idea) => {
-    brief.value = idea.text;
-    keepBrief();
-    settings.update({ film: { seconds: idea.seconds, aspect: idea.aspect } });
-    ideas.show(false);
-    brief.focus();
-  };
-  const ideas = createSuggestions({ pick: useIdea, openAll: () => openIdeasDialog({ pick: useIdea }) });
-  const showIdeas = () => ideas.show(!brief.value.trim());
-  brief.addEventListener('input', showIdeas);
-
-  const options = h('div', { class: 'dir-options' });
+export function createDirectorPanel({ store, settings, openSettings, progress, onAttach }) {
   const lists = createModelLists(settings);
   const picker = createModelPicker({ settings, lists, openSettings });
-  const modelLine = picker.el;
-  const tierHelp = h('div', { class: 'field-hint' });
   // The main button lives in the top bar; the panel hands it over.
   const makeBtn = h('button', { class: 'primary-btn make-btn', type: 'button' });
-  const askBox = h('textarea', { class: 'input textarea ask', rows: '2', maxlength: '1000', placeholder: 'Ask for a change', 'aria-label': 'Ask for a change' });
-  const askBtn = iconButton(ICONS.send, 'Send the change', () => change(), 'send-btn');
-  askBox.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); change(); } });
-
-  const el = h('aside', { class: 'director', 'aria-label': 'Director' },
-    h('div', { class: 'dir-body' },
-      h('div', { class: 'dir-block' }, brief, ideas.el, options, modelLine, tierHelp)),
-    h('div', { class: 'dir-ask' }, askBox, askBtn));
 
   let running = null; // AbortController while the model works
 
@@ -101,25 +71,15 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     return profile()?.tier || 'guided';
   }
 
-  function paintOptions() {
-    const f = settings.get().film;
-    const m = settings.get().model;
-    const p = profile();
-    const setFilm = (patch) => settings.update({ film: patch });
-    clear(options).append(
-      h('div', { class: 'field-pair' },
-        labelled('Length', select(String(f.seconds), LENGTHS.map((s) => [String(s), s < 60 ? `${s} seconds` : `${s / 60} minute${s > 60 ? 's' : ''}`]), (v) => setFilm({ seconds: Number(v) }))),
-        labelled('Format', select(f.aspect, Object.keys(ASPECTS).map((k) => [k, ASPECT_SHORT[k] || k]), (v) => setFilm({ aspect: v })))),
-      h('div', { class: 'field-pair' },
-        labelled('Look', select(f.style, [['auto', 'Auto'], ...STYLE_NAMES.map((k) => [k, STYLE_PACKS[k].label])], (v) => setFilm({ style: v }))),
-        labelled('Way of working', select(m.tier, [['auto', p ? `Suggested: ${TIER_SHORT[p.tier]}` : 'Suggested'], ['guided', 'Guided'], ['plan', 'Plan'], ['code', 'Code']], (v) => settings.update({ model: { tier: v } })))),
-      toggle(f.narration, (v) => setFilm({ narration: v }), 'Narration for each scene'));
-    tierHelp.textContent = TIER_HELP[tier()];
-  }
-
-  function labelled(label, control) {
-    return h('label', { class: 'field' }, h('span', { class: 'field-label', text: label }), control);
-  }
+  const chat = createChatPanel({
+    store, settings, picker, onAttach,
+    converse: (history) => converse(history),
+    onMake: (text, opts) => make(text, opts),
+    onChange: (text) => change(text),
+    busy: () => Boolean(running),
+    tierOf: () => ({ way: tier(), suggested: profile()?.tier || null, help: TIER_HELP[tier()] }),
+  });
+  const el = chat.el;
 
   function paintButtons() {
     const busy = Boolean(running);
@@ -129,9 +89,28 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
       h('span', { class: 'make-go', 'aria-hidden': String(busy) }, h('span', { html: ICONS.play }), h('span', { class: 'make-long', text: 'Generate the Movie' }), h('span', { class: 'make-short', text: 'Generate' })),
       h('span', { class: 'make-stop', 'aria-hidden': String(!busy) }, h('span', { html: ICONS.stop }), h('span', { text: 'Stop' }))));
     makeBtn.classList.toggle('stop', busy);
-    askBox.disabled = busy;
-    askBtn.disabled = busy;
-    brief.disabled = busy;
+    chat.paint();
+  }
+
+  // ---- the conversation ---------------------------------------------------------
+  // One turn: a short system text, the film's state, the last few messages.
+  async function converse(history) {
+    if (!ready()) throw Object.assign(new Error('Choose a model first.'), { stopped: true });
+    const s = settings.get();
+    const m = s.model;
+    const project = store.get().project;
+    const hasFilm = project.scene.scenes.length > 0;
+    const media = mediaList(project.scene.assets);
+    const session = createModelSession(settings, fetchFor(m.provider));
+    const system = chatPrompt({ hasFilm, media, narrationReady: s.voice.engine !== 'none' });
+    const messages = chatMessages(history, filmState(project, s));
+    const extra = await session.options('chat', { system, messages });
+    const text = await ask({
+      provider: m.provider, model: m.model, key: settings.key(m.provider), keyHeld: settings.keyHeld(), base: settings.base(m.provider),
+      device: s.local.device, system, messages, json: true, schema: CHAT_SCHEMA, temperature: 0.5, ...extra,
+    }, { fetch: fetchFor(m.provider), onUsage: (u) => logUsage({ provider: m.provider, model: m.model, usage: u }) });
+    const parsed = extractJson(text).value;
+    return normalizeChatReply(parsed ?? text, { hasFilm });
   }
 
   // ---- progress and what is worth knowing ---------------------------------------
@@ -227,17 +206,25 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
 
   function ready() {
     const m = settings.get().model;
-    if (!m.model) { toast('Choose a model in Settings first.'); openSettings('model'); return false; }
-    if (PROVIDERS[m.provider]?.kind === 'cloud' && !settings.hasKey(m.provider)) { toast(`Add your ${PROVIDERS[m.provider].label} key in Settings first.`); openSettings('model'); return false; }
+    if (!m.model) { toast('Choose a model first.'); picker.open(); return false; }
+    if (PROVIDERS[m.provider]?.kind === 'cloud' && !settings.hasKey(m.provider)) { toast(`Add your ${PROVIDERS[m.provider].label} key in Settings first.`); openSettings('keys'); return false; }
     return true;
   }
 
-  async function make() {
+  // Makes a film from a brief: the one the conversation just wrote, or, from
+  // the top bar's button, the film's own brief.
+  async function make(given, { useMedia = true } = {}) {
     if (running) { running.abort(); return; }
-    const text = brief.value.trim();
-    if (!text) { toast('Describe the film first.'); brief.focus(); return; }
+    const text = String(given ?? store.get().project.brief ?? '').trim();
+    if (!text) { toast('Tell the director about the film first.'); chat.focus(); return; }
     if (!ready()) return;
+    // A brief that asks for a voice gets one, even with narration left off.
+    if (!settings.get().film.narration && ASKS_FOR_NARRATION.test(text)) {
+      settings.update({ film: { narration: true } });
+      chat.say('The brief asks for narration, so narration is on for this film.');
+    }
     const s = settings.get();
+    if (s.film.narration && s.voice.engine === 'none') chat.say('Narration needs a voice. Choose one in Settings, under Voice; the film is made with its lines ready, and they can be spoken from there.');
     const p = profile();
     running = new AbortController();
     paintButtons();
@@ -256,7 +243,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
       // The person's own media goes into the film; a song chosen as the music stays it.
       const own = await mediaFor(store.get().project.scene, { vision });
       const out = await director.make({
-        assets: own.assets, media: own.media, mediaImages: own.mediaImages,
+        assets: own.assets, media: useMedia ? own.media : [], mediaImages: useMedia ? own.mediaImages : [],
         // A new take each time: the same brief made again is a new film.
         take: Math.floor(Math.random() * 1e6),
         brief: text, tier: way, style: s.film.style, aspect: s.film.aspect, seconds: s.film.seconds, fps: s.film.fps,
@@ -285,12 +272,13 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
         }
       }
       progress.finish(left.length || missing ? 'Made, with a few things to look at' : 'Made');
+      chat.say(`The film is ready: ${out.scene.scenes.length} scenes, ${Math.round(out.scene.duration)} seconds. Play it, then tell me anything to change.`, 'made');
       endRecord('done', { result: { tier: out.tier, direction: out.direction ? { style: out.direction.style, mood: out.direction.mood, palette: out.direction.palette, bpm: out.direction.bpm, score: out.direction.score } : null, scenes: out.scene.scenes.length, duration: out.scene.duration, codeChars: out.code ? out.code.length : 0, issues: out.issues.map((i) => `${i.level} ${i.code}: ${i.message}`), brief: out.brief || [] } });
     } catch (err) {
       endRecord(err.stopped ? 'stopped' : 'failed', { error: err.stopped ? null : err });
       if (!err.stopped) toast(err.message || String(err), 'error');
       progress.finish(err.stopped ? 'Stopped' : 'Could not finish', false);
-      if (!err.stopped) note(err.message || String(err));
+      if (!err.stopped) { note(err.message || String(err)); chat.say(`The film could not be finished: ${err.message || err}`); }
     } finally {
       running = null;
       paintButtons();
@@ -298,11 +286,12 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     }
   }
 
-  async function change() {
+  async function change(given) {
     if (running) return;
-    const text = askBox.value.trim();
+    const text = String(given || '').trim();
     if (!text) return;
     if (!ready()) return;
+    if (!store.get().project.scene.scenes.length) { make(); return; }
     const project = store.get().project;
     const s = settings.get();
     running = new AbortController();
@@ -314,14 +303,14 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     try {
       const out = await director.edit(project, text, { seconds: s.film.seconds, narration: s.film.narration });
       store.patch({ storyboard: out.storyboard, scene: out.scene, code: out.code });
-      askBox.value = '';
       progress.finish('Changed');
+      chat.say('Changed. Play it again, and tell me if anything else should change.', 'changed');
       endRecord('done', { result: { scenes: out.scene.scenes.length, duration: out.scene.duration } });
     } catch (err) {
       endRecord(err.stopped ? 'stopped' : 'failed', { error: err.stopped ? null : err });
       if (!err.stopped) toast(err.message || String(err), 'error');
       progress.finish(err.stopped ? 'Stopped' : 'Nothing was changed', false);
-      if (!err.stopped) note(err.message || String(err));
+      if (!err.stopped) { note(err.message || String(err)); chat.say(`Nothing was changed: ${err.message || err}`); }
     } finally {
       running = null;
       paintButtons();
@@ -329,12 +318,9 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     }
   }
 
-  makeBtn.addEventListener('click', make);
-  settings.subscribe(paintOptions);
-  store.on('project', () => { if (document.activeElement !== brief && brief.value !== store.get().project.brief) { brief.value = store.get().project.brief; showIdeas(); } });
-  showIdeas();
-
-  paintOptions();
+  // The top bar's button sends what is typed in the conversation, or makes
+  // the film from its brief.
+  makeBtn.addEventListener('click', () => { if (!running && chat.hasDraft()) chat.send(); else make(); });
   paintButtons();
   return { el, makeBtn, busy: () => Boolean(running) };
 }

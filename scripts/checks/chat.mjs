@@ -1,0 +1,71 @@
+// The director's conversation: what each turn sends, how a reply is held to
+// what the panel can show, how a conversation is kept with its film, and the
+// brief that asks for a voice.
+
+import assert from 'node:assert/strict';
+import { section, claim, done } from './lib/check.mjs';
+import { chatPrompt, chatMessages, filmState, normalizeChatReply, normalizeChat, ASKS_FOR_NARRATION } from '../../src/core/director/chat.js';
+import { normalizeProject } from '../../src/app/store.js';
+
+section('What a turn sends');
+await claim('the system text names what a film needs, the person’s media, and a missing voice', () => {
+  const p = chatPrompt({ hasFilm: false, media: [{ kind: 'image', name: 'App screen.png' }], narrationReady: false });
+  for (const part of ['length', 'frame', 'look', 'narrate', 'a picture "App screen.png"', 'needs a voice chosen in Settings', 'Reply with JSON only']) assert.ok(p.includes(part), part);
+  assert.ok(!p.includes('"change"'));
+  assert.ok(chatPrompt({ hasFilm: true, narrationReady: true }).includes('"change"'));
+  assert.ok(!chatPrompt({ narrationReady: true }).includes('needs a voice'));
+});
+await claim('a turn carries the last twelve messages, starting with the person, and the film\u2019s state with the newest', () => {
+  const history = Array.from({ length: 30 }, (_, i) => ({ role: i % 2 ? 'director' : 'person', text: `m${i}`, ...(i % 2 ? { questions: [{ ask: 'q', options: ['a'] }] } : {}) }));
+  const msgs = chatMessages(history, 'STATE');
+  assert.equal(msgs.length, 12);
+  assert.equal(msgs[0].role, 'user'); assert.equal(msgs[0].content, 'm18');
+  assert.deepEqual(JSON.parse(msgs.at(-1).content), { reply: 'm29', questions: [{ ask: 'q', options: ['a'] }] });
+  assert.equal(msgs.at(-2).content, 'STATE\n\nm28');
+  assert.equal(msgs.filter((m) => m.content.startsWith('STATE')).length, 1);
+  assert.equal(chatMessages([{ role: 'director', text: 'hello' }, { role: 'person', text: 'a film' }], 'S')[0].content, 'S\n\na film');
+  assert.deepEqual(chatMessages([], 'S'), []);
+});
+await claim('the film’s state is a few lines: the settings, and the film made so far', () => {
+  const st = filmState({ brief: 'A teaser.', scene: { title: 'Demo', scenes: [{}, {}], duration: 12.34 } }, { film: { seconds: 15, aspect: '9:16', style: 'mono', narration: true } });
+  assert.match(st, /15 seconds, 9:16, look mono, narration on/); assert.match(st, /"Demo", 2 scenes, 12\.3 seconds/);
+});
+
+section('A reply, held to what the panel can show');
+await claim('questions keep at most three, each with up to five short answers', () => {
+  const r = normalizeChatReply({ reply: 'Hi', action: 'ask', questions: Array.from({ length: 5 }, (_, i) => ({ ask: `Q${i}`, options: ['a', 'b', 'c', 'd', 'e', 'f', ''] })) });
+  assert.equal(r.questions.length, 3); assert.equal(r.questions[0].options.length, 5);
+});
+await claim('a make without a brief, or a change without words, is not acted on', () => {
+  assert.equal(normalizeChatReply({ reply: 'x', action: 'make' }).action, 'ask');
+  assert.equal(normalizeChatReply({ reply: 'x', action: 'change' }, { hasFilm: true }).action, 'answer');
+  assert.equal(normalizeChatReply({ reply: 'x', action: 'change', change: 'bigger' }).action, 'ask', 'no change before a film exists');
+});
+await claim('film settings are kept only where they are real choices, a length taken to the nearest offered', () => {
+  const r = normalizeChatReply({ reply: 'ok', action: 'make', brief: 'A film.', film: { seconds: 40, aspect: '21:9', style: 'nonsense', narration: true, useMedia: false } });
+  assert.deepEqual(r.film, { seconds: 45, narration: true, useMedia: false });
+  assert.deepEqual(normalizeChatReply({ reply: 'ok', action: 'make', brief: 'b', film: { aspect: '9:16', style: 'studio' } }).film, { aspect: '9:16', style: 'studio' });
+});
+await claim('a reply that is not JSON is shown as words, asking nothing', () => {
+  const r = normalizeChatReply('Sure, tell me more about who it is for.');
+  assert.equal(r.action, 'ask'); assert.match(r.reply, /who it is for/); assert.deepEqual(r.questions, []);
+});
+
+section('A conversation kept with its film');
+await claim('messages are kept with their questions and brief, odd entries dropped, the newest sixty', () => {
+  const chat = normalizeChat([{ role: 'person', text: 'hi', at: 1 }, { role: 'director', text: 'Which frame?', questions: [{ ask: 'Frame?', options: ['16:9 wide'] }], at: 2 }, { role: 'system', text: 'x' }, { role: 'person', text: '' }, 'junk', { role: 'director', text: 'Ready.', kind: 'made', brief: 'A film.' }]);
+  assert.equal(chat.length, 3); assert.equal(chat[1].questions[0].ask, 'Frame?'); assert.equal(chat[2].kind, 'made'); assert.equal(chat[2].brief, 'A film.');
+  assert.equal(normalizeChat(Array.from({ length: 80 }, (_, i) => ({ role: 'person', text: `m${i}` }))).length, 60);
+});
+await claim('a project carries its conversation, and an old project without one opens with none', () => {
+  let n = 0; const id = () => `film-test-${n++}`;
+  assert.deepEqual(normalizeProject({}, id).chat, []);
+  assert.equal(normalizeProject({ chat: [{ role: 'person', text: 'hi' }] }, id).chat[0].text, 'hi');
+});
+
+section('A brief that asks for a voice');
+await claim('narration, a voice-over or a narrator is read as asking for a voice; other words are not', () => {
+  for (const t of ['with premium narration', 'add a voice-over', 'a voiceover please', 'a calm narrator']) assert.ok(ASKS_FOR_NARRATION.test(t), t);
+  for (const t of ['a voice of the customer quote', 'clear and premium', 'no sound effects']) assert.ok(!ASKS_FOR_NARRATION.test(t), t);
+});
+done();

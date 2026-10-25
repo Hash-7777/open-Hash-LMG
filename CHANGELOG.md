@@ -109,6 +109,15 @@ newest first, grouped by what it does for the person making a film.
   and are unloaded once a film is made.
 
 ### The editor
+- The left panel is a conversation with the director. Say what the film is
+  for in your own words; it asks for what is missing, a few questions at a
+  time with answers to tap, then writes the brief and the settings and
+  makes the film. Changes are asked for in the same conversation, which is
+  kept with the film. The model list sits at the top; the film's settings
+  fold into one line under the conversation; a button beside the message box
+  adds your pictures and clips.
+- A brief that asks for narration turns narration on for that film, and says
+  so; with no voice set up, the director says where to choose one.
 - The window can share a small screen with another one: the side panels
   narrow, the timeline gives its empty rows to the preview, and the top bar's
   words take short forms. The top bar holds still while a film is made.

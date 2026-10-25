@@ -11,6 +11,7 @@
 // history only when the drag ends, so one drag is one undo.
 
 import { normalizeScene } from '../core/scene/normalize.js';
+import { normalizeChat } from '../core/director/chat.js';
 
 export const PROJECT_FORMAT = 'lmg.project/1';
 const TIERS = ['guided', 'plan', 'code'];
@@ -25,6 +26,8 @@ export function normalizeProject(input, newId) {
     format: PROJECT_FORMAT,
     id: typeof p.id === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(p.id) ? p.id : newId(),
     brief: typeof p.brief === 'string' ? p.brief.slice(0, 4000) : '',
+    // The conversation with the director that this film came from.
+    chat: normalizeChat(p.chat),
     storyboard: isObj(p.storyboard) ? p.storyboard : null,
     scene,
     code: typeof p.code === 'string' && p.code.trim() ? p.code : null,

@@ -1,6 +1,6 @@
 // The editor window: wires the panels to one store and one preview host.
 //
-//   left    the director: brief, choices, progress, ask for a change
+//   left    the director: a conversation that asks, then makes and changes the film
 //   centre  the preview and its transport
 //   right   the inspector, for hand edits
 //   bottom  the timeline
@@ -98,7 +98,9 @@ async function boot() {
   };
   const inspector = createInspector({ store, onVersion, settings });
   const progress = createProgress();
-  const director = createDirectorPanel({ store, settings, openSettings, progress });
+  // The chat's attach button imports through the Media panel, made below.
+  let mediaPanel = null;
+  const director = createDirectorPanel({ store, settings, openSettings, progress, onAttach: () => mediaPanel.importFiles() });
 
   const titleInput = h('input', { class: 'film-title', type: 'text', maxlength: '120', 'aria-label': 'Film title', spellcheck: 'false' });
   titleInput.value = store.get().project.scene.title;
@@ -147,7 +149,7 @@ async function boot() {
     progress.bar);
 
   // The left column: the director, or the film's media, by tab.
-  const mediaPanel = createMediaPanel({ store });
+  mediaPanel = createMediaPanel({ store });
   const tabs = h('div', { class: 'panel-head side-tabs', role: 'tablist' });
   const showSide = (which) => {
     director.el.hidden = which !== 'director';

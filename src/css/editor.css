@@ -78,19 +78,6 @@ svg { display: block; flex: none; }
 
 /* ---- director ------------------------------------------------------------- */
 
-.dir-body {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-.dir-block { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-.dir-block + .dir-block { border-top: 1px solid var(--line); }
-
-.brief { min-height: 72px; resize: none; line-height: 1.45; }
-
 .dir-options { display: flex; flex-direction: column; gap: 10px; }
 
 .model-line {
@@ -112,15 +99,6 @@ svg { display: block; flex: none; }
 .model-where { color: var(--muted); font-size: var(--text-s); white-space: nowrap; }
 
 
-.dir-ask {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  padding: 12px 14px 14px;
-  border-top: 1px solid var(--line);
-  flex: none;
-}
-.ask { flex: 1; resize: none; min-height: 40px; max-height: 120px; }
 .send-btn { width: 32px; height: 32px; border-radius: var(--r-m); background: var(--raised); border: 1px solid var(--line); }
 
 /* ---- stage ------------------------------------------------------------------ */

@@ -45,10 +45,12 @@ export function createMediaPanel({ store }) {
       h('p', { class: 'field-hint', text: 'Video (MP4, MOV, WebM), pictures (PNG, JPEG, WebP, GIF) and sound (MP3, WAV, M4A, FLAC, Ogg). Files stay where they are; the film links to them.' }),
       list));
 
+  // Returns the names of the files added.
   async function importFiles() {
     let items;
-    try { items = await media.import(); } catch (err) { toast(err.message || String(err), 'error'); return; }
-    if (!items.length) return;
+    try { items = await media.import(); } catch (err) { toast(err.message || String(err), 'error'); return []; }
+    if (!items.length) return [];
+    const names = [];
     importBtn.disabled = true;
     let added = 0;
     for (const item of items) {
@@ -67,10 +69,12 @@ export function createMediaPanel({ store }) {
           });
         }
         added++;
+        names.push(item.name);
       } catch (err) { toast(`"${item.name}": ${err.message || err}`, 'error'); }
     }
     importBtn.disabled = false;
     if (added) toast(`${added} file${added === 1 ? '' : 's'} added to the film's media`);
+    return names;
   }
 
   // A clip or a picture as a new scene at the end of the film.
@@ -124,5 +128,5 @@ export function createMediaPanel({ store }) {
 
   store.on('project', paint);
   paint();
-  return { el, show(on) { el.hidden = !on; } };
+  return { el, show(on) { el.hidden = !on; }, importFiles };
 }
