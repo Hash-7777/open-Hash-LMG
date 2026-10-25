@@ -11,6 +11,11 @@ import { normalizeStoryboard } from '../../src/core/scene/storyboard.js';
 import { compileStoryboard } from '../../src/core/scene/compile.js';
 import { createDirector } from '../../src/core/director/pipeline.js';
 import { ASPECTS } from '../../src/core/scene/format.js';
+import { normalizeScene } from '../../src/core/scene/normalize.js';
+import { layerState } from '../../src/core/engine/motion.js';
+import { createKit } from '../../src/core/engine/kit.js';
+import { renderPlan } from '../../src/core/engine/render-plan.js';
+import { fakeContext } from './lib/fake-canvas.mjs';
 
 // A wide screenshot, a tall photo and a clip; a spoken clip that is not the person's media.
 const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
@@ -49,7 +54,7 @@ await claim('a beat’s number becomes the media’s key; a number that names no
 await claim('media the model left out goes on a suitable beat, after the opening if it can, with a note', () => {
   const { storyboard, notes } = placeMedia(sb([{ kind: 'hook', text: 'Look' }, { kind: 'stat', value: 3, sub: 'x' }, { kind: 'statement', text: 'This' }, { kind: 'end', text: 'Name' }]), mediaList(ASSETS));
   const shown = storyboard.beats.map((b) => b.media || null);
-  assert.deepEqual(shown, ['video-clip', null, 'image-wide', 'image-tall']);
+  assert.deepEqual(shown, [null, 'image-wide', 'image-tall', 'video-clip']);
   assert.ok(notes.some((n) => /3 of your pictures and clips were put on the film's beats/.test(n)));
 });
 await claim('a beat the model chose keeps its media, and nothing is placed twice', () => {
@@ -60,6 +65,14 @@ await claim('a beat the model chose keeps its media, and nothing is placed twice
 await claim('a film with no media of the person’s is left as it was', () => {
   const before = sb([{ kind: 'hook', text: 'A' }]);
   assert.deepEqual(placeMedia(before, []).storyboard, before);
+});
+
+await claim('a picture shown once gets a second, closer look on the beat after it, but never the end card, and never a logo', () => {
+  const beats = [{ kind: 'hook', text: 'A' }, { kind: 'statement', text: 'B', media: '1' }, { kind: 'list', items: ['x', 'y'] }, { kind: 'statement', text: 'D', media: '2' }, { kind: 'end', text: 'E' }];
+  const list = mediaList({ 'image-wide': ASSETS['image-wide'], 'logo-mark': { kind: 'image', name: 'logo.png', data: PIXEL, width: 400, height: 400 } });
+  const { storyboard, notes } = placeMedia(sb(beats), list);
+  assert.deepEqual(storyboard.beats.map((b) => b.media || null), [null, 'image-wide', 'image-wide', 'logo-mark', null]);
+  assert.ok(notes.some((n) => /second, closer look/.test(n)));
 });
 
 section('Laid out whole, inside the frame, in every frame shape');
@@ -84,6 +97,48 @@ for (const aspect of Object.keys(ASPECTS)) {
     });
   });
 }
+
+section('Beside a list or a figure, and carried into a second look');
+const story2 = sb([{ kind: 'hook', text: 'Look closer' }, { kind: 'list', text: 'At a glance', items: ['Speed', 'Heat', 'Memory'] }, { kind: 'statement', text: 'Right there' }, { kind: 'stat', value: 3, suffix: 'x', sub: 'an invented figure' }, { kind: 'end', text: 'Hash Demo', sub: 'demo.example' }]);
+story2.beats[1].media = 'image-tall'; story2.beats[2].media = 'image-tall'; story2.beats[3].media = 'image-wide';
+await claim('a list and a figure sit in a column beside the picture, inside the frame', () => {
+  const { scene } = compileStoryboard(story2, { style: 'studio', aspect: '16:9', targetDuration: 20, assets: ASSETS });
+  for (const [i, kind] of [[1, 'list'], [3, 'stat']]) {
+    const S = scene.scenes[i];
+    const pic = S.layers.find((L) => L.type === 'image');
+    assert.ok(pic, `${kind} shows its picture`);
+    const col = S.layers.filter((L) => L.type === 'text' || L.type === 'counter');
+    assert.ok(col.length && col.every((L) => (pic.x > 0.5 ? L.x < 0.5 : L.x > 0.5)), `${kind}: words on the other side`);
+    assert.ok(pic.y * 1080 - pic.h / 2 >= -1 && pic.y * 1080 + pic.h / 2 <= 1081, `${kind}: inside the frame`);
+  }
+  assert.ok(scene.scenes[3].layers.some((L) => L.type === 'counter' && L.to === 3));
+});
+await claim('the same picture on two beats in a row is carried into a larger second look', () => {
+  const { scene } = compileStoryboard(story2, { style: 'studio', aspect: '16:9', targetDuration: 20, assets: ASSETS });
+  const S = scene.scenes[2], prev = scene.scenes[1];
+  assert.equal(S.transition.kind, 'carry');
+  const from = prev.layers.find((L) => L.id === S.transition.carry.from), to = S.layers.find((L) => L.id === S.transition.carry.to);
+  assert.equal(from.asset, 'image-tall'); assert.equal(to.asset, 'image-tall');
+  assert.ok(to.h > from.h, 'larger the second time');
+  assert.ok(S.camera.zoom[1] > S.camera.zoom[0], 'the camera eases in');
+});
+await claim('a carried picture is drawn once, between its two places, part way across', () => {
+  const { scene } = compileStoryboard(story2, { style: 'studio', aspect: '16:9', targetDuration: 20, assets: ASSETS });
+  const S = scene.scenes[2];
+  const kit = createKit(fakeContext(scene.width, scene.height), { width: scene.width, height: scene.height, palette: scene.palette, assets: { 'image-tall': { width: 900, height: 1600 }, 'image-wide': { width: 2400, height: 1500 } } });
+  const boxes = [];
+  renderPlan(kit, scene, S.start + S.transition.duration / 2, { collect: boxes });
+  const mid = boxes.filter((b) => b.kind === 'image');
+  assert.equal(mid.length, 1);
+  const from = scene.scenes[1].layers.find((L) => L.id === S.transition.carry.from), to = S.layers.find((L) => L.id === S.transition.carry.to);
+  assert.ok(mid[0].h > from.h * 0.99 && mid[0].h < to.h * 1.07, 'part way between its two sizes');
+});
+await claim('a picture can unfold from its top edge', () => {
+  const L = normalizeScene({ assets: { 'image-wide': ASSETS['image-wide'] }, scenes: [{ duration: 3, layers: [{ type: 'image', asset: 'image-wide', w: 400, h: 300, in: { preset: 'unfold', duration: 1 } }] }] }).scene.scenes[0].layers[0];
+  assert.equal(L.in.preset, 'unfold');
+  assert.deepEqual(layerState(L, 0.3).clip.from, 'top');
+  assert.equal(layerState(L, 2).clip.p, 1);
+});
 
 section('The director, end to end');
 const brief = { brief: 'A teaser for an invented app, using the screenshot I gave you.', style: 'studio', aspect: '16:9', seconds: 20, tier: 'guided' };

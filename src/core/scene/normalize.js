@@ -126,6 +126,7 @@ function normMotion(m, kind, defs, notes, layerType) {
   // fall back to the nearest motion that does apply.
   if (layerType !== 'text' && layerType !== 'counter' && ['letters', 'words', 'type'].includes(preset)) preset = 'rise';
   if (layerType === 'text' && preset === 'draw') preset = 'wipe';
+  if ((layerType === 'text' || layerType === 'counter') && preset === 'unfold') preset = 'mask-up';
   if (layerType === 'text' && preset === 'grow') preset = 'scale';
   const dur = num(m.duration ?? m.dur, defs.duration, 0, 10);
   return {

@@ -46,7 +46,7 @@ export const ALIGNS = ['left', 'center', 'right'];
 // Entrances. Each is drawn by src/core/engine/motion.js.
 export const IN_PRESETS = [
   'none', 'fade', 'rise', 'soft', 'drop', 'slide-left', 'slide-right', 'scale', 'focus',
-  'mask-up', 'letters', 'words', 'type', 'wipe', 'draw', 'grow',
+  'mask-up', 'letters', 'words', 'type', 'wipe', 'draw', 'grow', 'unfold',
 ];
 // Exits.
 export const OUT_PRESETS = ['none', 'fade', 'rise', 'soft', 'fall', 'slide-left', 'slide-right', 'scale', 'mask-down', 'wipe', 'focus'];

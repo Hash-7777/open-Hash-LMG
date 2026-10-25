@@ -14,6 +14,12 @@ newest first, grouped by what it does for the person making a film.
 - No empty frames between scenes: each scene's words begin as it arrives,
   and across a fade or a zoom the words leaving lift away just before the
   new ones arrive.
+- Your pictures carry more of the film: a model may put one on lists, steps
+  and figures too, which sit in a column beside it, and on several beats; a
+  picture shown once gets a second, closer look on the next beat, standing as
+  large as the frame allows while the camera eases in. The picture is carried
+  between the two, moving and growing as one object, and pictures arrive in
+  turn by rising or by unfolding from their top edge like a panel opening.
 - A brief that lays out its order of moments (open on the logo, close on the
   address) is followed beat for beat.
 - Captions show only when the brief asks for captions or subtitles; the

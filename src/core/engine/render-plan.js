@@ -113,6 +113,7 @@ function drawLayer(kit, doc, L, t) {
     const ctx = kit.ctx;
     ctx.beginPath();
     if (s.clip.from === 'left') ctx.rect(-cw / 2, -ch / 2, cw * s.clip.p, ch);
+    else if (s.clip.from === 'top') ctx.rect(-cw / 2, -ch / 2, cw, ch * s.clip.p);
     else ctx.rect(-cw / 2 + cw * (1 - s.clip.p), -ch / 2, cw * s.clip.p, ch);
     ctx.clip();
   }

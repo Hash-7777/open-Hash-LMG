@@ -84,6 +84,13 @@ export function layerState(L, t, u = 1) {
       if (L.type === 'text') st.reveal = { mode: 'wipe', time: inLocal, duration: L.in.duration, ease: L.in.ease };
       else st.clip = { from: 'left', p: pin };
       break;
+    // Opens from its top edge down, settling the last percent into place: a
+    // panel unfolding from where it was folded.
+    case 'unfold':
+      st.clip = { from: 'top', p: pin };
+      st.opacity *= clamp(pin * 3);
+      st.scale *= 0.985 + 0.015 * pin;
+      break;
     case 'draw': st.progress = Math.min(st.progress, pin); break;
     case 'grow': st.progress = Math.min(st.progress, pin); break;
     default: break;

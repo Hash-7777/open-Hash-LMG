@@ -103,13 +103,15 @@ export function compileStoryboard(input, opts = {}) {
     const occurrence = (seen[b.kind] = (seen[b.kind] ?? -1) + 1);
     const lay = layoutFor(D, b.kind, occurrence);
     const wide = !vertical;
-    const c = { b, lay, X, cy, MW, left, vertical, wide, style, pack, E, ease, D, beat, opts, sceneBg, ink, accent, accentSmall, muted, hold, accentWords, aspect, inkOn: textColor };
+    const again = Boolean(b.media && beats[i - 1]?.media === b.media);
+    const c = { b, lay, X, cy, MW, left, vertical, wide, style, pack, E, ease, D, beat, opts, sceneBg, ink, accent, accentSmall, muted, hold, accentWords, aspect, inkOn: textColor, again };
     // A beat that shows the person's own picture or clip, or a picture the
     // model drew, takes a composition built around it; any other beat, the
     // plain one.
     const own = b.media ? opts.assets?.[b.media] : null;
     const pic = !own && b.picture ? cleanPicture(storyboard.pictures?.[b.picture]) : null;
-    ({ layers, entrance, camera } = (own && layMediaBeat({ ...c, asset: own, key: b.media, occurrence: shown++ })) || (pic && layPictureBeat({ ...c, pic, occurrence: pictured++ })) || layBeat(c));
+    const laid = (own && layMediaBeat({ ...c, asset: own, key: b.media, occurrence: shown++ })) || (pic && layPictureBeat({ ...c, pic, occurrence: pictured++ }));
+    ({ layers, entrance, camera } = laid || layBeat(c));
 
     // The first words arrive as the scene does: a layout that waits before
     // its first line moves earlier as a whole, so the change between scenes
@@ -193,8 +195,21 @@ export function compileStoryboard(input, opts = {}) {
   // the line moves and resizes into its new place instead of leaving and
   // arriving again.
   const norm = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  // The same picture or clip in two scenes in a row is carried the same way:
+  // it moves and grows into its second, closer place.
+  const isMedia = (L) => L.type === 'image' || L.type === 'video';
   scenes.forEach((S, i) => {
-    if (i === 0 || S.transition.kind === 'cut') return;
+    if (i === 0) return;
+    const prev = scenes[i - 1];
+    const a = prev.layers.find(isMedia);
+    const b2 = a && S.layers.find((L) => isMedia(L) && L.asset === a.asset && L.type === a.type);
+    if (!b2) return;
+    a.id = a.id || `carry-${i}-from`;
+    b2.id = b2.id || `carry-${i}-to`;
+    S.transition = { ...S.transition, kind: 'carry', duration: Math.max(S.transition.duration || 0, Math.min(0.9, beat * 1.75)), direction: S.transition.direction || 'left', ease: 'inOutCubic', carry: { from: a.id, to: b2.id } };
+  });
+  scenes.forEach((S, i) => {
+    if (i === 0 || S.transition.kind === 'cut' || S.transition.kind === 'carry') return;
     const prev = scenes[i - 1];
     for (const a of prev.layers) {
       if (a.type !== 'text' || !norm(a.text)) continue;

@@ -6,7 +6,8 @@
 // instead, in screen space: its place and size move from where the first
 // layer is on screen (through its own scene's camera) to where the second
 // will rest (through its scene's camera), on a settling spring. Two lines of
-// text with different words crossfade on the way. Once it has arrived, the
+// text with different words crossfade on the way; the same picture moves and
+// resizes as one. Once it has arrived, the
 // second layer stays where it is instead of making its entrance again.
 
 import { layerState } from './motion.js';
@@ -63,7 +64,12 @@ export function drawCarrier(kit, doc, pair, t, p, drawLayer) {
   const x = mix(A.x, B.x, k), y = mix(A.y, B.y, k);
   const still = { at: 0, until: 1e6, in: { preset: 'none', duration: 0, at: null, ease: 'linear', stagger: 0, distance: 0 }, out: { preset: 'none', duration: 0, at: null, ease: 'linear', stagger: 0, distance: 0 }, hold: 'none', keys: {}, x: x / W, y: y / H, rotate: mix(sa.rotate, sb.rotate, k) };
   const sameText = from.type === 'text' && to.type === 'text';
-  if (sameText) {
+  // The same picture or clip in both scenes is one object: it moves and
+  // resizes as itself, its frame's corners easing with it.
+  const sameMedia = (from.type === 'image' || from.type === 'video') && from.type === to.type && from.asset === to.asset;
+  if (sameMedia) {
+    drawLayer(kit, doc, { ...restB, ...still, w: mix(from.w * sa.scale * A.z, to.w * sb.scale * B.z, k), h: mix(from.h * sa.scale * A.z, to.h * sb.scale * B.z, k), radius: mix(from.radius || 0, to.radius || 0, k), scale: 1, opacity: mix(sa.opacity, sb.opacity, k), id: to.id }, 1);
+  } else if (sameText) {
     // One size for both on the way, so the two lines move as one.
     const size = mix((from.size * A.z), (to.size * B.z), k);
     if (k < 0.999) drawLayer(kit, doc, { ...from, ...still, size, scale: 1, opacity: sa.opacity * (from.text === to.text ? 1 - Math.round(k) : 1 - k), id: from.id }, 1);

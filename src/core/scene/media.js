@@ -11,7 +11,9 @@
 
 import { looksLikeLogo } from '../director/brand.js';
 
-const SHOWS = ['hook', 'statement', 'title', 'logo', 'quote', 'end'];
+const SHOWS = ['hook', 'statement', 'title', 'logo', 'quote', 'end', 'list', 'steps', 'stat'];
+// Beats a second look at a picture can take: the one right after its first.
+const AGAIN = ['statement', 'list', 'steps', 'stat', 'hook', 'quote'];
 // Where a picture named like the brand's mark goes first.
 const MARK_BEATS = ['logo', 'end', 'title'];
 
@@ -30,7 +32,7 @@ const shapeOf = (m) => (!m.width || !m.height ? '' : m.width / m.height > 1.25 ?
 export function mediaPromptText(list) {
   if (!list.length) return '';
   const lines = list.map((m) => `${m.n}. ${m.kind === 'video' ? `a video clip, ${m.duration.toFixed(1)} s` : 'a picture'}${shapeOf(m) ? `, ${shapeOf(m)}` : ''}, "${m.name}"${m.kind === 'image' && looksLikeLogo(m.name) ? ', named like the brand\u2019s logo: show it on the logo or end beat' : ''}${m.about ? `: ${m.about}` : ''}`);
-  return `\n\nThe person gave their own media for this film:\n${lines.join('\n')}\nShow each of them on a beat it suits (a hook, statement, title, logo, quote or end beat) by adding "media": its number to that beat; the beat's words then sit beside it, so keep them short. Write about what each shows when you know it; never describe one you cannot see beyond its name.`;
+  return `\n\nThe person gave their own media for this film:\n${lines.join('\n')}\nShow each of them where it helps the viewer most by adding "media": its number to that beat (any kind but chart, compare and words); the beat's words, items or figure then sit beside it, so keep them short. A screenshot or product picture can carry several beats, the moments the brief is about: the same number on two beats in a row moves the picture into a closer second look. Write about what each shows when you know it; never describe one you cannot see beyond its name.`;
 }
 
 // Turns each beat's media number into the asset key, drops numbers that name
@@ -64,6 +66,20 @@ export function placeMedia(storyboard, list) {
     placed++;
   }
   if (placed) notes.push(`${placed === 1 ? 'Your picture or clip was' : `${placed} of your pictures and clips were`} put on the film's beats, since the storyboard left ${placed === 1 ? 'it' : 'them'} out.`);
+  // Every picture that is not the brand's mark gets a second, closer look on
+  // the beat right after its first, when that beat shows nothing of its own:
+  // the person's media carries more of the film, and moves between the two.
+  let again = 0;
+  for (const m of list) {
+    if (m.kind !== 'image' || looksLikeLogo(m.name)) continue;
+    const at = beats.map((b, i) => (b.media === m.key ? i : -1)).filter((i) => i >= 0);
+    if (at.length !== 1) continue;
+    const next = beats[at[0] + 1];
+    if (!next || !AGAIN.includes(next.kind) || next.media || next.picture || at[0] + 1 === beats.length - 1) continue;
+    beats[at[0] + 1] = { ...next, media: m.key };
+    again++;
+  }
+  if (again) notes.push(`${again === 1 ? 'Your picture gets' : `${again} of your pictures get`} a second, closer look on the beat after ${again === 1 ? 'its' : 'their'} first.`);
   const shown = beats.filter((b) => b.media).length;
   if (shown) notes.push(`${shown === 1 ? 'One scene shows' : `${shown} scenes show`} your own media.`);
   return { storyboard: { ...storyboard, beats }, notes };
