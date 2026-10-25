@@ -35,7 +35,7 @@ Made by the model on your own computer, or by any cloud model on your own key.
 | **02 Storyboard** | The model writes the words and numbers, beat by beat: a hook, a statement, a stat, a list, a quote, an end card. Then it draws the few things the film is about, from the brief's own subject, as simple line drawings that draw themselves on in the film. |
 | **03 Design** | The app directs the film from the brief: a look, an accent colour, a tempo and key for the music, the transitions and camera moves it cuts with, and a composition for every scene, built around its drawing when it has one, so two briefs, or two takes of one brief, never come out alike. Then it times every line to how long it takes to read and starts every scene on the beat of the music. |
 | **04 Check** | Key moments are rendered and measured: text off the frame, outside a phone's safe area, too small, too faint, too fast to read, or a scene that sits still too long. What rules can fix, they fix. The film is also held to what the brief asks to see: what must appear, in what order, what counts up, what is on screen at the end. The rest goes back to the model. |
-| **05 Film** | An original score fitted to the cuts, composed by the model as code for this film alone, narration if you want it, mastered to the loudness video platforms play at, written to MP4, MOV or GIF at 480p to 4K and 24 to 60 frames a second, by encoders built into the app, the same on macOS, Windows and Linux. A still (PNG) or the sound alone (WAV, MP3) can be exported too. |
+| **05 Film** | An original score fitted to the cuts, composed by the model as code for this film alone, narration if you want it, mastered to the loudness video platforms play at, written to MP4, MOV or GIF at 480p to 4K and 24 to 60 frames a second, by encoders built into the app, the same on macOS, Windows and Linux. A still (PNG), every frame as PNG pictures in a ZIP with the soundtrack, or the sound alone (WAV, MP3) can be exported too. |
 
 <br>
 
@@ -138,7 +138,7 @@ src/
     director/      prompts, the plan-check-revise loop, scene helpers, the code check
     providers/     model services, requests and streams, model sizes, voices
     audio/         synth, score, grooves, the music kit and its player, narration mix, loudness, word timing, WAV
-    export/        the MP4 and MOV writer
+    export/        the MP4, MOV and ZIP writers
   render/          the locked-down render worker, its host, footage frames, video export
   platform/        the desktop app or a browser: projects, files, settings and keys
   app/             the editor window: its state, panels and dialogs

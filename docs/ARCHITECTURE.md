@@ -75,7 +75,7 @@ src/
     audio/               synthesis, the score and its played grooves, the music kit a
                          model composes with and the player of its notes, mastering,
                          word timing, WAV
-    export/              the MP4 and MOV writer, H.264 sample shaping and MP3 frames,
+    export/              the MP4 and MOV writer, the ZIP writer, H.264 sample shaping and MP3 frames,
                          export sizes
     util/                colour and JSON helpers
   render/                the locked-down render worker and its host, footage frames,

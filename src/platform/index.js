@@ -102,29 +102,43 @@ export const projects = {
 // not have to fit in one message. Returns false when the person cancels.
 const SLICE = 8 * 1024 * 1024;
 export async function saveFile(name, bytes, mime = 'application/octet-stream') {
+  const out = await openSave(name, mime);
+  if (!out) return false;
+  try { await out.write(bytes); } catch (err) { await out.end(false).catch(() => {}); throw err; }
+  await out.end(true);
+  return true;
+}
+
+// Opens a file to write as it is made, for exports too large to hold whole.
+// Resolves { write(bytes), end(ok) }, or null when the person cancels; end
+// with ok false leaves nothing behind. In a browser the parts are kept and
+// downloaded at the end.
+export async function openSave(name, mime = 'application/octet-stream') {
   if (isApp) {
     const token = await invoke('export_begin', { name });
-    if (!token) return false;
-    try {
-      for (let i = 0; i < bytes.length; i += SLICE) {
-        await invoke('export_chunk', bytes.subarray(i, i + SLICE), { headers: { 'x-export-token': token } });
-      }
-      await invoke('export_end', { token, ok: true });
-    } catch (err) {
-      await invoke('export_end', { token, ok: false }).catch(() => {});
-      throw err;
-    }
-    return true;
+    if (!token) return null;
+    return {
+      async write(bytes) {
+        for (let i = 0; i < bytes.length; i += SLICE) await invoke('export_chunk', bytes.subarray(i, i + SLICE), { headers: { 'x-export-token': token } });
+      },
+      end: (ok) => invoke('export_end', { token, ok }),
+    };
   }
-  const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-  return true;
+  const parts = [];
+  return {
+    async write(bytes) { parts.push(bytes.slice()); },
+    async end(ok) {
+      if (!ok) return;
+      const url = URL.createObjectURL(new Blob(parts, { type: mime }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    },
+  };
 }
 
 // Asks for one file through the page's own file picker, which works the same

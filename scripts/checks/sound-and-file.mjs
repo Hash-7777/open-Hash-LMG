@@ -13,6 +13,7 @@ import { normalizeScene } from '../../src/core/scene/normalize.js';
 import { EXAMPLES } from '../../src/core/scene/examples.js';
 import { nalUnits, toSample, avcConfig, mp3Frames } from '../../src/core/export/h264.js';
 import { exportSize } from '../../src/core/export/sizes.js';
+import { createZipWriter, readZip, crc32 } from '../../src/core/export/zip.js';
 
 const scene = normalizeScene(EXAMPLES.launch).scene;
 
@@ -151,6 +152,37 @@ await claim('an MP4 with MP3 sound names it as MP3 and times its frames of 1152'
   assert.ok(esds > 0);
   assert.ok([...file.subarray(esds, esds + 40)].includes(0x6b));
   assert.equal(readBoxes(file).find((b) => b.type === 'moov').children.filter((b) => b.type === 'trak').length, 2);
+});
+
+section('PNG frames in a ZIP, written as they are made');
+const zipOf = async (files, opts) => {
+  const parts = [];
+  const z = createZipWriter(async (b) => { parts.push(b); }, opts);
+  for (const [name, data] of files) await z.add(name, data);
+  await z.finish();
+  const out = new Uint8Array(parts.reduce((n, b) => n + b.length, 0));
+  let p = 0; for (const b of parts) { out.set(b, p); p += b.length; }
+  return { out, writes: parts.length };
+};
+const FRAMES = Array.from({ length: 4 }, (_, i) => [`frames/frame-0000${i + 1}.png`, new Uint8Array(64 + i).fill(i + 7)]);
+await claim('the check value is the standard CRC-32', () => assert.equal(crc32(new TextEncoder().encode('123456789')), 0xcbf43926));
+await claim('each file is passed on as it is added, and read back by name, size and check value', async () => {
+  const { out, writes } = await zipOf(FRAMES);
+  assert.ok(writes >= FRAMES.length * 2);
+  const back = readZip(out);
+  assert.deepEqual(back.map((e) => e.name), FRAMES.map(([n]) => n));
+  back.forEach((e, i) => { assert.equal(e.size, FRAMES[i][1].length); assert.equal(e.crc, crc32(FRAMES[i][1])); });
+  const v = new DataView(out.buffer);
+  back.forEach((e) => assert.equal(v.getUint32(e.at, true), 0x04034b50, 'each offset points at its file'));
+});
+await claim('past the 32-bit limit the ZIP64 form records the offsets and the end', async () => {
+  const { out } = await zipOf(FRAMES, { limit32: 100 });
+  const back = readZip(out);
+  const v = new DataView(out.buffer);
+  back.forEach((e) => assert.equal(v.getUint32(e.at, true), 0x04034b50));
+  assert.ok(back.some((e) => e.at > 100));
+  let found = false; for (let i = 0; i < out.length - 4; i++) if (v.getUint32(i, true) === 0x06064b50) found = true;
+  assert.ok(found, 'a ZIP64 end record');
 });
 
 section('Export sizes');

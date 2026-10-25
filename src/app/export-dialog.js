@@ -8,13 +8,13 @@
 import { h, clear, fill, dialog } from './dom.js';
 import { field, pair, select, textButton } from './fields.js';
 import { createHost } from '../render/host.js';
-import { renderVideo, renderStill, canEncodeVideo } from '../render/export.js';
+import { renderVideo, renderStill, renderFrames, canEncodeVideo } from '../render/export.js';
 import { canEncodeGif } from '../render/encoders.js';
 import { exportSize, exportFps, sizeLabel } from '../core/export/sizes.js';
 import { encodeWav } from '../core/audio/wav.js';
 import { RESOLUTIONS, EXPORT_FPS } from '../platform/settings.js';
 import { soundtrackFor } from './soundtrack.js';
-import { saveFile, encodeAacNative, nativeEncoder } from '../platform/index.js';
+import { saveFile, openSave, encodeAacNative, nativeEncoder } from '../platform/index.js';
 
 const QUALITY = [['draft', 'Draft: small file'], ['good', 'Good'], ['high', 'High'], ['master', 'Master: largest file']];
 const BLUR = [['0', 'Off'], ['4', 'Soft'], ['8', 'Full']];
@@ -23,10 +23,11 @@ const FORMATS = {
   mov: { label: 'MOV video', hint: 'For video editing apps. To send to a phone or a chat app, choose MP4.', mime: 'video/quicktime' },
   gif: { label: 'GIF animation', hint: 'Loops by itself, with no sound. Kept small: GIFs grow large quickly.', mime: 'image/gif' },
   png: { label: 'PNG picture', hint: 'The frame under the playhead, as a picture.', mime: 'image/png' },
+  zip: { label: 'PNG frames (ZIP)', hint: 'Every frame as a PNG picture, with the soundtrack as a WAV, for editing and compositing apps. Large: each frame is a full picture.', mime: 'application/zip' },
   wav: { label: 'WAV sound', hint: 'The soundtrack alone, at full quality.', mime: 'audio/wav' },
   mp3: { label: 'MP3 sound', hint: 'The soundtrack alone, small.', mime: 'audio/mpeg' },
 };
-const VIDEO = new Set(['mp4', 'mov', 'gif']);
+const VIDEO = new Set(['mp4', 'mov', 'gif', 'zip']);
 // GIFs stay small: a short side of 480 and 15 frames a second unless chosen smaller.
 const GIF_SIDE = 480, GIF_FPS = 15;
 
@@ -115,6 +116,21 @@ export function openExportDialog({ store, settings, playhead = () => 0 }) {
         if (fmt === 'png') {
           show('Drawing the frame', 0.5);
           file = await renderStill(host, playhead());
+        } else if (fmt === 'zip') {
+          // Written as it is drawn, frame by frame, to the place chosen first.
+          const out = await openSave(fileName(scene.title, 'zip'), FORMATS.zip.mime);
+          if (!out) { clear(progress).append(h('p', { class: 'insp-note', text: 'Not saved.' })); return; }
+          show('Making the sound', 0);
+          const soundtrack = await soundtrackFor(scene);
+          try {
+            await renderFrames({
+              host, scene, fps: p.fps, soundtrack, write: (bytes) => out.write(bytes), signal: abort.signal,
+              onProgress: ({ done, total }) => show(`Frame ${done.toLocaleString()} of ${total.toLocaleString()}`, (done / total) * 0.98),
+            });
+          } catch (err) { await out.end(false).catch(() => {}); throw err; }
+          await out.end(true);
+          clear(progress).append(h('p', { class: 'insp-note', text: `Saved, in ${Math.max(1, Math.round((Date.now() - started) / 1000))} s.` }));
+          return;
         } else {
           const soundtrack = fmt === 'gif' ? null : (show('Making the sound', 0), await soundtrackFor(scene));
           out = await renderVideo({

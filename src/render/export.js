@@ -15,6 +15,7 @@ import { mp3Frames } from '../core/export/h264.js';
 import { videoSink, gifSink } from './encoders.js';
 import { nativeEncoder } from '../platform/index.js';
 import { encodeWav } from '../core/audio/wav.js';
+import { createZipWriter } from '../core/export/zip.js';
 
 export function canEncodeVideo() {
   return nativeEncoder.available || (typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined');
@@ -151,4 +152,20 @@ export async function renderStill(host, t) {
   bmp.close?.();
   const blob = c.convertToBlob ? await c.convertToBlob({ type: 'image/png' }) : await new Promise((r) => c.toBlob(r, 'image/png'));
   return new Uint8Array(await blob.arrayBuffer());
+}
+
+// Every frame as a PNG picture, packed into a ZIP as each is drawn, with the
+// soundtrack beside them as a WAV. write(bytes) receives the ZIP in order.
+// opts: { host (given the scene at the export's size), scene, fps, soundtrack, write, onProgress, signal }
+export async function renderFrames({ host, scene, fps, soundtrack = null, write, onProgress = () => {}, signal }) {
+  const zip = createZipWriter(write);
+  const total = Math.max(1, Math.round(scene.duration * fps));
+  const digits = String(total).length;
+  for (let i = 0; i < total; i++) {
+    if (signal?.aborted) throw Object.assign(new Error('Export stopped.'), { stopped: true });
+    await zip.add(`frames/frame-${String(i + 1).padStart(Math.max(5, digits), '0')}.png`, await renderStill(host, i / fps));
+    if (i % 3 === 0 || i === total - 1) onProgress({ done: i + 1, total });
+  }
+  if (soundtrack?.left?.length) await zip.add('sound.wav', encodeWav(soundtrack.left, soundtrack.right, soundtrack.sampleRate));
+  return zip.finish();
 }

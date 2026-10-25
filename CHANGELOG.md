@@ -76,6 +76,8 @@ newest first, grouped by what it does for the person making a film.
 - Encoders built into the app, the same on macOS, Windows and Linux: MP4,
   MOV and GIF at 480p to 4K and 24 to 60 frames a second, a PNG still, and
   the sound alone as WAV or MP3.
+- Every frame can be exported as a PNG picture, packed into a ZIP with the
+  soundtrack as a WAV, written to the file as each frame is drawn.
 - A MOV carries its sound the way QuickTime players read it, so a MOV plays
   with sound on phones and in the system's own player.
 
