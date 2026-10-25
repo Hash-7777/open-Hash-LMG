@@ -19,6 +19,7 @@
 //   deps.sheet({ scene, code }, times)                      -> image data URL or null
 //   deps.compose({ code, context })                         -> { ok, notes, error }, a model's score run locked down
 //   deps.log({ id, title, status, detail })                 status: run | done | fail | note
+//   deps.permit({ searches, pages }), deps.web { search, fetch }   looking things up, when opts.research (research.js)
 
 import { normalizeStoryboard, storyboardForModel, keepPictures } from '../scene/storyboard.js';
 import { drawPictures } from './pictures.js';
@@ -36,7 +37,9 @@ import {
 } from './prompts.js';
 import { designInParts, reviseInParts, compact } from './design.js';
 import { sceneForModel, restore, draftScore, keepDrawings } from './scene-io.js';
-import { mediaPromptText, placeMedia } from '../scene/media.js';
+import { placeMedia } from '../scene/media.js';
+import { createStoryWriter } from './story.js';
+import { research } from '../research/research.js';
 
 // The scene helpers are in scene-io.js; sceneForModel is re-exported for the checks.
 export { sceneForModel, draftScore } from './scene-io.js';
@@ -63,45 +66,7 @@ export function createDirector(deps) {
     return extractJson(text).value;
   }
 
-  async function writeStoryboard(brief, opts, part = null, temperature) {
-    // The person's own media is listed for the model, and shown to one that can see.
-    const system = storyboardPrompt({ seconds: opts.seconds, narration: opts.narration }) + mediaPromptText(opts.media || []);
-    const images = opts.mediaImages?.length ? opts.mediaImages : null;
-    let raw = await askJson(system, `Brief:\n${brief}`, { schema: STORYBOARD_SCHEMA, purpose: 'storyboard', part, temperature, images });
-    let { storyboard, notes } = normalizeStoryboard(raw || {});
-    if (!storyboard.beats.length) {
-      note('story', 'The first answer had no usable beats; asking again.');
-      raw = await askJson(system, `Brief:\n${brief}\n\nYour last answer could not be read as a storyboard. Reply with JSON only, exactly like {"title": "...", "beats": [{"kind": "hook", "text": "..."}]}.`, { schema: STORYBOARD_SCHEMA, purpose: 'storyboard', part, temperature });
-      ({ storyboard, notes } = normalizeStoryboard(raw || {}));
-    }
-    if (!storyboard.beats.length) throw new Error('The model did not write a storyboard the app could read. A different model, or a shorter brief, usually helps.');
-    for (const n of notes) note('story', n);
-    return storyboard;
-  }
-
-  // A small model writes better by choosing than by trying once: several
-  // storyboards at rising temperatures, each laid out and measured, and the
-  // one with the fewest problems nearest the length asked for is kept.
-  const DRAFT_HEAT = [0.4, 0.75, 0.95];
-  async function bestStoryboard(brief, opts, drafts) {
-    if (drafts <= 1) return writeStoryboard(brief, opts);
-    let best = null;
-    for (let i = 0; i < drafts; i++) {
-      let sb;
-      try {
-        sb = await writeStoryboard(brief, opts, { index: i, of: drafts }, DRAFT_HEAT[i % DRAFT_HEAT.length]);
-      } catch (err) {
-        if (err?.stopped || (i === drafts - 1 && !best)) throw err;
-        note('story', `Storyboard ${i + 1} could not be read and was set aside.`);
-        continue;
-      }
-      const { scene } = compile(sb, opts);
-      const score = draftScore(scene, lintScene(scene, { ...(await measured(scene)), targetDuration: opts.seconds }), opts.seconds);
-      if (!best || score < best.score) best = { sb, score, i };
-    }
-    note('story', `Wrote ${drafts} storyboards and kept the cleanest, storyboard ${best.i + 1}.`);
-    return best.sb;
-  }
+  const story = createStoryWriter({ askJson, note, compile: (sb, o) => compile(sb, o), measured: (scene) => measured(scene) });
 
   // ---- the brief, checked on the finished film ---------------------------------
   async function listIntent(brief) {
@@ -224,7 +189,17 @@ export function createDirector(deps) {
     const rounds = opts.rounds ?? (tier === 'guided' ? 0 : 2);
 
     const drafts = tier === 'guided' ? Math.max(1, Math.min(3, opts.drafts || 1)) : 1;
-    let storyboard = await step('story', drafts > 1 ? 'Writing storyboards' : 'Writing the storyboard', () => bestStoryboard(brief, opts, drafts));
+    // Facts the storyboard needs, looked up on the web once the person says yes.
+    let facts = '';
+    if (opts.research && deps.permit && deps.web) {
+      try {
+        facts = (await step('research', 'Looking things up', () => research({ askJson, permit: deps.permit, web: deps.web, brief, note: (n) => note('research', n) }))).notes;
+      } catch (err) {
+        if (err?.stopped) throw err;
+        note('research', `${String(err.message || err)} The film is made without looking anything up.`);
+      }
+    }
+    let storyboard = await step('story', drafts > 1 ? 'Writing storyboards' : 'Writing the storyboard', () => story.bestStoryboard(brief, { ...opts, facts }, drafts));
     // Pictures of the brief's own subject, so the film shows what it is about.
     // Code-writing models draw their own; a drawing step that fails leaves
     // the film without pictures, not unmade.

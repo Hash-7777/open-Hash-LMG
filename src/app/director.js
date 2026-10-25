@@ -24,7 +24,8 @@ import { createModelPicker } from './model-picker.js';
 import { createSuggestions, openIdeasDialog } from './suggestions.js';
 import { createRunRecord, runUsage } from '../core/director/run-record.js';
 import { runs } from '../platform/runs.js';
-import { appVersion, fetchFor, logUsage } from '../platform/index.js';
+import { appVersion, fetchFor, logUsage, web } from '../platform/index.js';
+import { askToLookUp } from './web-permission.js';
 import { speakLines } from './narration.js';
 import { mediaFor, withMusic } from './film-media.js';
 
@@ -41,7 +42,7 @@ const PLANS = {
 // About how long a typical answer of each kind is, in characters, so the bar
 // can fill while the model writes.
 // What each kind of answer is called on the loading bar.
-const ANSWER_WORDS = { intent: 'list of what the brief asks for', storyboard: 'storyboard', 'plan part': 'scene designs', 'revise part': 'fixes', pictures: 'drawings', music: 'music', 'revise music': 'music', plan: 'plan', revise: 'revised plan', edit: 'change', code: 'animation code', 'revise code': 'revised code', review: 'review', 'apply review': 'changes from the review' };
+const ANSWER_WORDS = { research: 'list of what to look up', intent: 'list of what the brief asks for', storyboard: 'storyboard', 'plan part': 'scene designs', 'revise part': 'fixes', pictures: 'drawings', music: 'music', 'revise music': 'music', plan: 'plan', revise: 'revised plan', edit: 'change', code: 'animation code', 'revise code': 'revised code', review: 'review', 'apply review': 'changes from the review' };
 const TYPICAL = { intent: 400, storyboard: 1400, 'plan part': 3500, 'revise part': 3000, pictures: 1800, music: 5000, 'revise music': 5000, plan: 9000, revise: 9000, edit: 5000, code: 7000, 'revise code': 7000, review: 500, 'apply review': 8000 };
 const TIER_SHORT = { guided: 'Guided', plan: 'Plan', code: 'Code' };
 const TIER_HELP = {
@@ -183,6 +184,9 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
       trial: async ({ scene, code }) => { await host.setScene(scene); return host.trial(code, sampleTimes(scene).slice(0, 4)); },
       sheet: async (target, times) => { await prep(target); return contactSheet(host, target.scene, times); },
       compose: async ({ code, context }) => host.compose(code, context),
+      // Nothing is looked up without the person's yes, asked each time.
+      web,
+      permit: async (wanted) => { progress.say('Waiting for your answer'); return askToLookUp(wanted); },
       log: onLog,
     });
     // Ends a run: the render host goes, and a local model is unloaded so the
@@ -241,7 +245,8 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
     const way = tier();
     // With narration on and a voice chosen, the lines are spoken once the film is made.
     const narrate = s.film.narration && s.voice.engine !== 'none';
-    progress.start([...PLANS[way], ...(narrate ? [['voice', 2]] : [])].map(([id, weight]) => ({ id, weight })), 'Starting', whoText(way));
+    const lookUp = Boolean(web) && s.model.research === 'ask';
+    progress.start([...(lookUp ? [['research', 1]] : []), ...PLANS[way], ...(narrate ? [['voice', 2]] : [])].map(([id, weight]) => ({ id, weight })), 'Starting', whoText(way));
     record = await beginRecord('make', { brief: text, tier: way });
     const { director, session, done } = makeDirector(running.signal);
     try {
@@ -256,6 +261,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
         take: Math.floor(Math.random() * 1e6),
         brief: text, tier: way, style: s.film.style, aspect: s.film.aspect, seconds: s.film.seconds, fps: s.film.fps,
         narration: s.film.narration, vision: vision && s.model.review, drafts: s.model.drafts, verify: s.model.verify, compose: s.model.compose && !own.music.length,
+        research: lookUp,
       });
       if (own.music.length) note('Your song stays the film\u2019s music.');
       store.patch({ brief: text, storyboard: out.storyboard, scene: withMusic(out.scene, own.music), code: out.code, tier: out.tier, take: out.take, edited: false });

@@ -16,6 +16,9 @@ Everything that differs between the two goes through `src/platform/index.js`.
 
 ```
 brief
+  -> research (asked)    the model names what it would look up; with the person's
+                         yes, the desktop side searches and reads pages, and a few
+                         thousand characters of notes go to the storyboard step
   -> storyboard          the model writes words and numbers, beat by beat
   -> pictures            the model draws the few things the film is about;
                          each drawing is checked and fitted, or set aside
@@ -60,6 +63,7 @@ src/
                          the carry transition, repeated layers, the odometer, the renderer
     director/            the prompts, the pipeline, the drawing step, the composing step,
                          the brief check, the code check, the scene helpers, the run record
+    research/            what to look up, a page read as text, the notes
     providers/           the model services, request and stream shapes, local model
                          sessions, model profiles, speech requests
     audio/               synthesis, the score and its played grooves, the music kit a
@@ -75,7 +79,7 @@ src/
   app/                   the editor: its state, panels, dialogs, the director panel and
                          its model picker
 src-tauri/src/commands/  films, exports, sound, encoders, media, voices, keys, the relay,
-                         the usage log
+                         the usage log, web search and page reading
 scripts/checks/          the check suite: every script runs on npm run check
 ```
 

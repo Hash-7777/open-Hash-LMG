@@ -7,3 +7,4 @@ pub mod relay;
 pub mod sound;
 pub mod usage;
 pub mod voice;
+pub mod web;

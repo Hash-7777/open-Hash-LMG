@@ -110,7 +110,9 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
         'Guided way of working. The model writes this many storyboards and the app keeps the cleanest; each takes about as long as one.'),
       field('Brief', toggle(s.model.verify, (v) => settings.update({ model: { verify: v } }), 'Check the finished film against what the brief asks to see, and fix what is missing once')),
       field('Music', toggle(s.model.compose, (v) => settings.update({ model: { compose: v } }), 'Let the model compose the music for each film, written as code and played by the app\u2019s instruments')),
-      field('Review', toggle(s.model.review, (v) => settings.update({ model: { review: v } }), 'Let a model that can see review stills and ask for changes once')))];
+      field('Review', toggle(s.model.review, (v) => settings.update({ model: { review: v } }), 'Let a model that can see review stills and ask for changes once')),
+      field('Web', segmented(s.model.research, [['ask', 'Ask before looking things up'], ['never', 'Never look things up']], (v) => { settings.update({ model: { research: v } }); paint(); }),
+        isApp ? 'Before the storyboard, the model may want to look up facts it does not know, or read a page named in the brief. You see each search and each page and say yes or no first. A search key under Cloud keys gives better results; without one, Wikipedia is searched.' : 'Looking things up on the web needs the desktop app.'))];
   }
 
   function describeModel(m) {
@@ -210,8 +212,9 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
   function keysPane() {
     const search = h('input', { class: 'input key-search', type: 'search', placeholder: 'Find a service', value: filter, spellcheck: 'false', 'aria-label': 'Find a service' });
     search.addEventListener('input', () => { filter = search.value; for (const row of pane.querySelectorAll('.key-row')) row.hidden = !row.dataset.name.includes(filter.trim().toLowerCase()); });
-    const rows = CLOUD_IDS.map((id) => {
-      const p = PROVIDERS[id];
+    const services = [...CLOUD_IDS.map((id) => ({ id, ...PROVIDERS[id], models: true })), { id: 'tavily', label: 'Tavily, for web search (optional)', keyUrl: 'https://app.tavily.com/home', models: false }];
+    const rows = services.map((p) => {
+      const id = p.id;
       const saved = settings.hasKey(id);
       const check = checks[id];
       const hint = settings.keyHint(id);
@@ -222,7 +225,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
         if (!value) return;
         try { await settings.setKey(id, value); } catch (err) { toast(err.message || String(err), 'error'); return; }
         toast(`${p.label} key saved`);
-        checkKey(id);
+        if (p.models) checkKey(id);
       });
       const row = h('div', { class: 'key-row', dataset: { name: p.label.toLowerCase() } },
         h('div', { class: 'key-head' },
@@ -230,7 +233,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
           h('span', { class: 'key-name', text: p.label }),
           h('span', { class: 'key-link' }, saved ? null : 'Get a key at ', webLink(p.keyUrl))),
         h('div', { class: 'key-field' }, input,
-          saved ? textButton(check?.state === 'wait' ? 'Checking' : 'Check', () => checkKey(id)) : null,
+          saved && p.models ? textButton(check?.state === 'wait' ? 'Checking' : 'Check', () => checkKey(id)) : null,
           saved ? textButton('Forget', async () => { try { await settings.setKey(id, ''); } catch (err) { toast(err.message || String(err), 'error'); } delete checks[id]; paint(); }, 'danger') : null),
         check && check.state !== 'wait' ? h('div', { class: `field-hint key-check ${check.state}`, text: check.text }) : null);
       row.hidden = Boolean(filter.trim()) && !row.dataset.name.includes(filter.trim().toLowerCase());

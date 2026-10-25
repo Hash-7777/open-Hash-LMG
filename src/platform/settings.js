@@ -84,6 +84,9 @@ export function normalizeSettings(input) {
       // The model composes each film's music as code; off, the app's own
       // scores play.
       compose: model.compose === undefined ? true : Boolean(model.compose),
+      // Looking things up on the web before the storyboard: asked each time,
+      // or never.
+      research: pick(model.research, ['ask', 'never'], 'ask'),
     },
     local: {
       ports,

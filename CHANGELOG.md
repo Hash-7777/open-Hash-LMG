@@ -73,6 +73,12 @@ newest first, grouped by what it does for the person making a film.
   with sound on phones and in the system's own player.
 
 ### Models
+- Before the storyboard, the model may look things up: it names a few
+  searches, and pages named in the brief are offered too. Nothing is looked
+  up until you say yes to each one; searches use your Tavily key or else
+  Wikipedia, pages are read only from public addresses, and a few thousand
+  characters of notes go to the storyboard step alone. Settings can turn it
+  off.
 - A model redesigning a film does it a few scenes at a time: each answer is
   short enough to finish, a part that fails keeps the rule-made scenes it
   covered instead of the whole film losing the model's work, and a fix

@@ -45,6 +45,8 @@ pub fn run() {
             commands::keys::keys_status,
             commands::keys::key_set,
             commands::usage::usage_log_append,
+            commands::web::web_search,
+            commands::web::web_fetch,
         ])
         .on_page_load(|webview, payload| {
             #[cfg(debug_assertions)]

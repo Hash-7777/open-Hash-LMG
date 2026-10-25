@@ -42,3 +42,9 @@
 .picker-foot { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); }
 .picker-link { font-size: var(--text-s); color: var(--muted); cursor: pointer; }
 .picker-link:hover { color: var(--ink); }
+
+/* Asking before looking things up on the web. */
+.permit-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
+.permit-row { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--panel-2); cursor: pointer; }
+.permit-kind { font-size: var(--text-xs); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.permit-text { font-size: var(--text-m); overflow-wrap: anywhere; }

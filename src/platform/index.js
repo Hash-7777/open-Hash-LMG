@@ -280,6 +280,14 @@ export async function speakInCloud(provider, body) {
   return out instanceof Uint8Array ? out : new Uint8Array(out);
 }
 
+// Looking things up on the web for a film, once the person has said yes,
+// through the desktop side, which reads only public addresses
+// (src-tauri/src/commands/web.rs). null in a browser.
+export const web = isApp ? {
+  search: (query) => invoke('web_search', { query }),
+  fetch: (url) => invoke('web_fetch', { url }),
+} : null;
+
 // What a request to a model used, one line in the app's usage.jsonl for token
 // counters on this computer (src-tauri/src/commands/usage.rs). Counts only;
 // best effort, and nothing in a browser.

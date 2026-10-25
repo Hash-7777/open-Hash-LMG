@@ -86,6 +86,7 @@ By default the look is matched to the brief: a calm brief, a technical one and a
 
 **On your computer:** Ollama, LM Studio and llama.cpp, asked by the desktop app where a server would refuse a web page, so no server switch is needed.<br>
 **In the cloud, on your own key:** Anthropic, OpenAI, Google Gemini, OpenRouter, Groq, DeepSeek, Mistral, xAI, Moonshot, Together AI, Fireworks AI and Cerebras.<br>
+**Looking things up:** before the storyboard, the model may ask to search the web or read a page named in the brief. You see every search and page and say yes first; a search key (Tavily) gives better results, and Wikipedia is searched without one.<br>
 **Choosing:** one list in the director panel holds every model you can use now, grouped by service and asked of each service when it opens, so it is always that service's current list. Each service remembers the model last chosen on it.<br>
 **Voices:** Chatterbox and Kokoro through your own install, pointed at once in Settings, on the processor or the graphics chip; any local speech server; or OpenAI's voices. Lines are spoken when a film with narration is made, or from a scene's inspector.
 
@@ -141,7 +142,7 @@ src/
   render/          the locked-down render worker, its host, footage frames, video export
   platform/        the desktop app or a browser: projects, files, settings and keys
   app/             the editor window: its state, panels and dialogs
-src-tauri/         the desktop side: films, exports, sound, encoders, media, voices, keys, the relay, the window's walls
+src-tauri/         the desktop side: films, exports, sound, encoders, media, voices, keys, the relay, web reading, the window's walls
 scripts/checks/    the check suite: every script under it runs on npm run check
 ```
 
