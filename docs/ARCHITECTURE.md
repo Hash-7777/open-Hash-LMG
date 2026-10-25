@@ -22,7 +22,8 @@ brief
   -> direction           look, colour, tempo, key, motion, composition, from the brief;
                          a beat with a drawing takes a composition built around it
   -> layout              the compiler lays the beats out and times them to the beat
-  -> design (optional)   a mid-size model redesigns the plan, or a strong one writes code
+  -> design (optional)   a mid-size model redesigns the plan a few scenes at a time
+                         (src/core/director/design.js), or a strong one writes code
   -> checks              frames are measured at rest, mid-move and on every beat;
                          what rules can repair, they repair; the rest goes back once
   -> brief check         what the brief asked to see is measured on the drawn film
@@ -36,6 +37,12 @@ brief
 `src/core/director/pipeline.js` runs these steps. It is pure orchestration:
 the model, the renderer and the log are passed in, so the checks run it end
 to end with a scripted model and a stand-in canvas.
+
+Each service's reply says what the request used; `src/core/providers/request.js`
+reads it into one shape, the run record keeps it per request, and the desktop
+app appends it, as counts only, to `usage.jsonl` in its data folder
+(`src-tauri/src/commands/usage.rs`), where token counters on the computer can
+read it.
 
 ## Source
 
@@ -66,7 +73,8 @@ src/
                          relay, settings and keys, the run history, the window
   app/                   the editor: its state, panels, dialogs, the director panel and
                          its model picker
-src-tauri/src/commands/  films, exports, sound, encoders, media, voices, keys, the relay
+src-tauri/src/commands/  films, exports, sound, encoders, media, voices, keys, the relay,
+                         the usage log
 scripts/checks/          the check suite: every script runs on npm run check
 ```
 

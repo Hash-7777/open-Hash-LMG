@@ -2,7 +2,8 @@
 //
 // A service is named by how it is asked (its "style": the request and reply
 // shapes), where it lives, how its key is sent, whether it can be told to
-// answer in JSON, and for a cloud service the page where its keys are made
+// answer in JSON, whether it reports what a streamed answer used only when
+// asked (streamUsage), and for a cloud service the page where its keys are made
 // (keyUrl), which Settings opens in the system browser. Local services need no key and never leave the computer.
 //
 // A service a web page may not ask (in src/platform/index.js, RELAYED) is
@@ -71,6 +72,7 @@ export const PROVIDERS = {
     chatPath: '/v1/chat/completions',
     modelsPath: '/v1/models',
     json: 'object',
+    streamUsage: true,
     newTokenField: true,
     keyHint: 'platform.openai.com, Keys',
     keyUrl: 'https://platform.openai.com/api-keys',
@@ -93,6 +95,7 @@ export const PROVIDERS = {
     chatPath: '/api/v1/chat/completions',
     modelsPath: '/api/v1/models',
     json: 'object',
+    streamUsage: true,
     // OpenRouter credits requests to an app by these; they are not credentials.
     extraHeaders: { 'X-Title': 'Hash LMG' },
     keyHint: 'openrouter.ai, Keys',
@@ -117,6 +120,7 @@ export const PROVIDERS = {
     chatPath: '/v1/chat/completions',
     modelsPath: '/v1/models',
     json: 'object',
+    streamUsage: true,
     keyHint: 'platform.deepseek.com, Keys',
     keyUrl: 'https://platform.deepseek.com/api_keys',
   },
@@ -139,6 +143,7 @@ export const PROVIDERS = {
     chatPath: '/v1/chat/completions',
     modelsPath: '/v1/models',
     json: 'object',
+    streamUsage: true,
     keyHint: 'console.x.ai, Keys',
     keyUrl: 'https://console.x.ai',
   },
@@ -161,6 +166,7 @@ export const PROVIDERS = {
     chatPath: '/v1/chat/completions',
     modelsPath: '/v1/models',
     json: 'object',
+    streamUsage: true,
     keyHint: 'api.together.ai, Settings, Keys',
     keyUrl: 'https://api.together.ai/settings/api-keys',
   },
@@ -172,6 +178,7 @@ export const PROVIDERS = {
     chatPath: '/inference/v1/chat/completions',
     modelsPath: '/inference/v1/models',
     json: 'object',
+    streamUsage: true,
     keyHint: 'fireworks.ai, Settings, Keys',
     keyUrl: 'https://app.fireworks.ai/settings/users/api-keys',
   },

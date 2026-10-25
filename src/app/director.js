@@ -22,9 +22,9 @@ import { createModelSession } from './model-session.js';
 import { createModelLists } from './model-lists.js';
 import { createModelPicker } from './model-picker.js';
 import { createSuggestions, openIdeasDialog } from './suggestions.js';
-import { createRunRecord } from '../core/director/run-record.js';
+import { createRunRecord, runUsage } from '../core/director/run-record.js';
 import { runs } from '../platform/runs.js';
-import { appVersion, fetchFor } from '../platform/index.js';
+import { appVersion, fetchFor, logUsage } from '../platform/index.js';
 import { speakLines } from './narration.js';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120];
@@ -40,8 +40,8 @@ const PLANS = {
 // About how long a typical answer of each kind is, in characters, so the bar
 // can fill while the model writes.
 // What each kind of answer is called on the loading bar.
-const ANSWER_WORDS = { intent: 'list of what the brief asks for', storyboard: 'storyboard', pictures: 'drawings', music: 'music', 'revise music': 'music', plan: 'plan', revise: 'revised plan', edit: 'change', code: 'animation code', 'revise code': 'revised code', review: 'review', 'apply review': 'changes from the review' };
-const TYPICAL = { intent: 400, storyboard: 1400, pictures: 1800, music: 5000, 'revise music': 5000, plan: 9000, revise: 9000, edit: 5000, code: 7000, 'revise code': 7000, review: 500, 'apply review': 8000 };
+const ANSWER_WORDS = { intent: 'list of what the brief asks for', storyboard: 'storyboard', 'plan part': 'scene designs', 'revise part': 'fixes', pictures: 'drawings', music: 'music', 'revise music': 'music', plan: 'plan', revise: 'revised plan', edit: 'change', code: 'animation code', 'revise code': 'revised code', review: 'review', 'apply review': 'changes from the review' };
+const TYPICAL = { intent: 400, storyboard: 1400, 'plan part': 3500, 'revise part': 3000, pictures: 1800, music: 5000, 'revise music': 5000, plan: 9000, revise: 9000, edit: 5000, code: 7000, 'revise code': 7000, review: 500, 'apply review': 8000 };
 const TIER_SHORT = { guided: 'Guided', plan: 'Plan', code: 'Code' };
 const TIER_HELP = {
   guided: 'The model writes the story and draws its pictures; the app designs, times and scores it.',
@@ -170,8 +170,9 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
             fetch: fetchFor(m.provider), signal,
             onThinking: (chunk) => { req?.thinking(chunk); progress.say('The model is thinking'); },
             onText: (_, all) => { progress.writing(all); progress.within(part ? (part.index + Math.min(1, all.length / typical)) / part.of : all.length / typical,
-              part ? `The model is writing storyboard ${part.index + 1} of ${part.of}` : `The model is writing the ${ANSWER_WORDS[purpose] || 'answer'}`); },
+              part ? (part.from ? `The model is writing the ${ANSWER_WORDS[purpose] || 'answer'} for scenes ${part.from} to ${part.to}` : `The model is writing storyboard ${part.index + 1} of ${part.of}`) : `The model is writing the ${ANSWER_WORDS[purpose] || 'answer'}`); },
             onStats: (st) => session.onStats(st),
+            onUsage: (u) => { req?.usage(u); logUsage({ provider: m.provider, model: m.model, usage: u }); },
           });
           req?.done(text);
           return text;
@@ -212,6 +213,8 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
   }
   function endRecord(outcome, extra) {
     if (!record) return;
+    const used = runUsage(record.run);
+    if (used.requests) note(`Used ${(used.input + used.cacheRead + used.output).toLocaleString('en-US')} tokens: ${used.input.toLocaleString('en-US')} read${used.cacheRead ? `, ${used.cacheRead.toLocaleString('en-US')} read from the service\u2019s cache` : ''}, ${used.output.toLocaleString('en-US')} written.`);
     record.finish(outcome, extra);
     runs.put(record.run).catch(() => {});
     record = null;

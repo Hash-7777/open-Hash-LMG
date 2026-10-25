@@ -186,9 +186,9 @@ Reply with the complete scene plan as JSON only.`;
 // Every plan a model rewrites is told the drawings stay.
 const DRAWINGS = 'Layers with an id starting "picture" are drawings of what the film is about: keep every one in its scene. You may move one, change when it arrives or set its opacity; its path data shows as "kept:" and stays as it is.';
 
-export function planFromDraftMessage(brief, storyboard, draft) {
-  return `Brief:\n${brief}\n\nStoryboard agreed:\n${JSON.stringify(storyboard)}\n\nA draft plan made from it by rule:\n${JSON.stringify(draft)}\n\nImprove the draft into a finished design for this brief alone: stronger composition and hierarchy, varied scale and placement from scene to scene, motion designed for each beat (custom keys, hairlines and rings that draw on, a repeat field that fills in, a counter, a chart), one element carried between scenes where it helps, and moments of stillness before reveals. Keep the words, the timing grid, the style and the palette. ${DRAWINGS} Reply with the complete scene plan as JSON only.`;
-}
+// What a part of the redesign is asked to do (src/core/director/design.js).
+export const PART_DESIGN_TASK = `Improve these scenes into a finished design for this brief alone: stronger composition and hierarchy, scale and placement that differ from the scene before, motion designed for each beat (custom keys, hairlines and rings that draw on, a repeat field that fills in, a counter, a chart), and moments of stillness before reveals. Keep the words, the timing grid, the style and the palette. ${DRAWINGS}`;
+export const revisePartTask = (issues) => `The checks found these problems:\n${issuesText(issues)}\n\nFix every one in the scenes below and keep the drawings. ${DRAWINGS}`;
 
 // ---- free drawing code (strong models) -------------------------------------
 

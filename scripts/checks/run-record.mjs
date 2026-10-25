@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
-import { createRunRecord, runToMarkdown, runsToMarkdown } from '../../src/core/director/run-record.js';
+import { createRunRecord, runToMarkdown, runsToMarkdown, runUsage } from '../../src/core/director/run-record.js';
 
 const make = () => {
   const r = createRunRecord({ kind: 'make', brief: 'A launch film for Lumen Desk, an invented lamp.', tier: 'plan', model: { provider: 'ollama', model: 'm', label: 'Ollama' }, settings: { film: { seconds: 30 } } });
@@ -42,6 +42,17 @@ await claim('a run reads as Markdown with every part', () => {
 await claim('an answer with backticks stays inside its fence', () => {
   const md = runToMarkdown(make());
   assert.ok(md.includes('````\n```js\nexport default 1\n```\n````'));
+});
+await claim('the tokens each request used are summed for the run and shown in its Markdown', () => {
+  const r = createRunRecord({ kind: 'make', brief: 'b' });
+  const a = r.ask({ purpose: 'storyboard', system: '', messages: [] }); a.usage({ input: 1000, output: 200, cacheRead: 0, cacheWrite: 0 }); a.done('{}');
+  const b = r.ask({ purpose: 'plan part', system: '', messages: [] }); b.usage({ input: 300, output: 900, cacheRead: 700, cacheWrite: 0 }); b.done('{}');
+  r.ask({ purpose: 'music', system: '', messages: [] }).done('x');
+  r.finish('done');
+  assert.deepEqual(runUsage(r.run), { input: 1300, output: 1100, cacheRead: 700, cacheWrite: 0, requests: 2 });
+  const md = runToMarkdown(r.run);
+  assert.match(md, /- Tokens: 1,300 read, 700 read from the service's cache, 1,100 written \(2 of 3 requests reported\)/);
+  assert.match(md, /Tokens: 300 read, 700 read from the service's cache, 900 written/);
 });
 await claim('a history of runs nests each run one level down', () => {
   const md = runsToMarkdown([make(), make()]);

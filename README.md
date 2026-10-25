@@ -46,10 +46,12 @@ A three-billion-parameter model cannot lay out a film. It can write a good story
 | Way of working | For | The model writes | The app does |
 |---|---|---|---|
 | **Guided** | Small local models, under 10B | The storyboard's words and numbers, and line drawings of what the film is about | All of the layout, timing, motion and sound |
-| **Plan** | Mid-size and large models | A full scene plan, starting from the app's own design | Repairs it, checks it, sends back what is wrong |
+| **Plan** | Mid-size and large models | A full scene plan, starting from the app's own design, a few scenes at a time | Repairs it, checks it, sends back only the scenes that are wrong |
 | **Code** | The strongest cloud models | Their own animation code, frame by frame | Runs it in a locked box with no network, no storage and no clock, then checks the stills |
 
 The app suggests the way of working from the model's size, and you can always choose another. A model that can see pictures also reviews a contact sheet of stills, like a creative director, and asks for changes once.
+
+Every answer is kept short enough to finish: a redesign goes a few scenes at a time, so a part that fails costs only that part, and a fix sends only the scenes the checks named. Plans are sent without empty values, every part starts with the same text so services that cache a request's start read it once, and a run's Markdown record lists the tokens each request used, as the service reported them.
 
 <br>
 

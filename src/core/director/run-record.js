@@ -46,6 +46,8 @@ export function createRunRecord(meta) {
       run.requests.push(r);
       return {
         thinking(chunk) { r.thinkingChars += String(chunk || '').length; },
+        // What the service said the request used, in tokens.
+        usage(u) { if (u) r.usage = { input: u.input || 0, output: u.output || 0, cacheRead: u.cacheRead || 0, cacheWrite: u.cacheWrite || 0 }; },
         done(answer) { r.answer = String(answer || ''); r.ended = now(); },
         fail(err) { r.error = String(err?.message || err); r.ended = now(); },
       };
@@ -72,6 +74,19 @@ function fenced(text, lang = '') {
   return `${f}${lang}\n${s}\n${f}`;
 }
 
+// The tokens a run used, summed over its requests that reported them.
+export function runUsage(run) {
+  const total = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, requests: 0 };
+  for (const r of run.requests || []) {
+    if (!r.usage) continue;
+    total.requests++;
+    for (const k of ['input', 'output', 'cacheRead', 'cacheWrite']) total[k] += r.usage[k] || 0;
+  }
+  return total;
+}
+
+const usageText = (u) => `${u.input.toLocaleString('en-US')} read${u.cacheRead ? `, ${u.cacheRead.toLocaleString('en-US')} read from the service's cache` : ''}, ${u.output.toLocaleString('en-US')} written`;
+
 export function runToMarkdown(run) {
   const L = [];
   const title = run.kind === 'change' ? 'Change' : 'Film';
@@ -84,6 +99,8 @@ export function runToMarkdown(run) {
   if (run.tier) L.push(`- Way of working: ${run.tier}`);
   if (run.app) L.push(`- App: ${run.app}`);
   if (run.system) L.push(`- System: ${run.system}`);
+  const used = runUsage(run);
+  if (used.requests) L.push(`- Tokens: ${usageText(used)}${used.requests < run.requests.length ? ` (${used.requests} of ${run.requests.length} requests reported)` : ''}`);
   L.push('');
   L.push('## Brief');
   L.push('');
@@ -105,6 +122,7 @@ export function runToMarkdown(run) {
     L.push('');
     if (Object.keys(r.options || {}).length) L.push(`Options: \`${JSON.stringify(r.options)}\``);
     if (r.thinkingChars) L.push(`Thinking: ${r.thinkingChars.toLocaleString()} characters (not recorded)`);
+    if (r.usage) L.push(`Tokens: ${usageText(r.usage)}`);
     L.push('');
     L.push('System:');
     L.push('');

@@ -44,6 +44,7 @@ pub fn run() {
             commands::relay::speech_relay,
             commands::keys::keys_status,
             commands::keys::key_set,
+            commands::usage::usage_log_append,
         ])
         .on_page_load(|webview, payload| {
             #[cfg(debug_assertions)]

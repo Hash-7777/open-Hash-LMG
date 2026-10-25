@@ -10,6 +10,7 @@ import { STORYBOARD, measure, loadCode } from './lib/fixtures.mjs';
 import { createDirector } from '../../src/core/director/pipeline.js';
 import { compileStoryboard } from '../../src/core/scene/compile.js';
 import { sceneForModel } from '../../src/core/director/pipeline.js';
+import { reviseInParts, partsOf, compact, mergePart } from '../../src/core/director/design.js';
 
 const GOOD_CODE = '```js\nexport default function render(t, lmg) {\n  lmg.clear("bg");\n  lmg.text("Lumen", lmg.W / 2, lmg.H / 2, { size: 120 * lmg.u, color: "ink" });\n}\n```';
 const BAD_CODE = '```js\nexport default function render(t, lmg) { const x = Math.random(); lmg.clear("bg"); }\n```';
@@ -84,26 +85,70 @@ await claim('only the guided way writes several', async () => {
   assert.equal(asked.filter((p) => p === 'storyboard').length, 1);
 });
 
-section('Plan: the model redesigns the rule-made draft');
-await claim('a redesign is used, normalised', async () => {
+section('Plan: the model redesigns the rule-made draft, a few scenes at a time');
+// A scripted designer: gives back the scenes it was shown, each with a slow push.
+const partScenes = (messages) => JSON.parse(messages[0].content.split('made by rule:\n')[1].split('\n\n')[0]);
+const designer = (messages) => ({ scenes: partScenes(messages).map((S) => ({ ...S, camera: { zoom: [1, 1.07] } })) });
+await claim('a redesign is asked for in parts and used, normalised', async () => {
+  const { d, asked } = director({ storyboard: STORYBOARD, 'plan part': designer });
+  const out = await d.make({ ...opts, tier: 'plan', rounds: 0 });
+  assert.ok(asked.filter((p) => p === 'plan part').length >= 2, 'more than one part');
+  assert.ok(out.scene.scenes.every((S) => S.camera?.zoom?.[1] === 1.07), 'every part was used');
+});
+await claim('each part is shown only its own scenes, after the same brief and outline', async () => {
+  const seen = [];
+  const { d } = director({ storyboard: STORYBOARD, 'plan part': (messages) => { seen.push(messages[0].content); return designer(messages); } });
+  const out = await d.make({ ...opts, tier: 'plan', rounds: 0 });
+  const shown = seen.map((c) => partScenes([{ content: c }]).map((S) => S.id));
+  assert.deepEqual(shown.flat(), out.scene.scenes.map((S) => S.id));
+  const lead = (c) => c.split('\n\nDesign scenes')[0];
+  assert.ok(seen.every((c) => lead(c) === lead(seen[0])), 'every part starts the same way');
+});
+await claim('a part that fails keeps its rule-made scenes, and the other parts are used', async () => {
+  let n = 0;
+  const { d, log } = director({ storyboard: STORYBOARD, 'plan part': (messages) => { if (n++ === 1) throw new Error('The service used all the room it was given.'); return designer(messages); } });
+  const out = await d.make({ ...opts, tier: 'plan', rounds: 0 });
+  const pushed = out.scene.scenes.filter((S) => S.camera?.zoom?.[1] === 1.07).length;
+  assert.ok(pushed > 0 && pushed < out.scene.scenes.length);
+  assert.ok(log.some((e) => e.status === 'note' && /all the room.*keep the rule-made design/.test(e.detail)));
+});
+await claim('a redesign that cannot be read keeps the rule-made film, saying so', async () => {
+  const { d, log } = director({ storyboard: STORYBOARD, 'plan part': 'not json at all' });
+  const out = await d.make({ ...opts, tier: 'plan', rounds: 0 });
+  assert.ok(out.scene.scenes.length >= 8);
+  assert.ok(log.some((e) => e.status === 'note' && /could not be read; they keep the rule-made design/.test(e.detail)));
+});
+await claim('a revision sends only the scenes the checks named', async () => {
   const draft = compileStoryboard(STORYBOARD, { style: 'studio', targetDuration: 30 }).scene;
-  const redesign = sceneForModel(draft);
-  redesign.title = 'Redesigned';
-  const { d } = director({ storyboard: STORYBOARD, plan: redesign, revise: redesign });
-  const out = await d.make({ ...opts, tier: 'plan' });
-  assert.equal(out.scene.title, 'Redesigned');
+  const target = draft.scenes[2].id;
+  const sent = [];
+  const askJson = async (system, content) => { sent.push(content); return { scenes: JSON.parse(content.split('):\n')[1].split('\n\nReply')[0]) }; };
+  const out = await reviseInParts({ askJson, note: () => {}, system: 's', brief: 'b', scene: draft, issues: [{ level: 'warn', message: 'Too small.', scene: target }], task: () => 'Fix it.' });
+  assert.equal(sent.length, 1);
+  assert.match(sent[0], new RegExp(`ids ${target}\\)`));
+  assert.equal(out.scenes.length, draft.scenes.length);
 });
-await claim('a redesign that cannot be read keeps the rule-made film', async () => {
-  const { d, log } = director({ storyboard: STORYBOARD, plan: 'not json at all' });
-  const out = await d.make({ ...opts, tier: 'plan', rounds: 0 });
-  assert.ok(out.scene.scenes.length >= 8);
-  assert.ok(log.some((e) => e.status === 'note' && /rule-made design is kept/.test(e.detail)));
+await claim('a problem that names no scene sends every scene, still in parts', async () => {
+  const draft = compileStoryboard(STORYBOARD, { style: 'studio', targetDuration: 30 }).scene;
+  let parts = 0;
+  const askJson = async () => { parts++; return null; };
+  await reviseInParts({ askJson, note: () => {}, system: 's', brief: 'b', scene: draft, issues: [{ level: 'warn', message: 'Too many transitions.' }], task: () => 'Fix it.' });
+  assert.equal(parts, partsOf(draft.scenes).length);
 });
-await claim('a redesign the model could not finish keeps the rule-made film, saying why', async () => {
-  const { d, log } = director({ storyboard: STORYBOARD, plan: () => { throw new Error('The service used all the room it was given.'); } });
-  const out = await d.make({ ...opts, tier: 'plan', rounds: 0 });
-  assert.ok(out.scene.scenes.length >= 8);
-  assert.ok(log.some((e) => e.status === 'note' && /all the room.*rule-made design is kept/.test(e.detail)));
+await claim('parts are even, and never leave one scene alone', () => {
+  assert.deepEqual(partsOf([1, 2, 3, 4, 5, 6]).map((p) => p.length), [3, 3]);
+  assert.deepEqual(partsOf(Array.from({ length: 13 })).map((p) => p.length), [5, 5, 3]);
+  assert.deepEqual(partsOf([1, 2, 3]).map((p) => p.length), [3]);
+});
+await claim('what a model is shown leaves out empty values and rounds numbers, nothing else', () => {
+  assert.deepEqual(compact({ a: 1.23456, b: null, c: '', d: [], e: {}, f: [0.1 + 0.2, { g: undefined, h: 'x' }], i: false, j: 0 }), { a: 1.235, f: [0.3, { h: 'x' }], i: false, j: 0 });
+});
+await claim('a part answered with scenes in place of ids is merged by place', () => {
+  const scenes = [{ id: 'a', layers: [] }, { id: 'b', layers: [] }, { id: 'c', layers: [] }];
+  const { scenes: out, used } = mergePart(scenes, ['b', 'c'], { scenes: [{ id: 'x', layers: [{ type: 'text' }] }, { id: 'c', layers: [{ type: 'shape' }] }] });
+  assert.equal(used, 2);
+  assert.deepEqual(out.map((S) => S.id), ['a', 'b', 'c']);
+  assert.equal(out[1].layers[0].type, 'text');
 });
 
 section('Code: the model writes its own drawing code');

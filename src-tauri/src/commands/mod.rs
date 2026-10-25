@@ -5,4 +5,5 @@ pub mod media;
 pub mod projects;
 pub mod relay;
 pub mod sound;
+pub mod usage;
 pub mod voice;

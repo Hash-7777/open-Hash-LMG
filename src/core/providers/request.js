@@ -28,6 +28,9 @@ const THINKS_BY_NAME = /reason|think|deepseek-r1|qwq/i;
 // Room for thinking on top of the answer, for the models that do it.
 export const THINKING_ROOM = 16000;
 const withRoom = (maxTokens) => maxTokens + THINKING_ROOM;
+// The shortest system text worth marking for Anthropic's cache: below about a
+// thousand tokens the service does not cache it.
+const CACHE_MIN_CHARS = 4500;
 
 // req: { provider, model, key, base, system, messages: [{ role, content, images: [dataUrl] }],
 //        json: boolean, schema: object|null, temperature, maxTokens, stream, numCtx, numGpu, keepAlive,
@@ -90,6 +93,8 @@ export function buildRequest(req) {
     const limit = (reasons && p.newTokenField) || req.thinks || THINKS_BY_NAME.test(bare) ? withRoom(maxTokens) : maxTokens;
     if (p.newTokenField) body.max_completion_tokens = limit; else body.max_tokens = limit;
     if (sampling) body.temperature = temperature;
+    // Services that report what a streamed answer used only when asked.
+    if (stream && p.streamUsage) body.stream_options = { include_usage: true };
     if (req.json) {
       if (req.schema && p.json === 'schema') body.response_format = { type: 'json_schema', json_schema: { name: 'answer', schema: req.schema, strict: false } };
       else if (p.json) body.response_format = { type: 'json_object' };
@@ -109,7 +114,9 @@ export function buildRequest(req) {
       stream,
       max_tokens: sampling && !req.thinks ? maxTokens : withRoom(maxTokens),
       ...(sampling ? { temperature } : {}),
-      ...(req.system ? { system: req.system } : {}),
+      // A long system text is marked for the service's cache: every part of a
+      // film sends the same one, and a cached read costs a fraction of a fresh one.
+      ...(req.system ? { system: req.system.length >= CACHE_MIN_CHARS ? [{ type: 'text', text: req.system, cache_control: { type: 'ephemeral' } }] : req.system } : {}),
       messages: req.messages.map((m) => ({
         role: m.role,
         content: [
@@ -184,6 +191,47 @@ export function readEvent(style, ev) {
     };
   }
   return {};
+}
+
+// What one event of a reply says the request used, in one shape for every
+// service: { input, output, cacheRead, cacheWrite } in tokens, input being
+// what was read fresh (not from the service's cache), output including any
+// thinking. null when the event says nothing about it. Services report it
+// once at the end, or as a running total, so the caller keeps the largest
+// of each (mergeUsage).
+const n = (v) => (Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v))) : 0);
+export function readUsage(style, ev) {
+  if (!ev || typeof ev !== 'object') return null;
+  if (style === 'ollama') {
+    return ev.done && (ev.prompt_eval_count || ev.eval_count) ? { input: n(ev.prompt_eval_count), output: n(ev.eval_count), cacheRead: 0, cacheWrite: 0 } : null;
+  }
+  if (style === 'openai') {
+    const u = ev.usage || ev.choices?.[0]?.usage || ev.x_groq?.usage;
+    if (!u || typeof u !== 'object') return null;
+    const cached = n(u.prompt_tokens_details?.cached_tokens) || n(u.prompt_cache_hit_tokens);
+    return { input: Math.max(0, n(u.prompt_tokens) - cached), output: n(u.completion_tokens), cacheRead: cached, cacheWrite: 0 };
+  }
+  if (style === 'anthropic') {
+    const u = ev.type === 'message_start' ? ev.message?.usage : ev.usage;
+    if (!u || typeof u !== 'object') return null;
+    return { input: n(u.input_tokens), output: n(u.output_tokens), cacheRead: n(u.cache_read_input_tokens), cacheWrite: n(u.cache_creation_input_tokens) };
+  }
+  if (style === 'gemini') {
+    const u = ev.usageMetadata;
+    if (!u || typeof u !== 'object') return null;
+    const cached = n(u.cachedContentTokenCount);
+    return { input: Math.max(0, n(u.promptTokenCount) - cached), output: n(u.candidatesTokenCount) + n(u.thoughtsTokenCount), cacheRead: cached, cacheWrite: 0 };
+  }
+  return null;
+}
+
+// Fresh and cached reading are taken together from whichever event read more
+// in all, since a running total can say late how much of it was cached.
+export function mergeUsage(a, b) {
+  if (!b) return a;
+  if (!a) return { ...b };
+  const read = b.input + b.cacheRead >= a.input + a.cacheRead ? b : a;
+  return { input: read.input, cacheRead: read.cacheRead, output: Math.max(a.output, b.output), cacheWrite: Math.max(a.cacheWrite, b.cacheWrite) };
 }
 
 // Splits a stream of bytes into events: server-sent "data:" lines for most

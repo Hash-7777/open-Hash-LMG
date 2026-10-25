@@ -31,9 +31,10 @@ import { extractJson, extractCode } from '../util/json.js';
 import { checkCode, asModule } from './code-check.js';
 import { INTENT_SCHEMA, intentPrompt, normalizeIntent, intentTimes, verifyIntent, intentFailures } from './intent.js';
 import {
-  STORYBOARD_SCHEMA, storyboardPrompt, planPrompt, planFromDraftMessage, codePrompt,
+  STORYBOARD_SCHEMA, storyboardPrompt, planPrompt, codePrompt, PART_DESIGN_TASK, revisePartTask,
   revisePlanMessage, reviseCodeMessage, CRITIC_PROMPT, criticMessage, applyCritiqueMessage, editMessage,
 } from './prompts.js';
+import { designInParts, reviseInParts, compact } from './design.js';
 import { sceneForModel, restore, draftScore, keepDrawings } from './scene-io.js';
 
 // The scene helpers are in scene-io.js; sceneForModel is re-exported for the checks.
@@ -150,22 +151,26 @@ export function createDirector(deps) {
   // A rewritten plan with what the model may not change put back (scene-io.js).
   const redrawn = (next, prev, asked = false) => { const r = keepDrawings(next, prev, { music: !asked }); if (r.note) note('design', r.note); return r.scene; };
 
+  // A rewritten plan, put back together and normalised; null when nothing usable came back.
+  const settle = (raw, prev, asked = false) => {
+    const { scene, notes } = normalizeScene(redrawn(restore(raw, prev), prev, asked), { style: prev.style, aspect: prev.aspect });
+    return scene.scenes.length ? { scene, notes } : null;
+  };
+
+  // The redesign and its revisions go a few scenes at a time (design.js).
   async function designPlan(brief, storyboard, draft, opts) {
     const system = planPrompt({ seconds: opts.seconds, aspect: draft.aspect, style: draft.style });
-    const raw = await askJson(system, planFromDraftMessage(brief, storyboardForModel(storyboard), sceneForModel(draft)), { purpose: 'plan' });
-    if (!raw) { note('design', 'The redesign could not be read; the rule-made design is kept.'); return draft; }
-    const { scene, notes } = normalizeScene(redrawn(restore(raw, draft), draft), { style: draft.style, aspect: draft.aspect });
-    if (!scene.scenes.length) { note('design', 'The redesign had no scenes; the rule-made design is kept.'); return draft; }
-    for (const n of notes.slice(0, 8)) note('design', n);
-    return scene;
+    const raw = await designInParts({ askJson, note: (n) => note('design', n), system, brief, storyboard: storyboardForModel(storyboard), draft, task: PART_DESIGN_TASK });
+    const out = settle(raw, draft);
+    if (!out) { note('design', 'The redesign had no scenes; the rule-made design is kept.'); return draft; }
+    for (const n of out.notes.slice(0, 8)) note('design', n);
+    return out.scene;
   }
 
-  async function revisePlan(scene, issues, opts) {
+  async function revisePlan(scene, issues, opts, brief) {
     const system = planPrompt({ seconds: opts.seconds, aspect: scene.aspect, style: scene.style });
-    const raw = await askJson(system, `${revisePlanMessage(issues)}\n\nThe plan:\n${JSON.stringify(sceneForModel(scene))}`, { purpose: 'revise' });
-    if (!raw) return scene;
-    const next = normalizeScene(redrawn(restore(raw, scene), scene), { style: scene.style, aspect: scene.aspect }).scene;
-    return next.scenes.length ? next : scene;
+    const raw = await reviseInParts({ askJson, note: (n) => note('revise', n), system, brief, scene, issues, task: revisePartTask });
+    return settle(raw, scene)?.scene || scene;
   }
 
   function timingText(draft) {
@@ -265,7 +270,7 @@ export function createDirector(deps) {
     if (!code) {
       ({ scene, issues } = await step('check', 'Checking stills and timing', () => checkScene(scene, opts)));
       for (let r = 0; r < rounds && tier !== 'guided' && issues.some((i) => i.level !== 'info'); r++) {
-        scene = await step('revise', 'Fixing what the checks found', () => revisePlan(scene, issues.filter((i) => i.level !== 'info'), opts));
+        scene = await step('revise', 'Fixing what the checks found', () => revisePlan(scene, issues.filter((i) => i.level !== 'info'), opts, brief));
         ({ scene, issues } = await step('check', 'Checking again', () => checkScene(scene, opts)));
       }
     } else {
@@ -310,7 +315,7 @@ export function createDirector(deps) {
             });
             if (sb2) candidate = { storyboard: sb2, ...(await checkScene(compile(sb2, opts).scene, opts)) };
           } else {
-            const s2 = await step('revise', 'Showing what the brief asks for', () => revisePlan(scene, failed.map((message) => ({ level: 'warn', message })), opts));
+            const s2 = await step('revise', 'Showing what the brief asks for', () => revisePlan(scene, failed.map((message) => ({ level: 'warn', message })), opts, brief));
             candidate = { storyboard, ...(await checkScene(s2, opts)) };
           }
           if (candidate) {
@@ -338,10 +343,8 @@ export function createDirector(deps) {
         } else if (tier === 'plan') {
           scene = await step('apply', 'Making the changes', async () => {
             const system = planPrompt({ seconds: opts.seconds, aspect: scene.aspect, style: scene.style });
-            const raw = await askJson(system, `${applyCritiqueMessage(notes, 'plan')}\n\nThe plan:\n${JSON.stringify(sceneForModel(scene))}`, { purpose: 'apply review' });
-            if (!raw) return scene;
-            const next = normalizeScene(redrawn(restore(raw, scene), scene), { style: scene.style, aspect: scene.aspect }).scene;
-            return next.scenes.length ? next : scene;
+            const raw = await askJson(system, `${applyCritiqueMessage(notes, 'plan')}\n\nThe plan:\n${JSON.stringify(compact(sceneForModel(scene)))}`, { purpose: 'apply review' });
+            return (raw && settle(raw, scene)?.scene) || scene;
           });
           ({ scene, issues } = await step('check', 'Checking the changes', () => checkScene(scene, opts)));
         }
@@ -389,7 +392,7 @@ export function createDirector(deps) {
       return { ...project, code };
     }
     let scene = await step('edit', 'Changing the plan', async () => {
-      const raw = await askJson(planPrompt({ seconds: project.scene.duration, aspect: project.scene.aspect, style: project.scene.style }), editMessage('plan', text, sceneForModel(project.scene)), { purpose: 'edit' });
+      const raw = await askJson(planPrompt({ seconds: project.scene.duration, aspect: project.scene.aspect, style: project.scene.style }), editMessage('plan', text, compact(sceneForModel(project.scene))), { purpose: 'edit' });
       if (!raw) throw new Error('The model\'s answer could not be read as a plan. Nothing was changed.');
       const next = normalizeScene(redrawn(restore(raw, project.scene), project.scene, true), { style: project.scene.style, aspect: project.scene.aspect }).scene;
       if (!next.scenes.length) throw new Error('The changed plan had no scenes. Nothing was changed.');

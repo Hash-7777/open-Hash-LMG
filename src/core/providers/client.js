@@ -9,7 +9,7 @@
 // does not know, a reply that stopped half way.
 
 import { PROVIDERS } from './catalog.js';
-import { buildRequest, readEvent, eventSplitter, describeFailure } from './request.js';
+import { buildRequest, readEvent, readUsage, mergeUsage, eventSplitter, describeFailure } from './request.js';
 import { modelsRequest, parseModelList, sortModels } from './models.js';
 import { stripThinking, speedOf } from './local.js';
 
@@ -48,7 +48,8 @@ const thinkers = new Set();
 // a model wrote into it taken out.
 //   req     as for buildRequest, plus device for local models, and keyHeld
 //           when the desktop side adds the key to the request itself
-//   io      { fetch, signal, onText(chunk, all), onThinking(chunk), onStats({ speed, promptTokens }) }
+//   io      { fetch, signal, onText(chunk, all), onThinking(chunk), onStats({ speed, promptTokens }),
+//             onUsage({ input, output, cacheRead, cacheWrite }) once per request the service reported on }
 //
 // A model that thinks before it answers can spend the room given for the
 // answer on its thinking. When an answer is cut off that way, the question is
@@ -97,8 +98,10 @@ async function askOnce(req, io, p) {
   let finished = false;
   let stop = null;
   let thought = false;
+  let usage = null;
   const take = (ev) => {
     if (ev && ev.__done) { finished = true; return; }
+    usage = mergeUsage(usage, readUsage(p.style, ev));
     if (p.style === 'ollama' && ev && ev.done && io.onStats) io.onStats({ speed: speedOf(ev), promptTokens: Number(ev.prompt_eval_count) || null });
     const r = readEvent(p.style, ev);
     if (r.error) { failure = r.error; return; }
@@ -137,6 +140,9 @@ async function askOnce(req, io, p) {
     split.end();
   }
 
+  // What the request used is reported even when its answer is then refused:
+  // the tokens were spent either way.
+  if (usage && io.onUsage) io.onUsage(usage);
   if (failure) throw new Error(onChipHint(req, `${p.label}: ${failure}`));
   const answer = stripThinking(text);
   return { text: answer, stop, finished, thought: thought || /<think>/i.test(text) };

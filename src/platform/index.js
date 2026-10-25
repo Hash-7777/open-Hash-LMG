@@ -280,6 +280,14 @@ export async function speakInCloud(provider, body) {
   return out instanceof Uint8Array ? out : new Uint8Array(out);
 }
 
+// What a request to a model used, one line in the app's usage.jsonl for token
+// counters on this computer (src-tauri/src/commands/usage.rs). Counts only;
+// best effort, and nothing in a browser.
+export function logUsage({ provider, model, usage }) {
+  if (!isApp || !usage) return;
+  invoke('usage_log_append', { record: { ts: new Date().toISOString(), model: `${provider}:${model}`.slice(0, 256), input_tokens: usage.input || 0, output_tokens: usage.output || 0, cache_read: usage.cacheRead || 0, cache_write: usage.cacheWrite || 0, cost: 0 } }).catch(() => {});
+}
+
 // ---- voices installed on this computer --------------------------------------
 //
 // Chatterbox and Kokoro, through the person's own install, whose folder the

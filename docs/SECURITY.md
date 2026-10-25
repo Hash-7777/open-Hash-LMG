@@ -90,6 +90,11 @@ The page reaches the computer only through the commands in
   web view's own database on this computer, the newest 60 runs. Keys are
   never part of a run, and a picture sent to a model is noted by its size,
   not kept. A run leaves the computer only when saved as Markdown.
+- The **usage log** (`src-tauri/src/commands/usage.rs`) appends one line per
+  request to a model to `usage.jsonl` in the app's data folder: the time,
+  the service and model, and how many tokens were read and written. Never a
+  brief, a prompt or an answer. It starts again once it passes a few
+  megabytes.
 - A **debug build** started with `LMG_SELFTEST` naming a script runs that
   script in its window each time the page loads, for testing the app end to
   end. Release builds do not contain this.

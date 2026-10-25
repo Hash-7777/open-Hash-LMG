@@ -66,6 +66,17 @@ newest first, grouped by what it does for the person making a film.
   with sound on phones and in the system's own player.
 
 ### Models
+- A model redesigning a film does it a few scenes at a time: each answer is
+  short enough to finish, a part that fails keeps the rule-made scenes it
+  covered instead of the whole film losing the model's work, and a fix
+  sends only the scenes the checks named. Plans go to the model without
+  empty values, and every part starts with the same text, which services
+  that cache a request's start read once; long system texts are marked for
+  that cache where a service asks to be told.
+- Every request's token use is read from the service's reply, listed in the
+  run's Markdown record with the run's total, noted when a film is made,
+  and written as counts only to `usage.jsonl` for token counters on this
+  computer.
 - The model is chosen from one list in the director panel: every model that
   can be used now, grouped by service, each list asked of its service when
   the list opens, with a search. Each service remembers the model last

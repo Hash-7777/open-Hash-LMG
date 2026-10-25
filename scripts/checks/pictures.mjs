@@ -157,10 +157,10 @@ const STORY = { title: 'Lumen', beats: [{ kind: 'hook', text: 'Your desk is loud
 function director(script) {
   const asked = [], log = [];
   const d = createDirector({
-    ask: async ({ purpose }) => {
+    ask: async ({ purpose, messages }) => {
       asked.push(purpose);
       const next = script[purpose];
-      const reply = typeof next === 'function' ? next() : next;
+      const reply = typeof next === 'function' ? next(messages) : next;
       if (reply === undefined) throw new Error(`no scripted answer for ${purpose}`);
       return typeof reply === 'string' ? reply : JSON.stringify(reply);
     },
@@ -202,14 +202,16 @@ await claim('a redesign is shown marks for the drawings and given the path data 
 });
 
 section('A redesign keeps the drawings, and the music chosen from the brief');
-await claim('a redesign that dropped the drawings and picked its own score gets both put back, with a note', async () => {
+// The scenes a part of the redesign was shown.
+const partShown = (content) => JSON.parse(content.split('made by rule:\n')[1].split('\n\n')[0]);
+await claim('a redesign that dropped the drawings gets them put back, with a note, and keeps the brief\u2019s score', async () => {
   const { d, log } = director({
     storyboard: STORY,
     pictures: { pictures: [{ beat: 1, name: 'cup', ...CUP }, { beat: 2, name: 'ring', ...RING }] },
-    plan: () => { const { scene } = compileStoryboard(normalizeStoryboard(STORY).storyboard, { style: 'studio', targetDuration: 15 }); const s = sceneForModel(scene); s.title = 'Redesigned'; s.sound = { ...s.sound, score: s.sound.score === 'pulse' ? 'soft' : 'pulse' }; return s; },
+    'plan part': (messages) => ({ scenes: partShown(messages[0].content).map((S) => ({ ...S, camera: { zoom: [1, 1.06] }, layers: S.layers.filter((L) => L.shape !== 'path') })) }),
   });
   const out = await d.make({ ...brief, tier: 'plan', rounds: 0 });
-  assert.equal(out.scene.title, 'Redesigned');
+  assert.ok(out.scene.scenes.some((S) => S.camera?.zoom?.[1] === 1.06), 'the redesign was used');
   assert.equal(out.scene.sound.score, out.direction.score);
   assert.equal(out.scene.scenes.filter((S) => S.layers.some((L) => L.shape === 'path')).length, 2);
   assert.ok(log.some((e) => e.id === 'design' && e.status === 'note' && /keep their drawing/.test(e.detail)));
@@ -221,10 +223,11 @@ await claim('a redesign that kept them is used as written, and was shown no draw
     ask: async ({ purpose, messages }) => {
       if (purpose === 'storyboard') return JSON.stringify(STORY);
       if (purpose === 'pictures') return JSON.stringify({ pictures: [{ beat: 1, name: 'cup', ...CUP }] });
-      shown = messages[0].content;
-      const draft = JSON.parse(shown.split('A draft plan made from it by rule:\n')[1].split('\n\nImprove')[0]);
-      draft.scenes[0].layers.find((L) => L.id === 'picture').x = 0.4;
-      return JSON.stringify(draft);
+      shown += messages[0].content;
+      const scenes = partShown(messages[0].content);
+      const pic = scenes.flatMap((S) => S.layers).find((L) => L.id === 'picture');
+      if (pic) pic.x = 0.4;
+      return JSON.stringify({ scenes });
     },
     measure: async ({ scene }, times) => measure(scene, times), trial: async () => ({ ok: true }), sheet: async () => null, log: (e) => log.push(e),
   });

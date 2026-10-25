@@ -31,6 +31,43 @@ await claim('a reply that is not streamed', async () => {
   assert.equal(await ask(q('ollama', { stream: false }), { fetch: async () => new Response('{"message":{"content":"whole"},"done":true}') }), 'whole');
 });
 
+section('What each request used is read from the reply, in one shape');
+const usageOf = async (provider, chunks, extra = {}) => { let u = null; await ask(q(provider, extra), { fetch: async () => stream(chunks), onUsage: (x) => { u = x; } }); return u; };
+await claim('Ollama: what it read and wrote, from its last line', async () => {
+  assert.deepEqual(await usageOf('ollama', ['{"message":{"content":"a"}}\n{"message":{"content":"b"},"done":true,"prompt_eval_count":120,"eval_count":30}\n']), { input: 120, output: 30, cacheRead: 0, cacheWrite: 0 });
+});
+await claim('the chat shape: fresh and cached reading apart, thinking counted as written', async () => {
+  const u = await usageOf('openai', ['data: {"choices":[{"delta":{"content":"x"},"finish_reason":"stop"}]}\n\n', 'data: {"choices":[],"usage":{"prompt_tokens":1000,"completion_tokens":200,"prompt_tokens_details":{"cached_tokens":600}}}\n\ndata: [DONE]\n\n']);
+  assert.deepEqual(u, { input: 400, output: 200, cacheRead: 600, cacheWrite: 0 });
+});
+await claim('a service that names its cache hits its own way', async () => {
+  const u = await usageOf('deepseek', ['data: {"choices":[{"delta":{"content":"x"},"finish_reason":"stop"}],"usage":{"prompt_tokens":900,"completion_tokens":50,"prompt_cache_hit_tokens":512}}\n\ndata: [DONE]\n\n']);
+  assert.deepEqual(u, { input: 388, output: 50, cacheRead: 512, cacheWrite: 0 });
+});
+await claim('Anthropic: reading at the start, writing at the end, cache writes kept apart', async () => {
+  const u = await usageOf('anthropic', ['data: {"type":"message_start","message":{"usage":{"input_tokens":50,"cache_creation_input_tokens":2000,"cache_read_input_tokens":0,"output_tokens":1}}}\n\n', 'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hi"}}\n\ndata: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":75}}\n\ndata: {"type":"message_stop"}\n\n']);
+  assert.deepEqual(u, { input: 50, output: 75, cacheRead: 0, cacheWrite: 2000 });
+});
+await claim('Gemini: a running total, with thinking counted as written', async () => {
+  const u = await usageOf('gemini', ['data: {"candidates":[{"content":{"parts":[{"text":"G"}]}}],"usageMetadata":{"promptTokenCount":300,"candidatesTokenCount":5}}\n\n', 'data: {"candidates":[{"content":{"parts":[{"text":"o"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":300,"candidatesTokenCount":20,"thoughtsTokenCount":100,"cachedContentTokenCount":200}}\n\n']);
+  assert.deepEqual(u, { input: 100, output: 120, cacheRead: 200, cacheWrite: 0 });
+});
+await claim('services that report only when asked are asked; the rest are not', () => {
+  const body = (provider) => JSON.parse(buildRequest(q(provider)).init.body);
+  assert.deepEqual(body('openai').stream_options, { include_usage: true });
+  assert.deepEqual(body('deepseek').stream_options, { include_usage: true });
+  assert.equal(body('mistral').stream_options, undefined);
+  assert.equal(JSON.parse(buildRequest(q('openai', { stream: false })).init.body).stream_options, undefined);
+});
+await claim('a long system text is marked for Anthropic\u2019s cache; a short one is sent plain', () => {
+  const long = JSON.parse(buildRequest(q('anthropic', { system: 'x'.repeat(6000) })).init.body).system;
+  assert.equal(long[0].cache_control.type, 'ephemeral'); assert.equal(long[0].text.length, 6000);
+  assert.equal(JSON.parse(buildRequest(q('anthropic', { system: 'short' })).init.body).system, 'short');
+});
+await claim('a reply that says nothing about it reports nothing', async () => {
+  assert.equal(await usageOf('openai', ['data: {"choices":[{"delta":{"content":"x"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n']), null);
+});
+
 section('The processor or the graphics chip reaches Ollama');
 for (const [device, want] of [['cpu', 0], ['gpu', 999], ['auto', undefined]]) {
   await claim(`${device} sends num_gpu ${want}`, async () => {
