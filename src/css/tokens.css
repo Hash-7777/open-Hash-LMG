@@ -17,6 +17,9 @@
 
   --topbar-h: 44px;
   --side-w: 296px;
+  /* The conversation with the director: wider than the inspector, since it is
+     where a film starts and is talked about. */
+  --chat-w: clamp(340px, 27vw, 440px);
   /* The timeline is as tall as its rows need on a big window, and gives way
      to the preview on a short one. */
   --timeline-h: clamp(204px, 30vh, 252px);

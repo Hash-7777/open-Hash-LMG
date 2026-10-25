@@ -166,7 +166,8 @@ newest first, grouped by what it does for the person making a film.
   and are unloaded once a film is made.
 
 ### The editor
-- The left panel is a conversation with the director. Say what the film is
+- The left panel is a conversation with the director, as tall as the
+  window and wider than the inspector. Say what the film is
   for in your own words; it decides what it can and asks only what it must,
   two questions at most, each a card with answers to tap and a field for your
   own words, and never offers "I'll type it" as an answer. When you say you
