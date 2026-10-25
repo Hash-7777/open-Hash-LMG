@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
-import { chatPrompt, chatMessages, filmState, normalizeChatReply, normalizeChat, ASKS_FOR_NARRATION } from '../../src/core/director/chat.js';
+import { chatPrompt, chatMessages, filmState, normalizeChatReply, STILL_TO_COME, normalizeChat, ASKS_FOR_NARRATION } from '../../src/core/director/chat.js';
 import { normalizeProject } from '../../src/app/store.js';
 
 section('What a turn sends');
@@ -32,9 +32,24 @@ await claim('the film’s state is a few lines: the settings, and the film made 
 });
 
 section('A reply, held to what the panel can show');
-await claim('questions keep at most three, each with up to five short answers', () => {
+await claim('questions keep at most two, each with up to four short answers', () => {
   const r = normalizeChatReply({ reply: 'Hi', action: 'ask', questions: Array.from({ length: 5 }, (_, i) => ({ ask: `Q${i}`, options: ['a', 'b', 'c', 'd', 'e', 'f', ''] })) });
-  assert.equal(r.questions.length, 3); assert.equal(r.questions[0].options.length, 5);
+  assert.equal(r.questions.length, 2); assert.equal(r.questions[0].options.length, 4);
+});
+await claim('an answer that only means the person will type one is left out', () => {
+  const r = normalizeChatReply({ reply: 'Hi', action: 'ask', questions: [{ ask: 'What is it called?', options: ['Brightway', "I'll type the name", 'Other', 'Let me write it', 'Lumen'] }] });
+  assert.deepEqual(r.questions[0].options, ['Brightway', 'Lumen']);
+});
+await claim('a film is not made while the person has said something is still to come from them', () => {
+  const r = normalizeChatReply({ reply: 'Making it.', action: 'make', brief: 'A film.', film: { seconds: 30 } }, { waiting: true });
+  assert.equal(r.action, 'ask'); assert.equal(r.brief, ''); assert.match(r.reply, /type it/);
+  assert.ok(STILL_TO_COME.test('I will write the product name')); assert.ok(STILL_TO_COME.test("I'll send the logo"));
+  assert.ok(!STILL_TO_COME.test('Make it 45 seconds, for Mac users'));
+  assert.equal(normalizeChatReply({ reply: 'Making it.', action: 'make', brief: 'A film.' }).action, 'make');
+});
+await claim('the system text asks for few questions, real answers only, and waiting for what is promised', () => {
+  const p = chatPrompt({});
+  assert.match(p, /two at most/); assert.match(p, /Never offer an answer such as "other"/); assert.match(p, /wait for it/);
 });
 await claim('a make without a brief, or a change without words, is not acted on', () => {
   assert.equal(normalizeChatReply({ reply: 'x', action: 'make' }).action, 'ask');
@@ -56,6 +71,10 @@ await claim('messages are kept with their questions and brief, odd entries dropp
   const chat = normalizeChat([{ role: 'person', text: 'hi', at: 1 }, { role: 'director', text: 'Which frame?', questions: [{ ask: 'Frame?', options: ['16:9 wide'] }], at: 2 }, { role: 'system', text: 'x' }, { role: 'person', text: '' }, 'junk', { role: 'director', text: 'Ready.', kind: 'made', brief: 'A film.' }]);
   assert.equal(chat.length, 3); assert.equal(chat[1].questions[0].ask, 'Frame?'); assert.equal(chat[2].kind, 'made'); assert.equal(chat[2].brief, 'A film.');
   assert.equal(normalizeChat(Array.from({ length: 80 }, (_, i) => ({ role: 'person', text: `m${i}` }))).length, 60);
+});
+await claim('answers to questions are kept as pairs, empty ones dropped', () => {
+  const [m] = normalizeChat([{ role: 'person', text: 'Frame? 16:9', answers: [{ ask: 'Frame?', answer: '16:9 wide' }, { ask: 'Voice?', answer: '  ' }, 'junk'] }]);
+  assert.deepEqual(m.answers, [{ ask: 'Frame?', answer: '16:9 wide' }]);
 });
 await claim('a project carries its conversation, and an old project without one opens with none', () => {
   let n = 0; const id = () => `film-test-${n++}`;

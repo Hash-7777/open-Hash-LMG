@@ -78,6 +78,7 @@ export function createChatPanel({ store, settings, picker, converse, onMake, onC
 
   let thinking = false;
   const chosen = new Map(); // message time -> [answer per question]
+  const typed = new Map(); // message time -> [own answer per question]
 
   const history = () => store.get().project.chat;
   function push(message) {
@@ -85,21 +86,38 @@ export function createChatPanel({ store, settings, picker, converse, onMake, onC
   }
 
   // ---- the thread --------------------------------------------------------------
+  // Each question is a card: the question, a few answers to tap, and a field
+  // for the person's own words, which wins over a tapped answer.
   function questionBlock(m) {
     const picks = chosen.get(m.at) || [];
+    const own = typed.get(m.at) || [];
     const last = history()[history().length - 1] === m;
-    const rows = m.questions.map((q, qi) => h('div', { class: 'chat-q' },
-      h('div', { class: 'chat-q-ask', text: q.ask }),
-      h('div', { class: 'chat-chips' }, ...q.options.map((o) => h('button', {
-        type: 'button', class: `chip${picks[qi] === o ? ' on' : ''}`, text: o, disabled: !last || thinking,
-        onclick: () => { const next = [...picks]; next[qi] = picks[qi] === o ? undefined : o; chosen.set(m.at, next); paint(); },
-      })))));
-    const answered = m.questions.map((q, qi) => (picks[qi] ? `${q.ask} ${picks[qi]}` : null)).filter(Boolean);
-    return h('div', { class: 'chat-qs' }, ...rows,
-      last ? h('button', { type: 'button', class: 'primary-btn chat-answer', text: answered.length < m.questions.length ? 'Send these answers' : 'Send answers', disabled: !answered.length || thinking, onclick: () => send(answered.join('\n')) }) : null);
+    const answerOf = (qi) => ((typed.get(m.at) || [])[qi] || '').trim() || (chosen.get(m.at) || [])[qi] || '';
+    const answers = () => m.questions.map((q, qi) => ({ ask: q.ask, answer: answerOf(qi) })).filter((a) => a.answer);
+    const sendBtn2 = h('button', { type: 'button', class: 'primary-btn chat-answer', text: 'Send', disabled: !answers().length || thinking,
+      onclick: () => { const list = answers(); send(list.map((a) => `${a.ask} ${a.answer}`).join('\n'), { answers: list }); } });
+    const refresh = () => { sendBtn2.disabled = !answers().length || thinking; };
+    const cards = m.questions.map((q, qi) => {
+      const field = h('input', { type: 'text', class: 'input chat-own', maxlength: '600', placeholder: 'Or type your own answer', value: own[qi] || '', disabled: !last || thinking, 'aria-label': `Your own answer: ${q.ask}` });
+      field.addEventListener('input', () => { const next = [...(typed.get(m.at) || [])]; next[qi] = field.value; typed.set(m.at, next); card.classList.toggle('typed', Boolean(field.value.trim())); refresh(); });
+      field.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !sendBtn2.disabled) { e.preventDefault(); sendBtn2.click(); } });
+      const card = h('div', { class: `chat-q${(own[qi] || '').trim() ? ' typed' : ''}` },
+        m.questions.length > 1 ? h('div', { class: 'chat-q-step', text: `${qi + 1} of ${m.questions.length}` }) : null,
+        h('div', { class: 'chat-q-ask', text: q.ask }),
+        q.options.length ? h('div', { class: 'chat-chips', role: 'group', 'aria-label': q.ask }, ...q.options.map((o) => h('button', {
+          type: 'button', class: `chip${picks[qi] === o ? ' on' : ''}`, text: o, disabled: !last || thinking, 'aria-pressed': String(picks[qi] === o),
+          onclick: () => { const next = [...picks]; next[qi] = picks[qi] === o ? undefined : o; chosen.set(m.at, next); paint(); },
+        }))) : null,
+        last ? field : null);
+      return card;
+    });
+    return h('div', { class: 'chat-qs' }, ...cards, last ? sendBtn2 : null);
   }
 
   function bubble(m) {
+    if (m.role === 'person' && m.answers?.length) {
+      return h('div', { class: 'msg person answers' }, h('dl', { class: 'msg-answers' }, ...m.answers.flatMap((a) => [h('dt', { text: a.ask }), h('dd', { text: a.answer })])));
+    }
     if (m.role === 'person') return h('div', { class: 'msg person' }, h('div', { class: 'msg-text', text: m.text }), m.attachments?.length ? h('div', { class: `msg-attach${m.attachments.length === 1 ? ' one' : ''}` }, ...m.attachments.map((a) => attachmentTile(a, store.get().project, { large: true }))) : null);
     return h('div', { class: `msg director${m.kind ? ` ${m.kind}` : ''}` },
       h('div', { class: 'msg-text', text: m.text }),
@@ -147,12 +165,12 @@ export function createChatPanel({ store, settings, picker, converse, onMake, onC
   }
 
   // ---- talking -----------------------------------------------------------------
-  async function send(given) {
+  async function send(given, { answers = null } = {}) {
     const files = given === undefined ? pending : [];
     const text = String(given ?? input.value).trim() || (files.length ? 'Here are some files for the film.' : '');
     if (!text || thinking || busy()) return;
     if (given === undefined) { input.value = ''; input.style.height = ''; pending = []; paintAttach(); }
-    push({ role: 'person', text, ...(files.length ? { attachments: files.map(({ key, name, kind }) => ({ key, name, kind })) } : {}) });
+    push({ role: 'person', text, ...(answers?.length ? { answers } : {}), ...(files.length ? { attachments: files.map(({ key, name, kind }) => ({ key, name, kind })) } : {}) });
     thinking = true;
     paint();
     let reply;

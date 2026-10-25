@@ -28,7 +28,7 @@ import { speakLines } from './narration.js';
 import { mediaFor, withMusic, previewPicture } from './film-media.js';
 import { docsForChat, brandColours } from '../core/director/brand.js';
 import { createChatPanel } from './chat-panel.js';
-import { CHAT_SCHEMA, chatPrompt, chatMessages, filmState, normalizeChatReply, ASKS_FOR_NARRATION } from '../core/director/chat.js';
+import { CHAT_SCHEMA, chatPrompt, chatMessages, filmState, normalizeChatReply, STILL_TO_COME, ASKS_FOR_NARRATION } from '../core/director/chat.js';
 import { mediaList } from '../core/scene/media.js';
 import { extractJson } from '../core/util/json.js';
 
@@ -117,7 +117,12 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
       device: s.local.device, system, messages, json: true, schema: CHAT_SCHEMA, temperature: 0.5, ...extra,
     }, { fetch: fetchFor(m.provider), onUsage: (u) => logUsage({ provider: m.provider, model: m.model, usage: u }) });
     const parsed = extractJson(text).value;
-    return normalizeChatReply(parsed ?? text, { hasFilm });
+    // A short message, or any one answer, saying something is still to come
+    // holds the film back.
+    const lastSaid = [...history].reverse().find((x) => x.role === 'person') || {};
+    const parts = lastSaid.answers?.length ? lastSaid.answers.map((a) => a.answer) : [lastSaid.text || ''];
+    const waiting = parts.some((p) => STILL_TO_COME.test(p) && p.split(/\s+/).length <= 14);
+    return normalizeChatReply(parsed ?? text, { hasFilm, waiting });
   }
 
   // ---- progress and what is worth knowing ---------------------------------------

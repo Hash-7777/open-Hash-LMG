@@ -1,10 +1,12 @@
 // The director's side of the conversation in the left panel.
 //
 // The person says what they want in their own words. The director (the model
-// chosen for the film) asks for what is missing, a few questions at a time,
-// each with short answers to tap: what the film is for, who will watch it,
-// how long, which frame shape, the look, narration, whether to use the media
-// they gave. Once it knows enough it writes the brief and the film's
+// chosen for the film) asks only for what it cannot decide well itself, one
+// or two questions at most, each with a few concrete answers to tap; the
+// person can always type their own. A first message that says what the film
+// is for is enough: the director decides the rest and says what it chose.
+// It never makes the film while the person has said they will send or write
+// something. Once it knows enough it writes the brief and the film's
 // settings, and the film is made. With a film made, what the person says is
 // a change to make, a new take, or a question to answer.
 //
@@ -15,7 +17,13 @@
 import { ASPECTS, STYLE_NAMES } from '../scene/format.js';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120];
+const MAX_QUESTIONS = 2;
 const KEEP_TURNS = 12;
+
+// An answer offered for tapping that only means the person will type one.
+export const OWN_ANSWER = /^(other|something else|none of these|my own)\b|\b(i'?ll|i will|let me|i can|i'd like to|i want to)\s+(write|type|tell|send|give|add|share|paste|enter|name)\b|\btype (it|my own|one)\b/i;
+// A message in which the person says something is still to come from them.
+export const STILL_TO_COME = /\b(i'?ll|i will|let me|i('m| am) going to|going to)\s+(write|type|send|add|give|share|paste|enter|upload|drop|attach)\b|\bwill (write|type|send) it\b/i;
 const MAX_TEXT = 4000;
 
 export const CHAT_SCHEMA = {
@@ -36,8 +44,10 @@ export function chatPrompt({ hasFilm = false, media = [], narrationReady = false
   return `You are the director inside a motion graphics app, talking with the person who wants a short animated film. Speak plainly and briefly, like a friendly producer. Never use emoji.
 
 Your job: learn what the film needs, then hand over a complete brief so it can be made.
-Before making a film you need: what it is for and what it must say; who will watch it; its length (${LENGTHS.join(', ')} seconds); its frame (16:9 wide, 9:16 tall for phones, 1:1 square, 4:5 portrait); the look (auto, ${STYLE_NAMES.join(', ')}); whether a voice should narrate it${media.length ? `; and whether to show the media they gave (${media.map((m) => `${m.kind === 'video' ? 'a clip' : 'a picture'} "${m.name}"`).join(', ')})` : ''}.
-Ask only for what you cannot reasonably decide yourself, at most three questions at a time, each with two to five short answers to tap. When the person leaves something to you, decide it well. When you have enough, make the film.${narrationReady ? '' : '\nNo voice is set up in the app yet: if they want narration, say it needs a voice chosen in Settings, under Voice.'}
+A film needs: what it is for and what it must say; who will watch it; its length (${LENGTHS.join(', ')} seconds); its frame (16:9 wide, 9:16 tall for phones, 1:1 square, 4:5 portrait); the look (auto, ${STYLE_NAMES.join(', ')}); whether a voice should narrate it${media.length ? `; and how to use the media they gave (${media.map((m) => `${m.kind === 'video' ? 'a clip' : 'a picture'} "${m.name}"`).join(', ')})` : ''}.
+Decide everything you reasonably can yourself, from what they said and what fits: length, frame, look and voice usually need no question. When their message already says what the film is for, make it now and say in one short sentence what you chose, so they can change it afterwards.
+Ask only when the film cannot be made well without it (what it is for, a name you do not know): one question, two at most, never one you asked before. Make each specific to their film, using its name and subject, with two to four concrete answers that are real choices. Never offer an answer such as "other", "I'll type it" or "let me tell you": they can always type their own.
+When they say they will write, send or add something, wait for it: reply briefly and ask nothing until it arrives.${narrationReady ? '' : '\nNo voice is set up in the app yet: if they want narration, say it needs a voice chosen in Settings, under Voice.'}
 ${hasFilm ? '\nA film is already made. If they ask for a change to it, choose "change" and say exactly what to change. If they want a different film, choose "make" with a new brief. If they only ask something, choose "answer".' : ''}
 
 Reply with JSON only:
@@ -74,19 +84,25 @@ export function chatMessages(history, state) {
 const str = (v, n) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, n) : '');
 
 // The model's reply, held to the shape the panel can show. A reply that is
-// not JSON is taken as words to show, asking nothing.
-export function normalizeChatReply(raw, { hasFilm = false } = {}) {
+// not JSON is taken as words to show, asking nothing. When the person's last
+// message said something is still to come from them (`waiting`), a reply that
+// would make the film waits instead.
+export function normalizeChatReply(raw, { hasFilm = false, waiting = false } = {}) {
   if (typeof raw === 'string') return { reply: str(raw, 1200) || 'Tell me a little more about the film.', questions: [], action: 'ask', brief: '', film: {}, change: '' };
   const r = raw && typeof raw === 'object' ? raw : {};
-  const questions = (Array.isArray(r.questions) ? r.questions : []).slice(0, 3).map((q) => ({
+  // Two questions at most; an answer that only means "I will type it" is left
+  // out, since every question can be answered in the person's own words.
+  const questions = (Array.isArray(r.questions) ? r.questions : []).slice(0, MAX_QUESTIONS).map((q) => ({
     ask: str(q?.ask, 200),
-    options: (Array.isArray(q?.options) ? q.options : []).map((o) => str(String(o ?? ''), 60)).filter(Boolean).slice(0, 5),
+    options: (Array.isArray(q?.options) ? q.options : []).map((o) => str(String(o ?? ''), 60)).filter((o) => o && !OWN_ANSWER.test(o)).slice(0, 4),
   })).filter((q) => q.ask);
   const actions = hasFilm ? ['ask', 'make', 'change', 'answer'] : ['ask', 'make'];
   let action = actions.includes(r.action) ? r.action : 'ask';
   const brief = str(r.brief, MAX_TEXT);
   const change = str(r.change, 1000);
   if (action === 'make' && !brief) action = 'ask';
+  const held = waiting && (action === 'make' || action === 'change');
+  if (held) action = 'ask';
   if (action === 'change' && !change) action = 'answer';
   const f = r.film && typeof r.film === 'object' ? r.film : {};
   const film = {};
@@ -96,6 +112,7 @@ export function normalizeChatReply(raw, { hasFilm = false } = {}) {
   if (f.style === 'auto' || STYLE_NAMES.includes(f.style)) film.style = f.style;
   if (typeof f.narration === 'boolean') film.narration = f.narration;
   if (typeof f.useMedia === 'boolean') film.useMedia = f.useMedia;
+  if (held) return { reply: 'Go ahead, type it in the box below. I will make the film once it is here.', questions: [], action, brief: '', film, change: '' };
   return { reply: str(r.reply, 1200) || (action === 'make' ? 'Making the film now.' : 'Tell me a little more about the film.'), questions: action === 'ask' ? questions : [], action, brief, film, change };
 }
 
@@ -115,6 +132,11 @@ export function normalizeChat(list) {
       const files = m.attachments.filter((a) => a && typeof a.key === 'string' && typeof a.name === 'string').slice(0, 20)
         .map((a) => ({ key: a.key.slice(0, 40), name: a.name.slice(0, 200), kind: ['image', 'video', 'sound', 'doc'].includes(a.kind) ? a.kind : 'doc' }));
       if (files.length) out.attachments = files;
+    }
+    if (role === 'person' && Array.isArray(m.answers)) {
+      const answers = m.answers.filter((a) => a && typeof a.ask === 'string' && typeof a.answer === 'string' && a.answer.trim()).slice(0, MAX_QUESTIONS + 1)
+        .map((a) => ({ ask: a.ask.slice(0, 200), answer: a.answer.slice(0, 600) }));
+      if (answers.length) out.answers = answers;
     }
     if (role === 'director') {
       const q = normalizeChatReply({ reply: text, questions: m.questions, action: 'ask' }).questions;

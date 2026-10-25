@@ -154,9 +154,12 @@ newest first, grouped by what it does for the person making a film.
 
 ### The editor
 - The left panel is a conversation with the director. Say what the film is
-  for in your own words; it asks for what is missing, a few questions at a
-  time with answers to tap, then writes the brief and the settings and
-  makes the film. Changes are asked for in the same conversation, which is
+  for in your own words; it decides what it can and asks only what it must,
+  two questions at most, each a card with answers to tap and a field for your
+  own words, and never offers "I'll type it" as an answer. When you say you
+  will send or write something, it waits for it instead of making the film.
+  Your answers show as question and answer pairs. Then it writes the brief
+  and the settings and makes the film. Changes are asked for in the same conversation, which is
   kept with the film. The model list sits at the top; the film's settings
   fold into one line under the conversation; a button beside the message box
   adds your pictures and clips.
