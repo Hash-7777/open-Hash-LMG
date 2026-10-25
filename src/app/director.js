@@ -322,5 +322,5 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
   // the film from its brief.
   makeBtn.addEventListener('click', () => { if (!running && chat.hasDraft()) chat.send(); else make(); });
   paintButtons();
-  return { el, makeBtn, busy: () => Boolean(running) };
+  return { el, makeBtn, busy: () => Boolean(running), say: (text) => chat.say(text) };
 }

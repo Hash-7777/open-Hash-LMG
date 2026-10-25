@@ -170,6 +170,15 @@ export function pickFiles(accept) {
 
 const MEDIA_ID = /^[0-9a-f]{24}$/;
 const sessionMedia = new Map(); // browser: id -> { url, file }
+
+// Browser: files kept for the session, as import items.
+function keepFiles(files) {
+  return files.filter(kindOfFile).slice(0, 50).map((f) => {
+    const id = hexId();
+    sessionMedia.set(id, { url: URL.createObjectURL(f), file: f });
+    return { id, name: f.name, kind: kindOfFile(f), size: f.size, mime: f.type };
+  });
+}
 const hexId = () => Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, '0')).join('');
 const kindOfFile = (f) => (f.type.startsWith('video/') ? 'video' : f.type.startsWith('image/') ? 'image' : f.type.startsWith('audio/') ? 'sound' : null);
 
@@ -177,11 +186,30 @@ export const media = {
   // [{ id, name, kind: video | image | sound, size, mime }]; empty when cancelled.
   async import() {
     if (isApp) return invoke('media_import');
-    const files = await pickFiles('video/*,image/*,audio/*');
-    return files.filter(kindOfFile).map((f) => {
-      const id = hexId();
-      sessionMedia.set(id, { url: URL.createObjectURL(f), file: f });
-      return { id, name: f.name, kind: kindOfFile(f), size: f.size, mime: f.type };
+    return keepFiles(await pickFiles('video/*,image/*,audio/*'));
+  },
+  // Files dropped on the window. In the desktop app the drop is read by the
+  // desktop side, which remembers the files and says only which ids it took;
+  // in a browser the dropped files are kept for the session.
+  //   onDrag(over: boolean), onDrop(items) as from import()
+  onDrop({ onDrag, onDrop }) {
+    if (isApp) {
+      const listen = (event, fn) => invoke('plugin:event|listen', { event, target: { kind: 'Any' }, handler: tauri.transformCallback((e) => fn(e.payload)) }).catch(() => {});
+      listen('media-drag', (over) => onDrag(Boolean(over)));
+      listen('media-drop', (items) => onDrop(Array.isArray(items) ? items : []));
+      return;
+    }
+    const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+    let depth = 0;
+    window.addEventListener('dragenter', (e) => { if (hasFiles(e)) { depth++; onDrag(true); } });
+    window.addEventListener('dragleave', (e) => { if (hasFiles(e) && --depth <= 0) { depth = 0; onDrag(false); } });
+    window.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
+    window.addEventListener('drop', (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth = 0;
+      onDrag(false);
+      onDrop(keepFiles([...e.dataTransfer.files]));
     });
   },
   // The address the window reads a file at, or '' when it is not known here.

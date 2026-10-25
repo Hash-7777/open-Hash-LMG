@@ -1,7 +1,8 @@
 // Footage, pictures and sound brought into a film.
 //
-// The person picks files in the system's own open dialog; the page never sees
-// or names a path. Each file is remembered by an id in a small list in the
+// The person picks files in the system's own open dialog, or drops them on
+// the window, where the drop is read here (lib.rs); the page never sees or
+// names a path. Each file is remembered by an id in a small list in the
 // app's data folder, and stays where it is, as a video editor links to its
 // media rather than copying it. The window reads a file through the app's own
 // address, lmgmedia, by id, in pieces of the size it asks for, so a long video
@@ -107,19 +108,24 @@ pub async fn media_import(app: AppHandle) -> Result<Vec<Item>, String> {
         .add_filter("Footage, pictures and sound", &["mp4", "m4v", "mov", "webm", "mkv", "png", "jpg", "jpeg", "webp", "gif", "mp3", "wav", "m4a", "aac", "flac", "ogg", "oga", "opus"])
         .blocking_pick_files();
     let Some(picked) = picked else { return Ok(Vec::new()) };
+    remember(&app, picked.into_iter().filter_map(|p| p.into_path().ok()).collect())
+}
+
+/// Remembers files the person chose or dropped on the window, keeping only
+/// files of the kinds a film takes; answers with what was taken. The same file
+/// again keeps its id.
+pub fn remember<R: Runtime>(app: &AppHandle<R>, files: Vec<PathBuf>) -> Result<Vec<Item>, String> {
     let _g = LOCK.lock().map_err(|_| "Busy.".to_string())?;
-    let path = list_path(&app)?;
+    let path = list_path(app)?;
     let mut list = read_list(&path);
     let mut out = Vec::new();
-    for p in picked {
-        let Ok(file) = p.into_path() else { continue };
+    for file in files.into_iter().take(50) {
         let name = file.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
         let Some((kind, mime)) = kind_of(&name) else { continue };
         let Ok(meta) = fs::metadata(&file) else { continue };
         if !meta.is_file() {
             continue;
         }
-        // The same file chosen again keeps its id.
         if let Some(k) = list.values().find(|k| k.path == file) {
             out.push(k.item.clone());
             continue;
@@ -128,7 +134,9 @@ pub async fn media_import(app: AppHandle) -> Result<Vec<Item>, String> {
         list.insert(item.id.clone(), Kept { path: file, item: item.clone() });
         out.push(item);
     }
-    write_list(&path, &list)?;
+    if !out.is_empty() {
+        write_list(&path, &list)?;
+    }
     Ok(out)
 }
 

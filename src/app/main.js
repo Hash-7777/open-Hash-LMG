@@ -19,7 +19,7 @@ import { openSettingsDialog } from './settings-dialog.js';
 import { openExportDialog } from './export-dialog.js';
 import { openProjectsDialog } from './projects-dialog.js';
 import { createSettingsStore } from '../platform/settings.js';
-import { storage, projects, newProjectId, isApp, invoke, keyVault } from '../platform/index.js';
+import { storage, projects, newProjectId, isApp, invoke, keyVault, media } from '../platform/index.js';
 import { initWindow } from '../platform/window.js';
 import { makeVersion } from './versions.js';
 import { createMediaPanel } from './media-panel.js';
@@ -150,6 +150,17 @@ async function boot() {
 
   // The left column: the director, or the film's media, by tab.
   mediaPanel = createMediaPanel({ store });
+  // Files dropped anywhere on the window join the film's media.
+  const veil = h('div', { class: 'drop-veil', hidden: true }, h('div', { class: 'drop-veil-text', text: 'Drop to add to the film\u2019s media' }));
+  document.body.append(veil);
+  media.onDrop({
+    onDrag: (over) => { veil.hidden = !over; },
+    onDrop: async (items) => {
+      if (!items.length) { toast('Only footage, pictures and sound can be added to a film.'); return; }
+      const names = await mediaPanel.addItems(items);
+      if (names.length) director.say(`Added ${names.map((n) => `"${n}"`).join(', ')}. I will show ${names.length === 1 ? 'it' : 'them'} in the film.`);
+    },
+  });
   const tabs = h('div', { class: 'panel-head side-tabs', role: 'tablist' });
   const showSide = (which) => {
     director.el.hidden = which !== 'director';

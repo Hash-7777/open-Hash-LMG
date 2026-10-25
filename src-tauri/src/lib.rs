@@ -48,6 +48,28 @@ pub fn run() {
             commands::web::web_search,
             commands::web::web_fetch,
         ])
+        // Files dropped on the window are remembered here, like files chosen in
+        // the open dialog; the page hears that something is over the window, and
+        // then which ids were taken, never a path.
+        .on_window_event(|window, event| {
+            use tauri::{DragDropEvent, Emitter, Manager, WindowEvent};
+            if let WindowEvent::DragDrop(drop) = event {
+                match drop {
+                    DragDropEvent::Enter { .. } | DragDropEvent::Over { .. } => {
+                        let _ = window.emit("media-drag", true);
+                    }
+                    DragDropEvent::Leave => {
+                        let _ = window.emit("media-drag", false);
+                    }
+                    DragDropEvent::Drop { paths, .. } => {
+                        let _ = window.emit("media-drag", false);
+                        let items = commands::media::remember(window.app_handle(), paths.clone()).unwrap_or_default();
+                        let _ = window.emit("media-drop", items);
+                    }
+                    _ => {}
+                }
+            }
+        })
         .on_page_load(|webview, payload| {
             #[cfg(debug_assertions)]
             self_test(webview, payload);

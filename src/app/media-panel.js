@@ -49,6 +49,11 @@ export function createMediaPanel({ store }) {
   async function importFiles() {
     let items;
     try { items = await media.import(); } catch (err) { toast(err.message || String(err), 'error'); return []; }
+    return addItems(items);
+  }
+
+  // Adds imported or dropped files to the film's media; returns their names.
+  async function addItems(items) {
     if (!items.length) return [];
     const names = [];
     importBtn.disabled = true;
@@ -128,5 +133,5 @@ export function createMediaPanel({ store }) {
 
   store.on('project', paint);
   paint();
-  return { el, show(on) { el.hidden = !on; }, importFiles };
+  return { el, show(on) { el.hidden = !on; }, importFiles, addItems };
 }

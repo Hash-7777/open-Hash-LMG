@@ -39,6 +39,8 @@ newest first, grouped by what it does for the person making a film.
 ### Your own footage
 - Import video, pictures and sound; files stay where they are and are read
   in pieces. A clip or a picture becomes a scene; a song becomes the music.
+- Files dropped anywhere on the window join the film's media; other kinds
+  of file are left out, and the director says what was added.
 - Clips have a start point, speed, volume and fit; the timeline's blade
   splits a scene at the playhead; a scene's entrances can be staggered.
 - Scenes are reordered by dragging their blocks along the timeline, with a

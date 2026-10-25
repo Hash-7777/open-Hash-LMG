@@ -63,8 +63,10 @@ The page reaches the computer only through the commands in
 - **Sound** is encoded by the system's own AAC encoder (macOS), from a WAV
   the page sends, through temporary files that are removed straight after.
 - **Footage, pictures and sound** are picked in the system's own open
-  dialog and remembered by an id in a list in the app's data folder; the
-  page never sees a path. The window reads a file through the app's own
+  dialog, or dropped on the window, where the desktop side reads the drop
+  itself (`src-tauri/src/lib.rs`), and are remembered by an id in a list in
+  the app's data folder; only files of the kinds a film takes are kept, and
+  the page never sees a path. The window reads a file through the app's own
   address (`lmgmedia`), by id only, in pieces of at most a few megabytes, and
   only files on that list can be read. The content policy names that address
   for media, pictures and reading sound, and nothing more.
