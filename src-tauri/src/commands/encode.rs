@@ -66,7 +66,7 @@ pub fn check_size(width: u32, height: u32) -> Result<(), String> {
     {
         return Err(format!("{width} by {height} is outside the sizes the encoder takes (16 to 4096 a side, up to 4K)."));
     }
-    if width % 2 != 0 || height % 2 != 0 {
+    if !width.is_multiple_of(2) || !height.is_multiple_of(2) {
         return Err("The frame's width and height must be even.".into());
     }
     Ok(())
@@ -279,7 +279,7 @@ pub fn mp3_encode(request: Request<'_>) -> Result<Response, String> {
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("The export sent something that is not sound.".into());
     };
-    if bytes.len() % 8 != 0 {
+    if !bytes.len().is_multiple_of(8) {
         return Err("The sound is not whole stereo samples.".into());
     }
     let samples: Vec<f32> = bytes

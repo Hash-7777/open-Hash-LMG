@@ -126,7 +126,7 @@ pub fn vorbis_encode(request: Request<'_>) -> Result<Response, String> {
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("The export sent something that is not sound.".into());
     };
-    if bytes.len() % 8 != 0 {
+    if !bytes.len().is_multiple_of(8) {
         return Err("The sound is not whole stereo samples.".into());
     }
     let samples: Vec<f32> = bytes
