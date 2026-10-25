@@ -1,7 +1,7 @@
 // Settings, Run history: every film made and change asked for, newest first.
 // One opens to its steps, its questions to the model with their answers, and
-// how it ended; any one, or all of them, can be saved as Markdown to hand to a
-// person or a coding agent for debugging.
+// how it ended; any one, or all of them, can be saved as Markdown, a full
+// record for debugging.
 
 import { h, clear, toast } from './dom.js';
 import { section, textButton } from './fields.js';

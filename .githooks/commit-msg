@@ -56,7 +56,7 @@ if [ -n "$found" ]; then
 fi
 
 # No other app, platform, product or skill named in the message either. The
-# list lives in scripts/checks/lib/barred-names.mjs, the one place it is written.
+# list is kept, as fingerprints, in scripts/checks/lib/barred-names.mjs.
 named="$(printf '%s' "$body" | node --input-type=module -e "
 import { findNames } from '$(git rev-parse --show-toplevel)/scripts/checks/lib/barred-names.mjs';
 let text = '';

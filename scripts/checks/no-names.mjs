@@ -5,13 +5,13 @@
 //
 // The model services and voice engines the app connects to are named, because
 // a person needs those names to set it up; operating systems are named where
-// a fact depends on them. The barred names are written once, in
-// lib/barred-names.mjs, which the commit-msg hook reads too.
+// a fact depends on them. The barred names are kept once, as fingerprints,
+// in lib/barred-names.mjs, which the commit-msg hook reads too.
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { root, ok, section, done } from './lib/check.mjs';
-import { PATTERN, BARRED } from './lib/barred-names.mjs';
+import { nameIn, fingerprintOf } from './lib/barred-names.mjs';
 
 const walk = (d) => (existsSync(d) ? readdirSync(d).flatMap((f) => { const p = join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; }) : []);
 const files = [
@@ -22,10 +22,15 @@ const files = [
 section('No other app, platform, product or skill is named');
 for (const f of files) {
   const lines = readFileSync(f, 'utf8').split('\n');
-  const hit = lines.findIndex((l) => PATTERN.test(l.replace(/-apple-system/g, '')));
-  ok(relative(root, f), hit < 0, hit < 0 ? '' : `line ${hit + 1}: ${lines[hit].match(PATTERN)[0]}`);
+  const hit = lines.findIndex((l) => nameIn(l));
+  ok(relative(root, f), hit < 0, hit < 0 ? '' : `line ${hit + 1}: ${nameIn(lines[hit])}`);
 }
 section('The rule works');
-ok('a name is caught', PATTERN.test(`Export for ${BARRED[BARRED.length - 1]}`));
-ok('an ordinary word is not', !PATTERN.test('a shortcut to the reel of shortstop fabric'));
+// Names are spelled in pieces here, so this file names nothing either.
+const piece = (...p) => p.join('');
+ok('a name is caught, in any case, inside a sentence', nameIn(`Export it for ${piece('Ch', 'atG', 'PT')} today`) === piece('ch', 'atg', 'pt'));
+ok('a name of two words is caught whatever the spacing', Boolean(nameIn(`made in ${piece('Fi', 'nal', '   ', 'C', 'ut')}`)));
+ok('an ordinary word is not', !nameIn('a shortcut to the reel of shortstop fabric'));
+ok('the list is fingerprints, not names', !/'[a-z][a-z ]+'/.test(readFileSync(join(root, 'scripts/checks/lib/barred-names.mjs'), 'utf8').split('FINGERPRINTS = ')[1].split(']);')[0]));
+ok('a fingerprint can be made for a new name', /^[0-9a-f]{16}$/.test(fingerprintOf('Some New App')));
 done();

@@ -2,7 +2,7 @@
 // happened: the settings it ran with (never a key), every step with its time,
 // every question put to the model with its answer and how long it took, what
 // the checks found and fixed, and how it ended. It can be written out as
-// Markdown, complete enough for a person or a coding agent to debug from.
+// Markdown, complete enough to debug a run from.
 //
 // Pure: the page keeps records (src/platform/runs.js) and fills them in as the
 // director reports; nothing here touches the page or the network.
