@@ -79,7 +79,7 @@ By default the look is matched to the brief: a calm brief, a technical one and a
 | **Templates** | Eight films to start from (a launch, an explainer, a year in numbers, an event teaser, a testimonial, a release, a quiet reveal, a calm app), each made whole at once with no model and directed like any other |
 | **Formats** | 16:9, 9:16, 1:1 and 4:5, at 24 to 60 frames a second |
 | **Sound** | Music the model composes for each film, written as code and played by the app's own instruments (mallet, plucked string, electric piano, synth, bass, pad, bells and drums), after the film's timing is final. Or seven built-in scores, chosen by the brief's mood: three designed ones (deep pulse, soft, cinematic) and four played grooves (bounce, drive, keys, arp), each with its own instruments, drums and a melody written for that film. All in the film's own tempo and key with its chords in one of three orders: a build into the reveal, a boom on the drop, a fade on the end card |
-| **Narration** | One line per scene, the music lowered under the voice, captions that light up word by word as they are said |
+| **Narration** | One script laid over the film, a line per beat that may run on across a cut, the music lowered under the voice; captions that light up word by word, when the brief asks for them |
 
 <br>
 

@@ -91,6 +91,7 @@ export function createDirector(deps) {
       direction: directionFor(storyboard, opts),
       style: opts.style, aspect: opts.aspect, fps: opts.fps, targetDuration: opts.seconds,
       narration: opts.narration, voice: opts.voice, assets: opts.assets, palette: opts.palette, score: opts.score,
+      captions: opts.captions ?? /\b(captions?|subtitles?|subtitled|captioned)\b/i.test(opts.brief || ''),
     });
   }
 

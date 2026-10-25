@@ -68,8 +68,9 @@ rules when it lays a storyboard out, so a guided film starts out passing them.
 | Rule | In the code | Source | Weight |
 |---|---|---|---|
 | Scenes start on the beat, so cuts land with the music. | The compiler rounds every scene to the beat grid; the score (`src/core/audio/score.js`) lands its drop on the reveal. | A cut that lands with a sound reads as one event (audiovisual synchrony). | Strong |
-| A line of narration ends before its scene hands over. | `voice-overrun`; fixed by holding the scene longer. | | |
-| A film comes out near the length asked for. | The compiler stretches holds when there is room and leaves out the least important beats when the words need far more time, keeping the opening, the name and the end; `length` reports what is left over. | One idea a shot. | Lore |
+| Narration is one script over the film: no scene stands still waiting for its line. | `placeNarration` in `src/core/scene/narration-timing.js` starts each line in its own scene after the one before it, lets it run on into the next scene for about a second, and lengthens a scene only by what a line needs beyond that; `voice-overrun` lays the lines out again. The storyboard prompt gives the voice a word budget for the film's length. | Write the narration as one flowing script and cut the picture to it; never freeze a shot to wait for a line (the skill's rejected cuts). | Lore |
+| No frame between scenes is empty. | Each scene's first words begin as it arrives; across a fade or a zoom the words leaving lift away in the first part of the change and the new ones arrive in the rest (`src/core/scene/compile.js`), checked in `scripts/checks/timing.mjs`. | No dead air between scenes (the skill's rejected cuts). | Lore |
+| A film comes out near the length asked for. | The compiler stretches holds when there is room and leaves out the least important beats when the words, or the narration said end to end, need far more time, keeping the opening, the name and the end; `length` reports what is left over. | One idea a shot. | Lore |
 | Loudness near -14 LUFS with true peaks under -1 dBTP. | `master()` in `src/core/audio/master.js`. | Platforms turn louder uploads down to about -14 LUFS (ITU-R BS.1770 measurement). | Fair |
 
 ## Editing

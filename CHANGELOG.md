@@ -6,6 +6,18 @@ newest first, grouped by what it does for the person making a film.
 ## Unreleased
 
 ### Making films
+- Narration is one script over the film: each line follows the one before
+  it and may run on across a cut, so no scene stands still waiting for its
+  line, and a scene is held longer only by what a line needs. The model is
+  given a word budget for the voice that fits the length asked for, and a
+  film whose voice needs far more time loses beats instead of running long.
+- No empty frames between scenes: each scene's words begin as it arrives,
+  and across a fade or a zoom the words leaving lift away just before the
+  new ones arrive.
+- A brief that lays out its order of moments (open on the logo, close on the
+  address) is followed beat for beat.
+- Captions show only when the brief asks for captions or subtitles; the
+  inspector still turns them on for any film.
 - The model draws the few things a film is about, from the brief's own
   subject, as line drawings that draw themselves on: a cup for a cafe, a bike
   for a bike service. Each drawing is checked and fitted, or set aside, and

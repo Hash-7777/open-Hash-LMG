@@ -39,7 +39,8 @@ brief
   -> review (optional)   a model that can see reads a contact sheet and asks for changes
   -> music               the model composes the score as code with the music kit; it
                          runs locked down and only places notes, which the app plays
-  -> narration           each line spoken in the chosen voice and timed word by word
+  -> narration           each line spoken in the chosen voice and timed word by word,
+                         then laid over the film as one script (src/core/scene/narration-timing.js)
   -> film                score, sound and frames, encoded and written to a file
 ```
 
@@ -63,7 +64,8 @@ src/
                          value cleaners, the storyboard, the direction, the compositions,
                          the pictures and the compositions built around them,
                          the person's own media and the compositions that show it,
-                         the compiler, the film checks and when they look, editing helpers,
+                         the compiler, narration laid over the film as one script,
+                         the film checks and when they look, editing helpers,
                          templates and examples
     engine/              easing, keyframes, paths, the drawing kit, entrances and exits,
                          the carry transition, repeated layers, the odometer, the renderer

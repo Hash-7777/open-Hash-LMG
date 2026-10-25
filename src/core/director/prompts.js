@@ -18,7 +18,7 @@ import { EXAMPLE_LAUNCH } from '../scene/examples.js';
 // The craft, in the words every prompt shares.
 export const CRAFT = [
   'One clear message per film; every scene serves it.',
-  'Open on the most striking moment: the first frame is already moving, never a black frame or a logo sting.',
+  'Open on the most striking moment: the first frame is already moving, never a black frame or a logo sting (unless the brief asks to open on its name).',
   'At most seven words on screen at once; one idea per scene.',
   'Hold each line long enough to read twice: about 0.8 s plus 2.5 words a second.',
   'Something new starts moving every two to four seconds; let important moments breathe.',
@@ -82,8 +82,17 @@ export const STORYBOARD_SCHEMA = {
   required: ['title', 'beats'],
 };
 
+// A narrator says about 2.6 words a second; the voice has the whole film to
+// say its lines in, a breath between each.
+export function narrationBudget(seconds, beats) {
+  const total = Math.max(6, Math.floor((seconds - 1) * 2.6 * 0.85));
+  const perLine = Math.max(4, Math.min(12, Math.floor((seconds / beats - 0.4) * 2.6)));
+  return { total, perLine };
+}
+
 export function storyboardPrompt({ seconds, narration }) {
   const beats = Math.max(3, Math.min(14, Math.round(seconds / 3.2)));
+  const voice = narrationBudget(seconds, beats);
   return `You are a motion designer writing the storyboard for a short animated film.
 Write ONLY the words and numbers of each beat. Layout, timing, colour and motion are done for you.
 
@@ -101,12 +110,12 @@ Beat kinds:
 - logo: the brand name in "text", tagline in "sub"
 - end: the name in "text", a web address or call to action in "sub"
 Put one accent word in "accent" when a word deserves the accent colour.
-Add "look": {"mood": one of calm, bold, playful, technical, luxury, warm, serious, energetic; "accent": a hex colour that suits the subject; "tempo": slow, medium or fast}.${narration ? '\nGive every beat a "say": one short spoken sentence of narration, at most 14 words, in plain speech.' : ''}
+Add "look": {"mood": one of calm, bold, playful, technical, luxury, warm, serious, energetic; "accent": a hex colour that suits the subject; "tempo": slow, medium or fast}.${narration ? `\nNarration: give beats a "say", one short spoken sentence in plain speech, at most ${voice.perLine} words; the voice speaks them one after another over the whole film, about ${voice.total} words in all, so a beat may have no line (a logo, a run of single words). The voice says the idea in full; the screen shows only its key words.` : ''}
 
 Craft:
 ${craftList()}
 
-The film should run about ${Math.round(seconds)} seconds: about ${beats} beats. Start with a hook. End with an end beat.
+The film should run about ${Math.round(seconds)} seconds: about ${beats} beats. When the brief sets out the order of its moments (what it opens on, what comes next, what it closes on), follow that order beat for beat, even when it opens on a name or a logo; otherwise start with a hook. End with an end beat.
 Reply with JSON only, no other text:
 {"title": "...", "look": {"mood": "...", "accent": "#...", "tempo": "..."}, "beats": [{"kind": "hook", "text": "..."}, ...]}`;
 }

@@ -10,6 +10,9 @@
 //   - one entrance family for titles, one for lines, one for lists, per style;
 //   - two or three transition families, cycled, never five;
 //   - a slow camera push on text scenes so nothing is ever fully still;
+//   - narration is one script laid over the film (narration-timing.js), so a
+//     scene never stands still waiting for its line to be said;
+//   - words leave as the next scene arrives, so no frame between scenes is empty;
 //   - vertical frames keep words inside the area phone apps leave clear.
 
 import { STYLE_PACKS, readingTime, wordCount, estimateSpeech } from './format.js';
@@ -24,6 +27,7 @@ import { layBeat } from './layouts.js';
 import { layPictureBeat } from './picture-layouts.js';
 import { layMediaBeat } from './media-layouts.js';
 import { cleanPicture } from './pictures.js';
+import { placeNarration, BREATH, LEAD } from './narration-timing.js';
 
 // Each style says how it marks an accent word while it holds.
 const ACCENT_HOLD = { studio: 'underline', paper: 'marker', mono: 'none', vivid: 'none', editorial: 'none', tech: 'underline', stage: 'none' };
@@ -107,6 +111,19 @@ export function compileStoryboard(input, opts = {}) {
     const pic = !own && b.picture ? cleanPicture(storyboard.pictures?.[b.picture]) : null;
     ({ layers, entrance, camera } = (own && layMediaBeat({ ...c, asset: own, key: b.media, occurrence: shown++ })) || (pic && layPictureBeat({ ...c, pic, occurrence: pictured++ })) || layBeat(c));
 
+    // The first words arrive as the scene does: a layout that waits before
+    // its first line moves earlier as a whole, so the change between scenes
+    // never leaves an empty frame.
+    if (b.kind !== 'words') {
+      const firstText = Math.min(...layers.filter((L) => L.type === 'text' || L.type === 'counter').map((L) => Number(L.at) || 0));
+      if (Number.isFinite(firstText) && firstText > 0) {
+        for (const L of layers) {
+          L.at = +Math.max(0, (Number(L.at) || 0) - firstText).toFixed(3);
+          if (L.in && typeof L.in === 'object' && Number.isFinite(L.in.at)) L.in.at = +Math.max(0, L.in.at - firstText).toFixed(3);
+        }
+      }
+    }
+
     // The film's camera moves, scene by scene; a chart and a run of single
     // words keep their own.
     if (D && b.kind !== 'chart' && b.kind !== 'words') camera = cameraFor(D, i, camera);
@@ -143,9 +160,10 @@ export function compileStoryboard(input, opts = {}) {
     const minHold = b.kind === 'end' ? 2.6 : b.kind === 'hook' ? 1.2 : 1.4;
     const settled = Math.max(0, ...probe.map((L) => entranceSpan(L).end));
     need = Math.max(need, settled + minHold, entrance + (b.kind === 'words' ? 0.9 : 0));
-    // Narration, when there is a line: the scene lasts until it has been said.
-    if (b.say && opts.narration !== false) need = Math.max(need, 0.15 + estimateSpeech(wordCount(b.say)) + 0.35);
     const length = Math.ceil(need / beat - 1e-6) * beat;
+    // The time its line of narration takes, for fitting the film's length;
+    // the line itself is placed over the film once the scenes are laid out.
+    const speech = b.say && opts.narration !== false ? estimateSpeech(wordCount(b.say)) + BREATH : 0;
 
     // The transition INTO this scene: titles and end cards zoom when the style
     // has a zoom; otherwise the pack's families take turns.
@@ -161,6 +179,7 @@ export function compileStoryboard(input, opts = {}) {
       note: [b.text, b.sub].filter(Boolean).join(' / ').slice(0, 200),
       length,
       read: need,
+      speech,
       words: probe.filter((L) => L.type === 'text').reduce((n, L) => n + wordCount(L.text), 0),
       settled,
       transition: { kind, duration: kind === 'cut' ? 0 : kind === 'dip' ? Math.min(0.6, beat * 1.5) : Math.min(0.5, beat), direction: dirs[i % dirs.length], ease: 'inOutCubic' },
@@ -189,11 +208,12 @@ export function compileStoryboard(input, opts = {}) {
   });
 
   // A handoff, not a pile-up: after a fade or a zoom, where both scenes share
-  // the frame, the new scene's words arrive as the old ones leave instead of
-  // crossing them.
+  // the frame, the words leaving lift away in the first part of the change
+  // while the new scene's words arrive in the rest of it, so they never cross
+  // and no frame between the two scenes is empty.
   scenes.forEach((S, i) => {
     if (i === 0 || !HANDOFF.has(S.transition.kind)) return;
-    const by = +(S.transition.duration * 0.85).toFixed(3);
+    const by = +(S.transition.duration * 0.4).toFixed(3);
     for (const L of S.layers) {
       L.at = +((L.at || 0) + by).toFixed(3);
       if (L.in && typeof L.in === 'object' && Number.isFinite(L.in.at)) L.in.at = +(L.in.at + by).toFixed(3);
@@ -206,10 +226,12 @@ export function compileStoryboard(input, opts = {}) {
   // important beats rather than running long: one idea a shot, and only the
   // ideas that fit. The opening, the first name and the end are always kept.
   if (opts.targetDuration) {
-    const total = () => scenes.reduce((n, S) => n + S.length, 0);
+    // The voice needs its time too: the film is as long as the longer of the
+    // two, the scenes laid end to end or the narration said end to end.
+    const total = () => Math.max(scenes.reduce((n, S) => n + S.length, 0), LEAD + scenes.reduce((n, S) => n + S.speech, 0));
     const dropped = [];
     const named = scenes.find((S) => S.name === 'title' || S.name === 'logo');
-    while (total() > opts.targetDuration * 1.2 && scenes.length > 3) {
+    while (total() > opts.targetDuration * 1.12 && scenes.length > 3) {
       let worst = -1;
       scenes.forEach((S, i) => {
         if (i === 0 || i === scenes.length - 1 || S === named) return;
@@ -252,7 +274,16 @@ export function compileStoryboard(input, opts = {}) {
   const sceneDocs = scenes.map((S, i) => {
     const next = scenes[i + 1];
     const extra = next ? next.transition.duration : 0;
-    const { length, read, words, settled, ...rest } = S;
+    // The words leaving: they lift away in the first part of a handoff into
+    // the next scene (see above), timed from this scene's final length.
+    if (next && HANDOFF.has(next.transition.kind)) {
+      const carried = next.transition.carry?.from;
+      for (const L of S.layers) {
+        if ((L.id && L.id === carried) || (L.until !== undefined && L.until < S.length) || (L.out && L.out !== 'none' && L.out.preset !== 'none')) continue;
+        L.out = { preset: L.type === 'text' ? 'soft' : 'fade', at: +S.length.toFixed(3), duration: +(extra * 0.4).toFixed(3), ease: 'inCubic' };
+      }
+    }
+    const { length, read, speech, words, settled, ...rest } = S;
     return { ...rest, duration: +(length + extra).toFixed(4) };
   });
 
@@ -276,13 +307,23 @@ export function compileStoryboard(input, opts = {}) {
     seed: D ? D.seed % 1e9 : undefined,
     scenes: sceneDocs,
     sound: { score: opts.score || D?.score || pack.score, hits, ...(D ? { key: D.key, progression: D.progression } : {}) },
+    // Captions repeat the voice in words on screen; a film shows them when
+    // asked for, since its own words are already there.
     voice: {
+      captions: Boolean(opts.captions),
       ...(opts.voice || {}),
       lines: opts.narration === false ? [] : beats.map((b, i) => (b.say ? { scene: `${b.kind}-${i + 1}`, text: b.say, at: 0.15 } : null)).filter(Boolean),
     },
     assets: opts.assets || {},
   };
   const { scene, notes: n2 } = normalizeScene(doc);
+  // The narration over the film: each line after the one before it, running
+  // on into the next scene for a moment; a scene is lengthened only where a
+  // line would run on too far.
+  if (scene.voice.lines.length) {
+    placeNarration(scene, (l) => estimateSpeech(wordCount(l.say || l.text)));
+    return { scene: normalizeScene(scene).scene, notes: [...notes, ...n2] };
+  }
   return { scene, notes: [...notes, ...n2] };
 }
 

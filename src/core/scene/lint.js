@@ -16,6 +16,7 @@ import { entranceSpan, exitSpan } from '../engine/motion.js';
 import { OVERSHOOT } from '../engine/ease.js';
 import { contrast } from '../util/color.js';
 import { normalizeScene } from './normalize.js';
+import { placeNarration } from './narration-timing.js';
 
 const resolve = (doc, c) => (doc.palette[c] ? doc.palette[c] : c);
 
@@ -138,20 +139,22 @@ export function lintScene(doc, opts = {}) {
     }
   });
 
-  // Narration must finish before its scene hands over to the next.
-  for (const line of doc.voice?.lines || []) {
-    const si = doc.scenes.findIndex((S) => S.id === line.scene);
-    if (si < 0) continue;
-    const S = doc.scenes[si];
-    const next = doc.scenes[si + 1];
-    const clip = line.clip ? doc.assets[line.clip] : null;
-    const spoken = clip ? clip.duration : estimateSpeech(wordCount(line.text));
-    const room = S.duration - (next && next.transition.kind !== 'cut' ? next.transition.duration / 2 : 0) - line.at;
-    if (spoken + 0.2 > room) {
-      add(clip ? 'warn' : 'info', 'voice-overrun', clip
-        ? `The narration for scene ${si + 1} runs ${(spoken + 0.2 - room).toFixed(1)} s past the scene.`
-        : `The narration for scene ${si + 1} will probably run past the scene once it is spoken.`, { scene: S.id }, { kind: 'extend-scene', scene: S.id, by: +(spoken + 0.2 - room).toFixed(2) });
+  // Narration is one script over the film (narration-timing.js): each line
+  // after the one before it, running on into the next scene for a moment at
+  // most. A line placed over another, or one that would run on too far, is
+  // laid out again; a scene is lengthened only by what its line needs.
+  if (doc.voice?.lines?.length) {
+    const copy = { scenes: doc.scenes.map((S) => ({ id: S.id, duration: S.duration, transition: { duration: S.transition.duration }, layers: [] })), voice: { lines: doc.voice.lines.map((l) => ({ ...l })) } };
+    const lengthOf = (l) => { const clip = l.clip ? doc.assets[l.clip] : null; return clip ? clip.duration : estimateSpeech(wordCount(l.say || l.text)); };
+    const { grown, moved } = placeNarration(copy, lengthOf);
+    const spoken = doc.voice.lines.some((l) => l.clip && doc.assets[l.clip]);
+    for (const g of grown) {
+      const si = doc.scenes.findIndex((S) => S.id === g.scene);
+      add(spoken ? 'warn' : 'info', 'voice-overrun', spoken
+        ? `The narration for scene ${si + 1} runs ${g.by.toFixed(1)} s further into the next scene than a line should.`
+        : `The narration for scene ${si + 1} will probably run too far into the next scene once it is spoken.`, { scene: g.scene }, { kind: 'place-narration' });
     }
+    if (!grown.length && moved) add('info', 'voice-placed', 'The narration lines can be laid out again so each follows the one before it.', {}, { kind: 'place-narration' });
   }
 
   // Layout rules, from measured boxes.
@@ -266,9 +269,12 @@ export function autofix(doc, issues) {
   const applied = [];
   const byScene = (id) => d.scenes.find((S) => S.id === id);
   const extended = new Map();
+  let placedVoice = false;
   for (const is of issues) {
     const f = is.fix;
     if (!f) continue;
+    // Laid out once, after every scene that is held longer has been.
+    if (f.kind === 'place-narration') { placedVoice = true; continue; }
     if (f.kind === 'extend-scene') {
       const S = byScene(f.scene);
       if (!S) continue;
@@ -344,9 +350,18 @@ export function autofix(doc, issues) {
   }
   for (const [id, by] of extended) {
     const S = byScene(id);
+    const before = S.duration;
     S.duration = +(S.duration + by + 0.1).toFixed(3);
-    for (const L of allLayers(S.layers)) if (L.until >= S.duration - by - 0.11) L.until = S.duration;
+    const handover = d.scenes[d.scenes.indexOf(S) + 1]?.transition.duration || 0;
+    for (const L of allLayers(S.layers)) {
+      if (L.until >= before - 0.011) L.until = S.duration;
+      if (L.out && Number.isFinite(L.out.at) && L.out.at >= before - handover - 0.011) L.out.at = +(L.out.at + S.duration - before).toFixed(3);
+    }
     applied.push(`Held scene ${d.scenes.indexOf(S) + 1} longer so its words can be read.`);
+  }
+  if (d.voice?.lines?.length && (placedVoice || extended.size)) {
+    const { grown } = placeNarration(d, (l) => { const clip = l.clip ? d.assets[l.clip] : null; return clip ? clip.duration : estimateSpeech(wordCount(l.say || l.text)); });
+    if (placedVoice) applied.push(grown.length ? `Laid the narration over the film again and held ${grown.length === 1 ? 'one scene' : `${grown.length} scenes`} a little longer for it.` : 'Laid the narration over the film again, each line after the one before it.');
   }
   return { scene: normalizeScene(d).scene, applied };
 }
