@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
 import { ask, listModels, gpuLayers } from '../../src/core/providers/client.js';
 import { modelProfile, sortModels, defaultModel, parseModelList } from '../../src/core/providers/models.js';
-import { buildRequest, THINKING_ROOM } from '../../src/core/providers/request.js';
+import { buildRequest, THINKING_ROOM, MORE_THINKING_ROOM } from '../../src/core/providers/request.js';
 
 const stream = (chunks) => new Response(new ReadableStream({ start(c) { for (const x of chunks) c.enqueue(new TextEncoder().encode(x)); c.close(); } }));
 const q = (provider, extra = {}) => ({ provider, model: 'm', key: 'k', messages: [{ role: 'user', content: 'x' }], ...extra });
@@ -144,10 +144,15 @@ await claim('thinking written inside the answer counts too', async () => {
   assert.equal(await ask(q('openrouter', { model: 'or-b', maxTokens: 600 }), r), '{"ok":1}');
   assert.equal(r.limits.length, 2);
 });
-await claim('a model still out of room with the extra room says so, after one more try only', async () => {
+await claim('a model still out of room with the extra room is asked once with a larger room, then says so', async () => {
   const r = recorder([thinkingCut]);
   await assert.rejects(ask(q('deepseek', { model: 'ds-c', maxTokens: 600 }), r), /used all the room/);
-  assert.equal(r.limits.length, 2);
+  assert.deepEqual(r.limits, [600, 600 + THINKING_ROOM, 600 + MORE_THINKING_ROOM]);
+});
+await claim('a model known to think that thinks through its room is asked once with a larger room, and comes back', async () => {
+  const r = recorder([thinkingCut, answered]);
+  assert.equal(await ask(q('deepseek', { model: 'ds-c', maxTokens: 3500 }), r), '{"ok":1}');
+  assert.deepEqual(r.limits, [3500 + THINKING_ROOM, 3500 + MORE_THINKING_ROOM]);
 });
 await claim('a long answer cut off without thinking is not asked again', async () => {
   const r = recorder(['data: {"choices":[{"delta":{"content":"partial"},"finish_reason":"length"}]}\n\n']);

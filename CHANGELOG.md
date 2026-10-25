@@ -118,7 +118,9 @@ newest first, grouped by what it does for the person making a film.
 - Current cloud models are sent only the settings they accept, with room to
   think; model lists come newest first.
 - A model that spends its answer's room on thinking is asked once more with
-  room for the thinking, and gets that room for the rest of the session.
+  room for the thinking, and gets that room for the rest of the session. One
+  that thinks through even that room on a long answer (a design part, a
+  score) is asked once more with a larger room before the step gives up.
 - LM Studio, llama.cpp and every cloud service are asked through the desktop
   side, so no server switch is needed, and the app's window reaches no host
   on the internet itself.

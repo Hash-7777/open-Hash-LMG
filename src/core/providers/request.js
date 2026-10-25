@@ -27,14 +27,17 @@ const GEMINI_THINKING = /gemini-(?:2\.5|[3-9])/i;
 const THINKS_BY_NAME = /reason|think|deepseek-r1|qwq/i;
 // Room for thinking on top of the answer, for the models that do it.
 export const THINKING_ROOM = 16000;
-const withRoom = (maxTokens) => maxTokens + THINKING_ROOM;
+// The larger room for one more try, after a model thought through all of the
+// usual room on a long answer (a design part, a score).
+export const MORE_THINKING_ROOM = 40000;
 // The shortest system text worth marking for Anthropic's cache: below about a
 // thousand tokens the service does not cache it.
 const CACHE_MIN_CHARS = 4500;
 
 // req: { provider, model, key, base, system, messages: [{ role, content, images: [dataUrl] }],
 //        json: boolean, schema: object|null, temperature, maxTokens, stream, numCtx, numGpu, keepAlive,
-//        thinks: the model is known to think first, so it gets room for that }
+//        thinks: the model is known to think first, so it gets room for that,
+//        room: how much room for thinking, when not the usual }
 export function buildRequest(req) {
   const p = PROVIDERS[req.provider];
   if (!p) throw new Error(`Unknown model service: ${req.provider}`);
@@ -90,7 +93,7 @@ export function buildRequest(req) {
     const bare = String(req.model || '').replace(/^[^/]+\//, '');
     const reasons = NO_TEMPERATURE.test(bare);
     const sampling = !reasons && !(/^claude-/i.test(bare) && !CLAUDE_SAMPLING.test(bare));
-    const limit = (reasons && p.newTokenField) || req.thinks || THINKS_BY_NAME.test(bare) ? withRoom(maxTokens) : maxTokens;
+    const limit = (reasons && p.newTokenField) || req.thinks || THINKS_BY_NAME.test(bare) ? maxTokens + (req.room ?? THINKING_ROOM) : maxTokens;
     if (p.newTokenField) body.max_completion_tokens = limit; else body.max_tokens = limit;
     if (sampling) body.temperature = temperature;
     // Services that report what a streamed answer used only when asked.
@@ -112,7 +115,7 @@ export function buildRequest(req) {
     const body = {
       model: req.model,
       stream,
-      max_tokens: sampling && !req.thinks ? maxTokens : withRoom(maxTokens),
+      max_tokens: sampling && !req.thinks ? maxTokens : maxTokens + (req.room ?? THINKING_ROOM),
       ...(sampling ? { temperature } : {}),
       // A long system text is marked for the service's cache: every part of a
       // film sends the same one, and a cached read costs a fraction of a fresh one.
@@ -141,7 +144,7 @@ export function buildRequest(req) {
           ...(m.images || []).map((u) => dataUrlParts(u)).filter(Boolean).map((d) => ({ inline_data: { mime_type: d.mime, data: d.data } })),
         ],
       })),
-      generationConfig: { temperature, maxOutputTokens: GEMINI_THINKING.test(model) || req.thinks ? withRoom(maxTokens) : maxTokens, ...(req.json ? { responseMimeType: 'application/json' } : {}) },
+      generationConfig: { temperature, maxOutputTokens: GEMINI_THINKING.test(model) || req.thinks ? maxTokens + (req.room ?? THINKING_ROOM) : maxTokens, ...(req.json ? { responseMimeType: 'application/json' } : {}) },
     };
     const action = stream ? 'streamGenerateContent?alt=sse' : 'generateContent';
     return { url: `${base}/v1beta/models/${encodeURIComponent(model)}:${action}`, init: { method: 'POST', headers, body: JSON.stringify(body) } };

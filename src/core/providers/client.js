@@ -9,7 +9,7 @@
 // does not know, a reply that stopped half way.
 
 import { PROVIDERS } from './catalog.js';
-import { buildRequest, readEvent, readUsage, mergeUsage, eventSplitter, describeFailure } from './request.js';
+import { buildRequest, MORE_THINKING_ROOM, readEvent, readUsage, mergeUsage, eventSplitter, describeFailure } from './request.js';
 import { modelsRequest, parseModelList, sortModels } from './models.js';
 import { stripThinking, speedOf } from './local.js';
 
@@ -53,7 +53,9 @@ const thinkers = new Set();
 //
 // A model that thinks before it answers can spend the room given for the
 // answer on its thinking. When an answer is cut off that way, the question is
-// asked once more with room for the thinking on top. Ollama is left out: its
+// asked once more with room for the thinking on top, and a model that had that
+// room and still used it all is asked once more with a larger one. Ollama is
+// left out: its
 // room is part of the reading window, sized before the question is sent.
 export async function ask(req, io) {
   const p = PROVIDERS[req.provider];
@@ -66,6 +68,11 @@ export async function ask(req, io) {
   if (r.stop === 'cut' && !thinks && p.style !== 'ollama' && (r.thought || !r.text.trim())) {
     thinkers.add(id);
     r = await askOnce({ ...req, thinks: true }, io, p);
+  }
+  if (r.stop === 'cut' && p.style !== 'ollama' && !r.text.trim() && !req.room) {
+    // It had the usual room for thinking and thought through all of it: one
+    // more try with a larger room, since the same room would end the same way.
+    r = await askOnce({ ...req, thinks: true, room: MORE_THINKING_ROOM }, io, p);
   }
   if (!r.text.trim() && r.stop === 'declined') throw new Error(`${p.label} declined to answer this brief. Try other words, or another model.`);
   if (!r.text.trim() && r.stop === 'cut') throw new Error(`${p.label} used all the room it was given before it wrote an answer. Try again, or choose another model.`);
