@@ -35,6 +35,13 @@ export function clear(el) {
   return el;
 }
 
+// Empties el and puts children in, skipping the empty ones (null, false) a
+// conditional leaves; Element.append would write them as text.
+export function fill(el, ...children) {
+  append(clear(el), children);
+  return el;
+}
+
 export function $(sel, root = document) { return root.querySelector(sel); }
 
 // A button with a drawn icon and a label that screen readers and tooltips read.

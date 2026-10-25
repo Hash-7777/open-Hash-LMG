@@ -89,6 +89,28 @@ for (const mov of [false, true]) {
     assert.ok(traks[1].children.some((b) => b.type === 'edts'), 'the sound skips its encoder priming with an edit list');
   });
 }
+// The sound's sample entry: the ISO form in an MP4, the QuickTime form in a
+// MOV (version 1, its configuration inside a 'wave' box), which is the one
+// players decode in a MOV.
+const tagAt = (bytes, tag, from = 0) => { for (let i = from; i < bytes.length - 4; i++) if (String.fromCharCode(...bytes.subarray(i, i + 4)) === tag) return i; return -1; };
+await claim('an MP4 carries the sound configuration directly in its sample entry', () => {
+  const file = muxMp4({ video: fakeVideo, audio, mov: false });
+  const entry = tagAt(file, 'mp4a');
+  assert.ok(entry > 0);
+  assert.equal(file[entry + 4 + 8] << 8 | file[entry + 4 + 9], 0, 'version 0');
+  assert.equal(tagAt(file, 'wave'), -1);
+  assert.ok(tagAt(file, 'esds', entry) > entry);
+});
+await claim('a MOV carries it the QuickTime way, in a wave box of a version 1 entry', () => {
+  const file = muxMp4({ video: fakeVideo, audio, mov: true });
+  const entry = tagAt(file, 'mp4a');
+  assert.equal(file[entry + 4 + 8] << 8 | file[entry + 4 + 9], 1, 'version 1');
+  const wave = tagAt(file, 'wave', entry);
+  assert.ok(wave > entry);
+  assert.ok(tagAt(file, 'frma', wave) > wave && tagAt(file, 'esds', wave) > wave);
+  const waveSize = new DataView(file.buffer, file.byteOffset).getUint32(wave - 4);
+  assert.ok(tagAt(file, 'esds', wave) < wave - 4 + waveSize, 'the configuration sits inside the wave box');
+});
 await claim('ADTS frames are split one by one', () => assert.equal(adtsFrames(adts).length, 100));
 await claim('a film without sound has one track', () => {
   const file = muxMp4({ video: fakeVideo });

@@ -128,16 +128,29 @@ function descriptor(tag, body) {
 }
 
 // AAC carries its configuration; MP3 (object type 0x6B) needs none.
-function mp4a(channels, sampleRate, asc, bitrate, codec = 'aac') {
+// A MOV needs the QuickTime form of the entry: a version 1 sound description
+// whose 'wave' box holds the configuration. Players read a MOV's sound with
+// the plain ISO entry as undecodable and play the film silent.
+function mp4a(channels, sampleRate, asc, bitrate, codec = 'aac', mov = false) {
+  const frameLen = codec === 'mp3' ? (sampleRate >= 32000 ? 1152 : 576) : 1024;
   const w = new Writer();
-  w.zeros(6).u16(1).zeros(8).u16(channels).u16(16).u16(0).u16(0).u32(sampleRate * 65536);
+  w.zeros(6).u16(1);
+  if (mov) w.u16(1).u16(0).u32(0).u16(channels).u16(16).u16(0xfffe).u16(0).u32(sampleRate * 65536).u32(frameLen).u32(0).u32(0).u32(2);
+  else w.zeros(8).u16(channels).u16(16).u16(0).u16(0).u32(sampleRate * 65536);
   const dcd = new Writer();
   dcd.u8(codec === 'mp3' ? 0x6b : 0x40).u8(0x15).u24(0).u32(bitrate).u32(bitrate);
   if (codec !== 'mp3') dcd.bytes(descriptor(5, asc));
   const es = new Writer();
   es.u16(1).u8(0).bytes(descriptor(4, dcd.out())).bytes(descriptor(6, Uint8Array.of(2)));
-  w.bytes(full('esds', 0, 0, (x) => x.bytes(descriptor(3, es.out()))));
-  return box('mp4a', w.out());
+  const esds = full('esds', 0, 0, (x) => x.bytes(descriptor(3, es.out())));
+  if (mov) {
+    const frma = new Writer();
+    frma.str(codec === 'mp3' ? '.mp3' : 'mp4a');
+    w.bytes(box('wave', box('frma', frma.out()), box('mp4a', new Uint8Array(4)), esds, new Uint8Array(8)));
+  } else {
+    w.bytes(esds);
+  }
+  return box(mov && codec === 'mp3' ? '.mp3' : 'mp4a', w.out());
 }
 
 function stbl(entry, samples, chunkOffset, { syncSamples = null, ctts = null } = {}) {
@@ -217,7 +230,7 @@ export function muxMp4({ video, audio = null, mov = false }) {
           box('minf',
             full('smhd', 0, 0, (w) => w.zeros(4)),
             dinf(),
-            stbl(mp4a(audio.channels, audio.sampleRate, audio.asc, audio.bitrate || 192000, audio.codec), aSamples, aOff))));
+            stbl(mp4a(audio.channels, audio.sampleRate, audio.asc, audio.bitrate || 192000, audio.codec, mov), aSamples, aOff))));
     }
     return box('moov', mvhd(durationMs, aSamples ? 3 : 2), vTrak, aTrak);
   };

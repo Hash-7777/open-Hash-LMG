@@ -5,7 +5,7 @@
 // so the editor stays usable, and the soundtrack is the same one the preview
 // plays. In the desktop app every format is encoded by the app's own encoders.
 
-import { h, clear, dialog } from './dom.js';
+import { h, clear, fill, dialog } from './dom.js';
 import { field, pair, select, textButton } from './fields.js';
 import { createHost } from '../render/host.js';
 import { renderVideo, renderStill, canEncodeVideo } from '../render/export.js';
@@ -20,7 +20,7 @@ const QUALITY = [['draft', 'Draft: small file'], ['good', 'Good'], ['high', 'Hig
 const BLUR = [['0', 'Off'], ['4', 'Soft'], ['8', 'Full']];
 const FORMATS = {
   mp4: { label: 'MP4 video', hint: 'Plays everywhere and uploads to every platform.', mime: 'video/mp4' },
-  mov: { label: 'MOV video', hint: 'For video editing apps.', mime: 'video/quicktime' },
+  mov: { label: 'MOV video', hint: 'For video editing apps. To send to a phone or a chat app, choose MP4.', mime: 'video/quicktime' },
   gif: { label: 'GIF animation', hint: 'Loops by itself, with no sound. Kept small: GIFs grow large quickly.', mime: 'image/gif' },
   png: { label: 'PNG picture', hint: 'The frame under the playhead, as a picture.', mime: 'image/png' },
   wav: { label: 'WAV sound', hint: 'The soundtrack alone, at full quality.', mime: 'audio/wav' },
@@ -69,7 +69,7 @@ export function openExportDialog({ store, settings, playhead = () => 0 }) {
     const p = plan();
     const fmt = FORMATS[s.container];
     const video = VIDEO.has(s.container);
-    clear(form).append(
+    fill(form,
       field('Format', select(s.container, Object.entries(FORMATS).map(([k, f]) => [k, available(k) ? f.label : `${f.label} (desktop app)`]), (v) => set({ container: v })), fmt.hint),
       s.container !== 'wav' && s.container !== 'mp3' ? pair(
         field('Size', select(String(s.size), RESOLUTIONS.map((r) => [String(r), r ? sizeLabel(r) : `The film’s own, ${scene.width} × ${scene.height}`]), (v) => set({ size: Number(v) }))),
