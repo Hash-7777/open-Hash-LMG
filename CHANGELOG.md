@@ -41,6 +41,9 @@ newest first, grouped by what it does for the person making a film.
   in pieces. A clip or a picture becomes a scene; a song becomes the music.
 - Clips have a start point, speed, volume and fit; the timeline's blade
   splits a scene at the playhead; a scene's entrances can be staggered.
+- Scenes are reordered by dragging their blocks along the timeline, with a
+  line where each will land, or with Alt and an arrow key; each move is one
+  step of undo.
 - A film made by a model shows the pictures and clips you imported: the
   model is told what each is and which beats may show it, a model that can
   see is shown your pictures, and anything it leaves out is placed on a

@@ -9,6 +9,7 @@
 import { splitScene } from '../core/scene/edit.js';
 import { h, clear, iconButton, drag, perFrame } from './dom.js';
 import { ICONS, LAYER_ICONS } from './icons.js';
+import { createSceneMover } from './scene-mover.js';
 import { estimateSpeech, wordCount, LIMITS } from '../core/scene/format.js';
 import { entranceSpan } from '../core/engine/motion.js';
 import { scorePlan } from '../core/audio/score.js';
@@ -35,6 +36,7 @@ export function createTimeline({ store, player, prefs }) {
   const scroller = h('div', { class: 'tl-scroll' });
   const playhead = h('div', { class: 'tl-playhead', 'aria-hidden': 'true' }, h('div', { class: 'tl-playhead-cap' }));
   const content = h('div', { class: 'tl-content' });
+  const mover = createSceneMover({ store, focusMoved: () => requestAnimationFrame(() => content.querySelector('.tl-scene.selected')?.focus()) });
   scroller.append(content);
 
   const snapBtn = iconButton(ICONS.snap, 'Snap to the beat', () => { prefs.snap = !prefs.snap; paintSnap(); });
@@ -156,12 +158,19 @@ export function createTimeline({ store, player, prefs }) {
       block.style.left = `${S.start * pps}px`;
       block.style.width = `${Math.max(2, S.duration * pps)}px`;
       block.addEventListener('pointerdown', (e) => {
-        if (e.target.classList.contains('tl-handle')) return;
+        if (e.target.classList.contains('tl-handle') || e.button !== 0) return;
         store.select({ scene: S.id, layer: null });
         const t = store.get().time;
         if (t < S.start || t >= S.start + S.duration) store.setTime(S.start + S.transition.duration);
+        // Selecting redraws the timeline; the selected block takes the keyboard.
+        requestAnimationFrame(() => content.querySelector('.tl-scene.selected')?.focus({ preventScroll: true }));
+        mover.pick(e, () => content.querySelector('.tl-scene.selected'), scene, i, pps);
       });
-      block.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); store.select({ scene: S.id, layer: null }); } });
+      block.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); store.select({ scene: S.id, layer: null }); }
+        // Alt with an arrow moves the scene one place along the film.
+        else if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); mover.move(S.id, i + (e.key === 'ArrowLeft' ? -1 : 1)); }
+      });
       const handle = h('div', { class: 'tl-handle end', title: 'Drag to change the length' });
       handle.addEventListener('pointerdown', (e) => {
         e.stopPropagation();

@@ -188,7 +188,7 @@ async function boot() {
     else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); inspector.deleteSelected(); }
   });
 
-  if (!settings.get().model.model) setTimeout(() => toast('Choose a model in Settings to make a film.'), 600);
+  if (!settings.get().model.model) setTimeout(() => toast('Choose a model at the top of the director panel to make a film.'), 600);
 }
 
 boot().catch((err) => {
