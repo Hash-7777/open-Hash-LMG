@@ -7,18 +7,78 @@
 
 <br><br>
 
-### Hash Local Motion Graphics
+## One sentence in. A finished motion-graphics film out.
 
-**Type what the film should say. Get a designed, timed, scored motion-graphics film back.**<br>
-Made by the model on your own computer, or by any cloud model on your own key.
+**Storyboard, kinetic type, drawings, an original score, narration and the export.**<br>
+**Made by the model on your laptop, or any cloud model on your own key.**
 
-<p><img alt="Status: in development" src="https://img.shields.io/badge/status-in%20development-d9b46c?style=flat-square&labelColor=12131c"> <img alt="Licence: GPL v3" src="https://img.shields.io/badge/licence-GPL%20v3-2d333b?style=flat-square&labelColor=12131c"> <img alt="Tauri v2" src="https://img.shields.io/badge/Tauri-v2-2d333b?style=flat-square&logo=tauri&logoColor=c9d1d9&labelColor=12131c"> <img alt="Local first" src="https://img.shields.io/badge/local-first-2d333b?style=flat-square&labelColor=12131c"> <img alt="Ollama, LM Studio, llama.cpp" src="https://img.shields.io/badge/Ollama%20%C2%B7%20LM%20Studio%20%C2%B7%20llama.cpp-2d333b?style=flat-square&labelColor=12131c"> <img alt="Vanilla JavaScript" src="https://img.shields.io/badge/vanilla-JavaScript-2d333b?style=flat-square&logo=javascript&logoColor=c9d1d9&labelColor=12131c"></p>
+<p><img alt="Status: in development" src="https://img.shields.io/badge/status-in%20development-d9b46c?style=flat-square&labelColor=12131c"> <img alt="Licence: GPL v3" src="https://img.shields.io/badge/licence-GPL%20v3-2d333b?style=flat-square&labelColor=12131c"> <img alt="Tauri v2" src="https://img.shields.io/badge/Tauri-v2-2d333b?style=flat-square&logo=tauri&logoColor=c9d1d9&labelColor=12131c"> <img alt="Local first" src="https://img.shields.io/badge/local-first-2d333b?style=flat-square&labelColor=12131c"> <img alt="Ollama, LM Studio, llama.cpp" src="https://img.shields.io/badge/Ollama%20%C2%B7%20LM%20Studio%20%C2%B7%20llama.cpp-2d333b?style=flat-square&labelColor=12131c"> <img alt="MP4, MOV, WebM, GIF" src="https://img.shields.io/badge/MP4%20%C2%B7%20MOV%20%C2%B7%20WebM%20%C2%B7%20GIF-2d333b?style=flat-square&labelColor=12131c"></p>
+
+[**Run it**](#run-it-in-four-steps) &nbsp;·&nbsp; [How it works](#how-a-film-is-made) &nbsp;·&nbsp; [Looks](#seven-looks-built-in) &nbsp;·&nbsp; [Where it stands](#where-it-stands) &nbsp;·&nbsp; [Architecture](docs/ARCHITECTURE.md)
 
 </div>
 
 <br>
 
-> **Hash LMG is Hash Local Motion Graphics.** The best AI models already make motion graphics by working like a studio: they plan the story, write the animation, render frames, look at the stills and fix what is wrong. Hash LMG turns that way of working into an app, and does the hard parts itself, so even a small model on a laptop can make a film that looks designed.
+> Type *"a 30-second launch film for my desk lamp, calm, with a voice"*.<br>
+> Hash LMG writes the storyboard, draws the lamp, lays out every frame, composes music for that one film, speaks the lines, checks its own stills and has it ready to export as an MP4.<br>
+> **It works with a three-billion-parameter model running on your laptop.**
+
+<br>
+
+## Why it is different
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Small models make real films.**<br>
+A small model cannot lay out a film, but it can write a good storyboard. So that is all it is asked for. Layout, timing, motion and sound are done by the app.
+
+</td>
+<td width="50%" valign="top">
+
+**No two films look alike.**<br>
+The look, the accent colour, the tempo and key of the music, the transitions and every composition are directed from the brief. Make the same brief again and it comes out as a new film.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+**It checks its own work.**<br>
+Frames are rendered and measured: words off the frame, too small, too faint, too fast to read, words crossing words mid-move, a scene that sits still. What rules can fix, they fix. The film is held to what the brief asked to see.
+
+</td>
+<td width="50%" valign="top">
+
+**Nothing leaves your machine.**<br>
+No account and no server of ours. With a local model every part of a film is made on your computer. A cloud model is asked only when you choose one, on your own key, kept by the desktop side.
+
+</td>
+</tr>
+</table>
+
+<br>
+
+## Run it in four steps
+
+There is no release yet. From this repository:
+
+```bash
+git clone https://github.com/Hash-7777/open-Hash-LMG.git
+cd open-Hash-LMG
+npm install
+npm run tauri dev
+```
+
+You need [Node.js](https://nodejs.org) 20 or later and [Rust](https://rustup.rs) 1.87 or later, plus:
+
+- **macOS:** the Xcode Command Line Tools (`xcode-select --install`).
+- **Linux:** the web view's libraries, for example on Debian or Ubuntu: `sudo apt install build-essential pkg-config libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev`.
+- **Windows:** the C++ build tools for Visual Studio and the WebView2 runtime (part of Windows 11).
+
+For a model on your computer, install [Ollama](https://ollama.com) and pull any model; Settings walks you through the rest. For a cloud model, add your key in Settings, under Cloud keys. `npm run tauri build` makes an installer under `src-tauri/target/release/bundle/`, and `npm run check` runs every check in under a minute, with Node alone.
 
 <br>
 
@@ -29,29 +89,25 @@ Made by the model on your own computer, or by any cloud model on your own key.
   <img src="docs/assets/pipeline-dark.svg" width="100%" alt="Brief, storyboard, design, check, film">
 </picture>
 
-| Step | What happens |
-|---|---|
-| **01 Brief** | You tell the director, in the left panel, what the film is for, in your own words. It decides what it reasonably can itself and asks only what it must, two questions at most, each a card with answers to tap and a field for your own words; when you say you will send or write something, it waits for it. It then writes the brief and the film's settings, says what it chose, and makes the film. Afterwards you ask for changes in the same conversation, which is kept with the film. |
-| **02 Storyboard** | The model writes the words and numbers, beat by beat: a hook, a statement, a stat, a list, a quote, an end card. Then it draws the few things the film is about, from the brief's own subject, as simple line drawings that draw themselves on in the film. |
-| **03 Design** | The app directs the film from the brief: a look, an accent colour, a tempo and key for the music, the transitions and camera moves it cuts with, and a composition for every scene, built around its drawing when it has one, so two briefs, or two takes of one brief, never come out alike. Then it times every line to how long it takes to read and starts every scene on the beat of the music. |
-| **04 Check** | Key moments are rendered and measured: text off the frame, outside a phone's safe area, too small, too faint, too fast to read, or a scene that sits still too long. What rules can fix, they fix. The film is also held to what the brief asks to see: what must appear, in what order, what counts up, what is on screen at the end. The rest goes back to the model. |
-| **05 Film** | An original score fitted to the cuts, composed by the model as code for this film alone, narration if you want it, mastered to the loudness video platforms play at, written to MP4, MOV, WebM (AV1 with Vorbis sound) or GIF at 480p to 4K and 24 to 60 frames a second, by encoders built into the app, the same on macOS, Windows and Linux. A still (PNG), every frame as PNG pictures in a ZIP with the soundtrack, or the sound alone (WAV, MP3) can be exported too. |
+| | Step | What happens |
+|---|---|---|
+| **01** | **Brief** | You tell the director what the film is for, in your own words. It decides what it can, asks at most two questions, and waits for anything you say you will send. |
+| **02** | **Storyboard** | The model writes the words and numbers, beat by beat, and draws the few things the film is about as line drawings that draw themselves on. |
+| **03** | **Design** | The app directs the film from the brief and lays out every scene, times each line to how long it takes to read, and starts every scene on the beat. |
+| **04** | **Check** | Key moments are rendered and measured, repaired by rule, and held to what the brief asked to see. The rest goes back to the model, once. |
+| **05** | **Film** | Music composed for this film, narration laid over it as one script, mastered to platform loudness and written to MP4, MOV, WebM or GIF, 480p to 4K. |
 
 <br>
 
 ## One app, any model
 
-A three-billion-parameter model cannot lay out a film. It can write a good storyboard. So Hash LMG gives every model the job it can actually do:
-
 | Way of working | For | The model writes | The app does |
 |---|---|---|---|
-| **Guided** | Small local models, under 10B | The storyboard's words and numbers, and line drawings of what the film is about | All of the layout, timing, motion and sound |
-| **Plan** | Mid-size and large models | A full scene plan, starting from the app's own design, a few scenes at a time | Repairs it, checks it, sends back only the scenes that are wrong |
-| **Code** | The strongest cloud models | Their own animation code, frame by frame | Runs it in a locked box with no network, no storage and no clock, then checks the stills |
+| **Guided** | Small local models, under 10B | The storyboard's words and numbers, and simple drawings | All of the layout, timing, motion and sound |
+| **Plan** | Mid-size and large models | A full scene plan, a few scenes at a time | Repairs it, checks it, sends back only what is wrong |
+| **Code** | The strongest cloud models | Their own animation code, frame by frame | Runs it in a locked box with no network, no storage and no clock |
 
-The app suggests the way of working from the model's size, and you can always choose another. A model that can see pictures also reviews a contact sheet of stills, like a creative director, and asks for changes once.
-
-Every answer is kept short enough to finish: a redesign goes a few scenes at a time, so a part that fails costs only that part, and a fix sends only the scenes the checks named. Plans are sent without empty values, every part starts with the same text so services that cache a request's start read it once, and a run's Markdown record lists the tokens each request used, as the service reported them.
+The app suggests the way of working from the model's size; you can always choose another. A model that can see also reviews a contact sheet of stills, like a creative director, and asks for changes once. Every answer is kept short enough to finish, and a run's Markdown record lists each request and the tokens it used.
 
 <br>
 
@@ -59,10 +115,10 @@ Every answer is kept short enough to finish: a redesign goes a few scenes at a t
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/assets/styles-light.svg">
-  <img src="docs/assets/styles-dark.svg" width="100%" alt="Studio, Paper, Mono, Vivid, Editorial and Tech">
+  <img src="docs/assets/styles-dark.svg" width="100%" alt="Studio, Paper, Mono, Vivid, Editorial, Stage and Tech">
 </picture>
 
-By default the look is matched to the brief: a calm brief, a technical one and a luxury one each get a look that suits them, and a model may suggest a mood, an accent colour and a tempo. Each style is a complete design: palette, type, background, and the two or three transitions it cuts with. **Studio** is near-black and quiet. **Paper** is a Swiss grid with a red mark. **Mono** types on and cuts on the beat. **Vivid** changes colour field scene by scene. **Editorial** sets serif headlines and holds long. **Tech** draws contour lines behind precise type. **Stage**, not pictured above, sets medium-weight type rising softly into place on a black stage, with one lit colour and figures that roll in on an odometer.
+**Studio** is near-black and quiet. **Paper** is a Swiss grid with a red mark. **Mono** types on and cuts on the beat. **Vivid** changes colour field scene by scene. **Editorial** sets serif headlines and holds long. **Stage** lifts type softly onto a black stage, with figures that roll in. **Tech** draws contour lines behind precise type. By default the look is matched to the brief.
 
 <br>
 
@@ -70,42 +126,25 @@ By default the look is matched to the brief: a calm brief, a technical one and a
 
 | Part | What it does |
 |---|---|
-| **Kinetic type** | Letters, words, typewriter, mask reveals and wipes, with accent words, underlines drawn on and highlighter sweeps |
+| **Kinetic type** | Letters, words, typewriter, mask reveals and wipes; accent words, underlines drawn on, highlighter sweeps |
 | **Motion** | Sixteen entrances, among them a panel that unfolds from its top edge, plus exits, holds and keyframes, eased the way motion designers ease: fast in, no bounce |
-| **Shapes and data** | Rings, lines, arrows and any SVG path drawn on stroke by stroke; counters that count up; bar and line charts that grow |
-| **Camera and cuts** | Slow pushes and pans per scene; push, slide, zoom-through, wipe, fade and dip transitions, and a carry that moves one element into the next scene while the rest crossfades: the same words, or the same picture moving and growing into a closer look |
-| **Your own footage** | Video (MP4, MOV, WebM), pictures and sound imported from this computer, a file at a time or a whole folder, or dropped on the window, and linked where they are, never copied: a clip or a picture becomes a scene, trimmed by where it starts and how long it runs, split at the playhead, moved along the film by dragging, faded, titled over and set louder or quieter; a song plays as the film's music in place of the score. A film a model makes shows your pictures and clips: the model is told what you gave it (and shown your pictures, when it can see), puts each on the beats it suits, a list, steps or a figure set in a column beside it, and any it leaves out are placed on suitable beats, whole and framed; a picture shown once gets a second, closer look on the next beat, carried there from its first place |
-| **Your brand** | Text files (TXT, Markdown, CSV, JSON) given to the director with your pictures: the model writes from your names, facts and voice, colours written in them as hex become the film's colour, and a picture named like a logo goes on the beats that show the brand. Add files or a folder from the conversation, or drop them on it; each message keeps what came with it |
-| **Templates** | Eight films to start from (a launch, an explainer, a year in numbers, an event teaser, a testimonial, a release, a quiet reveal, a calm app), each made whole at once with no model and directed like any other |
+| **Camera and cuts** | Slow pushes and pans; push, slide, zoom-through, wipe, fade and dip; a carry that moves one element, the same words or the same picture, into the next scene |
+| **Shapes and data** | Rings, lines, arrows and paths drawn on stroke by stroke; counters that count up; bar and line charts that grow |
+| **Your media** | Your pictures, clips and songs, linked where they are and never copied. A model's film puts them on the beats they suit, with a closer second look on the next one |
+| **Your brand** | Text files read as your names, facts and voice; hex colours in them become the film's colour; a picture named like a logo goes where the brand shows |
+| **Sound** | Music the model composes for each film as code, played by the app's own instruments, or one of seven built-in scores in the film's own tempo and key |
+| **Narration** | One script laid over the film in the voice you choose, the music lowered under it; captions that light up word by word when the brief asks for them |
+| **Templates** | Eight films to start from, made whole at once with no model |
 | **Formats** | 16:9, 9:16, 1:1 and 4:5, at 24 to 60 frames a second |
-| **Sound** | Music the model composes for each film, written as code and played by the app's own instruments (mallet, plucked string, electric piano, synth, bass, pad, bells and drums), after the film's timing is final. Or seven built-in scores, chosen by the brief's mood: three designed ones (deep pulse, soft, cinematic) and four played grooves (bounce, drive, keys, arp), each with its own instruments, drums and a melody written for that film. All in the film's own tempo and key with its chords in one of three orders: a build into the reveal, a boom on the drop, a fade on the end card |
-| **Narration** | One script laid over the film, a line per beat that may run on across a cut, the music lowered under the voice; captions that light up word by word, when the brief asks for them |
 
 <br>
 
 ## Models and voices
 
-**On your computer:** Ollama, LM Studio and llama.cpp, asked by the desktop app where a server would refuse a web page, so no server switch is needed.<br>
+**On your computer:** Ollama, LM Studio and llama.cpp, asked by the desktop app, so no server switch is needed.<br>
 **In the cloud, on your own key:** Anthropic, OpenAI, Google Gemini, OpenRouter, Groq, DeepSeek, Mistral, xAI, Moonshot, Together AI, Fireworks AI and Cerebras.<br>
-**Looking things up:** before the storyboard, the model may ask to search the web or read a page named in the brief. You see every search and page and say yes first; a search key (Tavily) gives better results, and Wikipedia is searched without one.<br>
-**Choosing:** one list at the top of the director's conversation holds every model you can use now, grouped by service and asked of each service when it opens, so it is always that service's current list. Each service remembers the model last chosen on it.<br>
-**Voices:** Chatterbox and Kokoro through your own install, pointed at once in Settings, on the processor or the graphics chip; any local speech server; or OpenAI's voices. Lines are spoken when a film with narration is made, or from a scene's inspector.
-
-<br>
-
-## Run it from source
-
-There is no release yet. To run Hash LMG from this repository:
-
-1. Install [Node.js](https://nodejs.org) 20 or later and [Rust](https://rustup.rs) 1.87 or later.
-   - **macOS:** the Xcode Command Line Tools (`xcode-select --install`).
-   - **Linux:** the web view's libraries, for example on Debian or Ubuntu: `sudo apt install build-essential pkg-config libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev`.
-   - **Windows:** the C++ build tools for Visual Studio and the WebView2 runtime (part of Windows 11).
-2. `npm install`
-3. `npm run tauri dev` opens the app. `npm run tauri build` makes an installer under `src-tauri/target/release/bundle/`.
-4. For a model on your computer, install [Ollama](https://ollama.com) and pull any model; Settings walks through the rest. For a cloud model, add your key in Settings, under Cloud keys.
-
-`npm run check` runs every check in a few seconds, with Node alone.
+**Looking things up:** the model may ask to search the web or read a page named in the brief; you see every search and page and say yes first.<br>
+**Voices:** Chatterbox and Kokoro through your own install, any local speech server, or OpenAI's voices.
 
 <br>
 
@@ -130,12 +169,11 @@ Hash LMG is being built in the open. This is exactly what exists today:
 
 ## Built to stay yours
 
-Hash LMG is designed so that:
-
-- **There is no account and no server of ours.** Requests go from your computer to the model you chose, and nowhere else.
-- **It works offline.** With a local model, every part of a film is made on your computer.
+- **No account, no server of ours.** Requests go from your computer to the model you chose, and nowhere else.
+- **Works offline.** With a local model, every part of a film is made on your computer.
 - **Your films are files.** A project is one JSON file; an export is a normal video.
-- **It is readable to the last line.** Plain JavaScript and Rust, no bundler, no minified code.
+- **Readable to the last line.** Plain JavaScript and Rust, no bundler, no minified code.
+- **Walled in.** Code a model writes runs with no network, storage or clock; every question to a model treats your files and the web as material, never instructions. See [docs/SECURITY.md](docs/SECURITY.md).
 
 <br>
 
@@ -161,15 +199,13 @@ src-tauri/         the desktop side: films, exports, sound, encoders, media, voi
 scripts/checks/    the check suite: every script under it runs on npm run check
 ```
 
-How the parts fit together and how a film is made: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The walls around keys, files, the network and code a model writes: [docs/SECURITY.md](docs/SECURITY.md). The motion rules the films follow, and where each comes from: [docs/MOTION-RULES.md](docs/MOTION-RULES.md). What has changed: [CHANGELOG.md](CHANGELOG.md).
+How the parts fit together: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The walls around keys, files, the network and code a model writes: [docs/SECURITY.md](docs/SECURITY.md). The motion rules the films follow, and where each comes from: [docs/MOTION-RULES.md](docs/MOTION-RULES.md). What has changed: [CHANGELOG.md](CHANGELOG.md).
 
 <br>
 
 ## Contributing
 
 Issues and pull requests are welcome. Before a pull request, run `npm run check`, and `cargo test` in `src-tauri/` when the Rust side changed; [CONTRIBUTING.md](CONTRIBUTING.md) has the few rules the code keeps.
-
-<br>
 
 ## Licence
 
