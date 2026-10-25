@@ -14,6 +14,7 @@ import { STORYBOARD, measure } from './lib/fixtures.mjs';
 import { statUnits, normalizeStoryboard } from '../../src/core/scene/storyboard.js';
 import { autofix, motionTimes, beatTimes } from '../../src/core/scene/lint.js';
 import { resizeScene } from '../../src/core/scene/edit.js';
+import { chooseDirection } from '../../src/core/scene/direction.js';
 import { forWorker } from '../../src/render/host.js';
 import { encodeWav, bytesToBase64 } from '../../src/core/audio/wav.js';
 
@@ -44,6 +45,30 @@ ok('the example that opens a new project does too', measure(normalizeScene(EXAMP
   const fixed = autofix(plain, [hit]).scene;
   ok('and repaired so frame one draws', measure(fixed, [0])[0].boxes.some((b) => b.tag));
   ok('and the repair holds through normalising', JSON.stringify(normalizeScene(fixed).scene) === JSON.stringify(fixed));
+}
+{
+  // An opening whose every layer starts a little after the film: the repair
+  // moves them all earlier together, so the warning does not survive it.
+  const late = normalizeScene({ scenes: [{ duration: 4, layers: [
+    { type: 'shape', shape: 'line', w: 400, h: 0, at: 0.1, in: 'draw' },
+    { type: 'text', text: 'Motion, made clear.', at: 0.35, in: 'rise' },
+  ] }] }).scene;
+  const hit = lintScene(late, {}).find((i) => i.code === 'empty-open');
+  ok('an opening that starts every layer late is caught', Boolean(hit));
+  const fixed = autofix(late, [hit]).scene;
+  ok('and its repair leaves no empty opening behind', !lintScene(fixed, {}).some((i) => i.code === 'empty-open'));
+  const [a, b] = fixed.scenes[0].layers;
+  ok('the layers keep their order and spacing', a.at === 0 && Math.abs(b.at - 0.25) < 1e-9);
+  ok('and frame one draws', measure(fixed, [0])[0].boxes.some((x) => x.tag));
+}
+for (const kind of ['hook', 'statement', 'title', 'stat', 'list', 'words', 'logo', 'quote']) {
+  const sb = normalizeStoryboard({ title: 'T', beats: [{ kind, text: 'An opening line', sub: 'and more', value: 3, items: ['a', 'b'], words: ['One', 'Two'], by: 'Someone' }, { kind: 'end', text: 'T', sub: 't.example' }] }).storyboard;
+  const late = [];
+  for (let take = 0; take < 24; take++) {
+    const { scene } = compileStoryboard(sb, { direction: chooseDirection({ brief: ['calm launch', 'bold sale', 'playful snack', 'technical release'][take % 4], take }), targetDuration: 15 });
+    if (lintScene(scene, {}).some((i) => i.code === 'empty-open')) late.push(take);
+  }
+  ok(`a film that opens on its ${kind} beat never opens on an empty frame, in any direction`, !late.length, `takes ${late.join(', ')}`);
 }
 
 section('Words never cross words while they move');

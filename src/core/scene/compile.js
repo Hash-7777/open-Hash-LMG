@@ -18,7 +18,7 @@ import { normalizeStoryboard } from './storyboard.js';
 import { beatLength } from '../engine/math.js';
 import { entranceSpan } from '../engine/motion.js';
 import { contrast } from '../util/color.js';
-import { PREROLL } from './lint.js';
+import { preroll } from './samples.js';
 import { layoutFor, cameraFor } from './direction.js';
 import { layBeat } from './layouts.js';
 import { layPictureBeat } from './picture-layouts.js';
@@ -224,13 +224,7 @@ export function compileStoryboard(input, opts = {}) {
 
   // Frame one is a picture already forming, never an empty frame: what opens
   // the film begins its entrance a moment before the film does.
-  for (const L of scenes[0]?.layers || []) {
-    if ((L.at || 0) > 0) continue;
-    const m = typeof L.in === 'string' ? { preset: L.in } : { ...(L.in || {}) };
-    if (m.preset === 'none') continue;
-    m.at = -PREROLL;
-    L.in = m;
-  }
+  if (scenes[0]?.layers?.length) preroll(scenes[0].layers);
 
   // A requested length stretches the holds, never shortens them below reading
   // time, and never holds a scene still for longer than its words deserve.

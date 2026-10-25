@@ -24,6 +24,8 @@ newest first, grouped by what it does for the person making a film.
   film, and what is missing goes back once.
 - The film checks catch words crossing words mid-move, a screen frozen for
   more than two beats, and an empty first frame, and repair what they can.
+  An opening whose every layer starts a moment late is moved earlier as a
+  whole, so its first frame is already forming.
 - A carry transition moves one element into the next scene; any layer can be
   repeated by a rule; the Stage look adds a settling ease and figures that
   roll in on an odometer.

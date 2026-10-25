@@ -38,7 +38,7 @@ function readableSpan(doc, si, L) {
 
 // The moments the checks look at, and the first-frame preroll, live in samples.js.
 export { PREROLL, sampleTimes, motionTimes, beatTimes } from './samples.js';
-import { frameShift, PREROLL } from './samples.js';
+import { frameShift, preroll } from './samples.js';
 
 // Safe areas, as fractions of the frame: titles stay inside these.
 export function safeArea(doc) {
@@ -301,8 +301,7 @@ export function autofix(doc, issues) {
     } else if (f.kind === 'preroll') {
       const S = byScene(f.scene);
       if (!S) continue;
-      for (const L of S.layers) if (L.at <= 0 && L.in.preset !== 'none' && !(L.in.at < 0)) L.in.at = -PREROLL;
-      applied.push('Opened the film on a picture already forming instead of an empty frame.');
+      if (preroll(S.layers)) applied.push('Opened the film on a picture already forming instead of an empty frame.');
     } else if (f.kind === 'dip') {
       const S = byScene(f.scene);
       if (!S || S.transition.kind === 'dip' || S.transition.kind === 'cut') continue;

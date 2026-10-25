@@ -14,6 +14,27 @@ function allLayers(layers, out = []) {
 // How far into its entrance the opening line already is on the first frame.
 export const PREROLL = 0.4;
 
+// Opens a scene on a picture already forming: its layers move earlier
+// together until the first starts at once, and every layer that starts at
+// once begins its entrance PREROLL seconds before the scene does. Layers are
+// the scene's own, as written or normalised; it changes them in place and
+// returns how many were opened early.
+export function preroll(layers) {
+  const at = (L) => Number(L.at) || 0;
+  const t0 = Math.min(...layers.map(at));
+  if (Number.isFinite(t0) && t0 > 0) for (const L of layers) L.at = Math.max(0, at(L) - t0);
+  let n = 0;
+  for (const L of layers) {
+    if (at(L) > 0) continue;
+    const m = typeof L.in === 'string' ? { preset: L.in } : { ...(L.in || {}) };
+    if (m.preset === 'none') continue;
+    if (!(m.at < 0)) m.at = -PREROLL;
+    L.in = m;
+    n++;
+  }
+  return n;
+}
+
 export function sampleTimes(doc) {
   const times = [];
   doc.scenes.forEach((S, si) => {
