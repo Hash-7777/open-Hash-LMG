@@ -42,8 +42,10 @@ newest first, grouped by what it does for the person making a film.
 - Files dropped anywhere on the window join the film's media; other kinds
   of file are left out.
 - Files and whole folders can be added from the conversation, or dropped on
-  it: they wait as chips over the message box and go with the next message,
-  which keeps them. A folder brings the pictures, clips, sound and text
+  it: they wait as small tiles over the message box and go with the next
+  message, which keeps them. Each tile shows what the file is, on frosted
+  glass: a picture itself (opened larger with a click), a clip a frame and
+  its length, a sound its length, a text file its first lines. A folder brings the pictures, clips, sound and text
   files inside it and the folders in it, hidden ones left out.
 - Text files (TXT, Markdown, CSV, JSON) are kept with the film for the
   model to read: the storyboard step gets them in full, up to a few thousand

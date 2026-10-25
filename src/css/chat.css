@@ -56,19 +56,117 @@
 .attach-btn { width: 32px; height: 32px; border-radius: var(--r-m); border: 1px solid var(--line); background: transparent; color: var(--muted); }
 .attach-btn:hover { color: var(--ink); }
 
-/* Files for the film, waiting over the box, and kept in the message they went with. */
-.chat-attach { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Files for the film: small square tiles waiting over the box, larger ones at
+   their own shape in the message they went with. Each sits on a pane of
+   frosted glass: a translucent fill, a hairline edge and a faint light along
+   the top, the picture under it softened where the name runs. */
+:root {
+  --glass: rgba(255, 255, 255, 0.055);
+  --glass-edge: rgba(255, 255, 255, 0.13);
+  --glass-light: rgba(255, 255, 255, 0.09);
+  --glass-cap: rgba(14, 15, 18, 0.55);
+  --glass-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+}
+:root[data-theme="light"] {
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-edge: rgba(20, 20, 24, 0.12);
+  --glass-light: rgba(255, 255, 255, 0.9);
+  --glass-cap: rgba(255, 255, 255, 0.7);
+  --glass-shadow: 0 8px 22px rgba(20, 20, 24, 0.12);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --glass: rgba(255, 255, 255, 0.62);
+    --glass-edge: rgba(20, 20, 24, 0.12);
+    --glass-light: rgba(255, 255, 255, 0.9);
+    --glass-cap: rgba(255, 255, 255, 0.7);
+    --glass-shadow: 0 8px 22px rgba(20, 20, 24, 0.12);
+  }
+}
+
+.chat-attach { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 4px; }
 .chat-attach[hidden] { display: none; }
-.msg-attach { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.attach-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 4px 3px 8px; border: 1px solid var(--line-strong); border-radius: var(--r-m); background: var(--panel-2); font-size: var(--text-xs); color: var(--ink-2); }
-.msg-attach .attach-chip { padding-right: 8px; background: transparent; }
-.attach-kind { color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; }
-.attach-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px; }
-.attach-x { display: grid; place-items: center; width: 18px; height: 18px; border: 0; border-radius: var(--r-s); background: transparent; color: var(--muted); cursor: pointer; }
-.attach-x:hover { color: var(--ink); background: var(--raised); }
-.attach-x svg { width: 10px; height: 10px; }
+.msg-attach { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.msg-attach.one { grid-template-columns: minmax(0, 1fr); }
+
+.attach-tile {
+  position: relative;
+  flex: none;
+  width: 76px;
+  height: 76px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--glass-edge);
+  border-radius: 12px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--glass-light), var(--glass-shadow);
+}
+.attach-tile.large { width: 100%; height: 112px; border-radius: 14px; }
+/* One file alone keeps its picture's own shape. */
+.msg-attach.one .attach-tile.large.image, .msg-attach.one .attach-tile.large.video { height: auto; max-height: 210px; }
+.attach-tile.opens { cursor: zoom-in; }
+.attach-tile.gone { opacity: 0.55; }
+
+.attach-face { display: block; width: 100%; height: 100%; object-fit: cover; }
+.attach-tile.large .attach-face { object-fit: cover; }
+.attach-face.glyph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding-bottom: 16px; color: var(--ink-2); }
+.attach-face.glyph svg { width: 20px; height: 20px; }
+.attach-len { font-size: var(--text-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+.attach-face.text { height: auto; max-height: calc(100% - 22px); padding: 7px 8px 0; font-size: 9.5px; line-height: 1.35; color: var(--ink-2); overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.attach-tile.large .attach-face.text { font-size: var(--text-xs); -webkit-line-clamp: 4; }
+.attach-face.blank { display: grid; place-items: center; color: var(--faint); }
+.attach-face.blank svg { width: 14px; height: 14px; }
+
+.attach-cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 7px 4px;
+  background: var(--glass-cap);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--glass-edge);
+  font-size: 10px;
+  color: var(--ink);
+}
+.attach-kind { flex: none; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 8.5px; }
+.attach-tile:not(.large) .attach-kind { display: none; }
+.attach-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attach-badge { position: absolute; top: 5px; right: 5px; padding: 1px 5px; border-radius: 6px; background: var(--glass-cap); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); font-size: 9.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.attach-x {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  background: var(--glass-cap);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--ink);
+  cursor: pointer;
+}
+.attach-x:hover { background: var(--raised); }
+.attach-x svg { width: 9px; height: 9px; }
+
+/* A picture opened from the conversation. */
+.dialog.picture-view { width: min(1100px, calc(100vw - 48px)); }
+.picture-view-img { display: block; max-width: 100%; max-height: calc(100vh - 160px); margin: 0 auto; border-radius: var(--r-m); }
 
 .chat-compose { position: relative; }
 .attach-menu { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 20; display: flex; flex-direction: column; min-width: 240px; padding: 4px; border: 1px solid var(--line-strong); border-radius: var(--r-l); background: var(--raised); box-shadow: var(--shadow); }
 .attach-menu button { padding: 8px 10px; border: 0; border-radius: var(--r-s); background: transparent; text-align: left; font-size: var(--text-s); color: var(--ink); cursor: pointer; }
 .attach-menu button:hover, .attach-menu button:focus-visible { background: var(--panel-2); outline: none; }
+/* A message that carries files is as wide as a message may be, so its tiles have room. */
+.msg.person:has(.msg-attach) { width: 88%; }

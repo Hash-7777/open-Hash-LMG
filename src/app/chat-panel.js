@@ -15,6 +15,7 @@ import { ICONS } from './icons.js';
 import { select, toggle, ASPECT_SHORT } from './fields.js';
 import { ASPECTS, STYLE_PACKS, STYLE_NAMES } from '../core/scene/format.js';
 import { createSuggestions, openIdeasDialog } from './suggestions.js';
+import { attachmentTile } from './attachment-tile.js';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120];
 const TIER_SHORT = { guided: 'Guided', plan: 'Plan', code: 'Code' };
@@ -44,14 +45,10 @@ export function createChatPanel({ store, settings, picker, converse, onMake, onC
   const outside = (e) => { if (menu && !menu.contains(e.target) && e.target !== attachBtn && !attachBtn.contains(e.target)) closeMenu(); };
   function closeMenu() { menu?.remove(); menu = null; window.removeEventListener('pointerdown', outside, true); }
 
-  const KIND_WORD = { image: 'Picture', video: 'Clip', sound: 'Sound', doc: 'Text' };
-  const chip = (a, remove) => h('span', { class: 'attach-chip', title: `${KIND_WORD[a.kind] || 'File'}: ${a.name}` },
-    h('span', { class: 'attach-kind', text: KIND_WORD[a.kind] || 'File' }),
-    h('span', { class: 'attach-name', text: a.name }),
-    remove ? h('button', { type: 'button', class: 'attach-x', 'aria-label': `Take ${a.name} out of the film`, html: ICONS.cross, onclick: remove }) : null);
   function paintAttach() {
     attachRow.hidden = !pending.length;
-    clear(attachRow).append(...pending.map((a) => chip(a, () => { if (onDetach(a.key)) { pending = pending.filter((x) => x.key !== a.key); paintAttach(); } })));
+    const project = store.get().project;
+    clear(attachRow).append(...pending.map((a) => attachmentTile(a, project, { onRemove: () => { if (onDetach(a.key)) { pending = pending.filter((x) => x.key !== a.key); paintAttach(); } } })));
   }
   // Files added from the menu, the Media panel or a drop on the window.
   function attach(list) {
@@ -103,7 +100,7 @@ export function createChatPanel({ store, settings, picker, converse, onMake, onC
   }
 
   function bubble(m) {
-    if (m.role === 'person') return h('div', { class: 'msg person' }, h('div', { class: 'msg-text', text: m.text }), m.attachments?.length ? h('div', { class: 'msg-attach' }, ...m.attachments.map((a) => chip(a))) : null);
+    if (m.role === 'person') return h('div', { class: 'msg person' }, h('div', { class: 'msg-text', text: m.text }), m.attachments?.length ? h('div', { class: `msg-attach${m.attachments.length === 1 ? ' one' : ''}` }, ...m.attachments.map((a) => attachmentTile(a, store.get().project, { large: true }))) : null);
     return h('div', { class: `msg director${m.kind ? ` ${m.kind}` : ''}` },
       h('div', { class: 'msg-text', text: m.text }),
       m.brief ? h('details', { class: 'msg-brief' }, h('summary', { text: 'The brief' }), h('p', { text: m.brief })) : null,
