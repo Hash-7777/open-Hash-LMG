@@ -159,12 +159,13 @@ export function pickFile(accept) {
 }
 
 // Asks for several files through the page's own picker. Resolves to Files.
-export function pickFiles(accept) {
+export function pickFiles(accept, { folder = false } = {}) {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.multiple = true;
     input.accept = accept || '';
+    if (folder) input.webkitdirectory = true;
     input.style.display = 'none';
     let done = false;
     const finish = (list) => { if (done) return; done = true; input.remove(); resolve(list); };
@@ -175,75 +176,9 @@ export function pickFiles(accept) {
   });
 }
 
-// ---- footage, pictures and sound ------------------------------------------
-//
-// In the desktop app, files are picked in the system's dialog and remembered
-// by the app under an id (src-tauri/src/commands/media.rs), then read through
-// its own address in pieces. In a browser they are picked with the page's own
-// picker and kept for the session only.
+// ---- footage, pictures, sound and text files: src/platform/media.js ------
 
-const MEDIA_ID = /^[0-9a-f]{24}$/;
-const sessionMedia = new Map(); // browser: id -> { url, file }
-
-// Browser: files kept for the session, as import items.
-function keepFiles(files) {
-  return files.filter(kindOfFile).slice(0, 50).map((f) => {
-    const id = hexId();
-    sessionMedia.set(id, { url: URL.createObjectURL(f), file: f });
-    return { id, name: f.name, kind: kindOfFile(f), size: f.size, mime: f.type };
-  });
-}
-const hexId = () => Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, '0')).join('');
-const kindOfFile = (f) => (f.type.startsWith('video/') ? 'video' : f.type.startsWith('image/') ? 'image' : f.type.startsWith('audio/') ? 'sound' : null);
-
-export const media = {
-  // [{ id, name, kind: video | image | sound, size, mime }]; empty when cancelled.
-  async import() {
-    if (isApp) return invoke('media_import');
-    return keepFiles(await pickFiles('video/*,image/*,audio/*'));
-  },
-  // Files dropped on the window. In the desktop app the drop is read by the
-  // desktop side, which remembers the files and says only which ids it took;
-  // in a browser the dropped files are kept for the session.
-  //   onDrag(over: boolean), onDrop(items) as from import()
-  onDrop({ onDrag, onDrop }) {
-    if (isApp) {
-      const listen = (event, fn) => invoke('plugin:event|listen', { event, target: { kind: 'Any' }, handler: tauri.transformCallback((e) => fn(e.payload)) }).catch(() => {});
-      listen('media-drag', (over) => onDrag(Boolean(over)));
-      listen('media-drop', (items) => onDrop(Array.isArray(items) ? items : []));
-      return;
-    }
-    const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
-    let depth = 0;
-    window.addEventListener('dragenter', (e) => { if (hasFiles(e)) { depth++; onDrag(true); } });
-    window.addEventListener('dragleave', (e) => { if (hasFiles(e) && --depth <= 0) { depth = 0; onDrag(false); } });
-    window.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
-    window.addEventListener('drop', (e) => {
-      if (!hasFiles(e)) return;
-      e.preventDefault();
-      depth = 0;
-      onDrag(false);
-      onDrop(keepFiles([...e.dataTransfer.files]));
-    });
-  },
-  // The address the window reads a file at, or '' when it is not known here.
-  url(id) {
-    if (!MEDIA_ID.test(String(id))) return '';
-    if (isApp) return /Windows/.test(navigator.userAgent) ? `http://lmgmedia.localhost/${id}` : `lmgmedia://localhost/${id}`;
-    return sessionMedia.get(id)?.url || '';
-  },
-  // The whole file, for a picture carried in the film or sound to decode.
-  async read(id) {
-    if (!isApp) {
-      const kept = sessionMedia.get(id);
-      if (!kept) throw new Error('That file was imported in an earlier session; import it again.');
-      return kept.file;
-    }
-    const res = await fetch(this.url(id));
-    if (!res.ok) throw new Error('The file could not be read. It may have been moved or renamed.');
-    return res.blob();
-  },
-};
+export { media } from './media.js';
 
 // ---- model services, asked by the desktop side ------------------------------
 //

@@ -12,6 +12,7 @@
 
 import { normalizeScene } from '../core/scene/normalize.js';
 import { normalizeChat } from '../core/director/chat.js';
+import { normalizeDocs } from '../core/director/brand.js';
 
 export const PROJECT_FORMAT = 'lmg.project/1';
 const TIERS = ['guided', 'plan', 'code'];
@@ -28,6 +29,8 @@ export function normalizeProject(input, newId) {
     brief: typeof p.brief === 'string' ? p.brief.slice(0, 4000) : '',
     // The conversation with the director that this film came from.
     chat: normalizeChat(p.chat),
+    // Text files the person gave for the film: brand notes, copy, facts.
+    docs: normalizeDocs(p.docs),
     storyboard: isObj(p.storyboard) ? p.storyboard : null,
     scene,
     code: typeof p.code === 'string' && p.code.trim() ? p.code : null,

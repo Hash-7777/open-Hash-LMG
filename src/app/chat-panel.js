@@ -20,22 +20,54 @@ const LENGTHS = [15, 30, 45, 60, 90, 120];
 const TIER_SHORT = { guided: 'Guided', plan: 'Plan', code: 'Code' };
 
 // deps: { store, settings, picker, converse(history) -> reply, onMake(brief), onChange(text),
-//         busy(), onAttach(), tierOf() -> { way, suggested, help } }
-export function createChatPanel({ store, settings, picker, converse, onMake, onChange, busy, onAttach, tierOf }) {
+//         busy(), onAttach({ folder }) -> [{ key, name, kind }], onDetach(key) -> taken out,
+//         tierOf() -> { way, suggested, help } }
+export function createChatPanel({ store, settings, picker, converse, onMake, onChange, busy, onAttach, onDetach, tierOf }) {
   const thread = h('div', { class: 'chat-thread', role: 'log', 'aria-live': 'polite', 'aria-label': 'Conversation with the director' });
   const input = h('textarea', { class: 'input textarea chat-input', rows: '2', maxlength: '4000', placeholder: 'Message the director', 'aria-label': 'Message to the director' });
   const sendBtn = iconButton(ICONS.send, 'Send', () => send(), 'send-btn');
-  const attachBtn = iconButton(ICONS.plus, 'Add your pictures or clips', async () => {
-    const names = await onAttach();
-    if (names?.length) say(`Added ${names.map((n) => `"${n}"`).join(', ')}. I will show ${names.length === 1 ? 'it' : 'them'} in the film.`);
-  }, 'attach-btn');
+  // Files for the film, shown as chips over the box until the message goes.
+  let pending = [];
+  const attachRow = h('div', { class: 'chat-attach', hidden: true });
+  const attachBtn = iconButton(ICONS.plus, 'Add pictures, clips, sound, text files or a folder', () => toggleMenu(), 'attach-btn');
+  attachBtn.setAttribute('aria-haspopup', 'menu');
+  let menu = null;
+  function toggleMenu() {
+    if (menu) { closeMenu(); return; }
+    const choose = async (folder) => { closeMenu(); attach(await onAttach({ folder })); };
+    menu = h('div', { class: 'attach-menu', role: 'menu' },
+      h('button', { type: 'button', role: 'menuitem', text: 'Files: pictures, clips, sound or text', onclick: () => choose(false) }),
+      h('button', { type: 'button', role: 'menuitem', text: 'A folder, such as brand pictures and notes', onclick: () => choose(true) }));
+    attachBtn.parentElement.append(menu);
+    setTimeout(() => window.addEventListener('pointerdown', outside, true));
+  }
+  const outside = (e) => { if (menu && !menu.contains(e.target) && e.target !== attachBtn && !attachBtn.contains(e.target)) closeMenu(); };
+  function closeMenu() { menu?.remove(); menu = null; window.removeEventListener('pointerdown', outside, true); }
+
+  const KIND_WORD = { image: 'Picture', video: 'Clip', sound: 'Sound', doc: 'Text' };
+  const chip = (a, remove) => h('span', { class: 'attach-chip', title: `${KIND_WORD[a.kind] || 'File'}: ${a.name}` },
+    h('span', { class: 'attach-kind', text: KIND_WORD[a.kind] || 'File' }),
+    h('span', { class: 'attach-name', text: a.name }),
+    remove ? h('button', { type: 'button', class: 'attach-x', 'aria-label': `Take ${a.name} out of the film`, html: ICONS.cross, onclick: remove }) : null);
+  function paintAttach() {
+    attachRow.hidden = !pending.length;
+    clear(attachRow).append(...pending.map((a) => chip(a, () => { if (onDetach(a.key)) { pending = pending.filter((x) => x.key !== a.key); paintAttach(); } })));
+  }
+  // Files added from the menu, the Media panel or a drop on the window.
+  function attach(list) {
+    const fresh = (list || []).filter((a) => a && !pending.some((x) => x.key === a.key));
+    if (!fresh.length) return;
+    pending = [...pending, ...fresh].slice(-20);
+    paintAttach();
+    input.focus();
+  }
   const summary = h('summary', { class: 'film-settings-line' });
   const options = h('div', { class: 'dir-options' });
   const settingsBox = h('details', { class: 'film-settings' }, summary, options);
   const el = h('aside', { class: 'director chat', 'aria-label': 'Director' },
     h('div', { class: 'chat-top' }, picker.el),
     thread,
-    h('div', { class: 'chat-bottom' }, settingsBox,
+    h('div', { class: 'chat-bottom' }, settingsBox, attachRow,
       h('div', { class: 'chat-compose' }, attachBtn, input, sendBtn)));
 
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
@@ -71,7 +103,7 @@ export function createChatPanel({ store, settings, picker, converse, onMake, onC
   }
 
   function bubble(m) {
-    if (m.role === 'person') return h('div', { class: 'msg person' }, h('div', { class: 'msg-text', text: m.text }));
+    if (m.role === 'person') return h('div', { class: 'msg person' }, h('div', { class: 'msg-text', text: m.text }), m.attachments?.length ? h('div', { class: 'msg-attach' }, ...m.attachments.map((a) => chip(a))) : null);
     return h('div', { class: `msg director${m.kind ? ` ${m.kind}` : ''}` },
       h('div', { class: 'msg-text', text: m.text }),
       m.brief ? h('details', { class: 'msg-brief' }, h('summary', { text: 'The brief' }), h('p', { text: m.brief })) : null,
@@ -119,10 +151,11 @@ export function createChatPanel({ store, settings, picker, converse, onMake, onC
 
   // ---- talking -----------------------------------------------------------------
   async function send(given) {
-    const text = String(given ?? input.value).trim();
+    const files = given === undefined ? pending : [];
+    const text = String(given ?? input.value).trim() || (files.length ? 'Here are some files for the film.' : '');
     if (!text || thinking || busy()) return;
-    if (given === undefined) { input.value = ''; input.style.height = ''; }
-    push({ role: 'person', text });
+    if (given === undefined) { input.value = ''; input.style.height = ''; pending = []; paintAttach(); }
+    push({ role: 'person', text, ...(files.length ? { attachments: files.map(({ key, name, kind }) => ({ key, name, kind })) } : {}) });
     thinking = true;
     paint();
     let reply;
@@ -157,5 +190,5 @@ export function createChatPanel({ store, settings, picker, converse, onMake, onC
   settings.subscribe(paintOptions);
   paintOptions();
   paint();
-  return { el, say, paint, focus: () => input.focus(), send, hasDraft: () => Boolean(input.value.trim()) };
+  return { el, say, paint, attach, focus: () => input.focus(), send, hasDraft: () => Boolean(input.value.trim() || pending.length) };
 }

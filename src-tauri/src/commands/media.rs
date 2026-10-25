@@ -1,8 +1,9 @@
-// Footage, pictures and sound brought into a film.
+// Footage, pictures, sound and text files brought into a film.
 //
-// The person picks files in the system's own open dialog, or drops them on
-// the window, where the drop is read here (lib.rs); the page never sees or
-// names a path. Each file is remembered by an id in a small list in the
+// The person picks files or a folder in the system's own open dialog, or
+// drops them on the window, where the drop is read here (lib.rs); the page
+// never sees or names a path. A folder brings the files of the kinds a film
+// takes from inside it, two levels deep, hidden ones left out. Each file is remembered by an id in a small list in the
 // app's data folder, and stays where it is, as a video editor links to its
 // media rather than copying it. The window reads a file through the app's own
 // address, lmgmedia, by id, in pieces of the size it asks for, so a long video
@@ -63,6 +64,10 @@ pub fn kind_of(name: &str) -> Option<(&'static str, &'static str)> {
         "flac" => ("sound", "audio/flac"),
         "ogg" | "oga" => ("sound", "audio/ogg"),
         "opus" => ("sound", "audio/ogg"),
+        // Text the model reads: brand notes, copy, a list of facts.
+        "txt" | "md" | "markdown" => ("doc", "text/plain; charset=utf-8"),
+        "csv" => ("doc", "text/csv; charset=utf-8"),
+        "json" => ("doc", "application/json"),
         _ => return None,
     })
 }
@@ -105,21 +110,73 @@ pub async fn media_import(app: AppHandle) -> Result<Vec<Item>, String> {
     let picked = app
         .dialog()
         .file()
-        .add_filter("Footage, pictures and sound", &["mp4", "m4v", "mov", "webm", "mkv", "png", "jpg", "jpeg", "webp", "gif", "mp3", "wav", "m4a", "aac", "flac", "ogg", "oga", "opus"])
+        .add_filter("Footage, pictures, sound and text", &["mp4", "m4v", "mov", "webm", "mkv", "png", "jpg", "jpeg", "webp", "gif", "mp3", "wav", "m4a", "aac", "flac", "ogg", "oga", "opus", "txt", "md", "markdown", "csv", "json"])
         .blocking_pick_files();
     let Some(picked) = picked else { return Ok(Vec::new()) };
     remember(&app, picked.into_iter().filter_map(|p| p.into_path().ok()).collect())
 }
 
-/// Remembers files the person chose or dropped on the window, keeping only
-/// files of the kinds a film takes; answers with what was taken. The same file
-/// again keeps its id.
+/// Opens the system's dialog for a folder, and remembers the files in it a
+/// film takes.
+#[tauri::command]
+pub async fn media_import_folder(app: AppHandle) -> Result<Vec<Item>, String> {
+    let Some(picked) = app.dialog().file().blocking_pick_folder() else { return Ok(Vec::new()) };
+    let folder = picked.into_path().map_err(|e| format!("That folder cannot be read: {e}"))?;
+    remember(&app, vec![folder])
+}
+
+const MOST: usize = 60;
+
+/// The files a path stands for: a file itself, or the files of the kinds a
+/// film takes inside a folder, two levels deep, hidden files and folders and
+/// links left out, in name order, at most MOST.
+pub fn expand(paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    fn walk(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
+        let Ok(rd) = fs::read_dir(dir) else { return };
+        let mut entries: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
+        entries.sort();
+        for p in entries {
+            if out.len() >= MOST {
+                return;
+            }
+            let hidden = p.file_name().map(|n| n.to_string_lossy().starts_with('.')).unwrap_or(true);
+            let Ok(meta) = fs::symlink_metadata(&p) else { continue };
+            if hidden || meta.file_type().is_symlink() {
+                continue;
+            }
+            if meta.is_dir() {
+                if depth > 0 {
+                    walk(&p, depth - 1, out);
+                }
+            } else if kind_of(&p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default()).is_some() {
+                out.push(p);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for p in paths {
+        if out.len() >= MOST {
+            break;
+        }
+        if p.is_dir() {
+            walk(&p, 1, &mut out);
+        } else {
+            out.push(p);
+        }
+    }
+    out
+}
+
+/// Remembers files the person chose or dropped on the window, a folder
+/// standing for the files inside it, keeping only files of the kinds a film
+/// takes; answers with what was taken. The same file again keeps its id.
 pub fn remember<R: Runtime>(app: &AppHandle<R>, files: Vec<PathBuf>) -> Result<Vec<Item>, String> {
+    let files = expand(files);
     let _g = LOCK.lock().map_err(|_| "Busy.".to_string())?;
     let path = list_path(app)?;
     let mut list = read_list(&path);
     let mut out = Vec::new();
-    for file in files.into_iter().take(50) {
+    for file in files.into_iter().take(MOST) {
         let name = file.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
         let Some((kind, mime)) = kind_of(&name) else { continue };
         let Ok(meta) = fs::metadata(&file) else { continue };
@@ -225,8 +282,24 @@ mod tests {
         assert_eq!(kind_of("Clip.MOV"), Some(("video", "video/quicktime")));
         assert_eq!(kind_of("song.mp3"), Some(("sound", "audio/mpeg")));
         assert_eq!(kind_of("logo.png"), Some(("image", "image/png")));
-        assert_eq!(kind_of("notes.txt"), None);
+        assert_eq!(kind_of("Brand notes.md"), Some(("doc", "text/plain; charset=utf-8")));
+        assert_eq!(kind_of("colours.json"), Some(("doc", "application/json")));
+        assert_eq!(kind_of("archive.zip"), None);
         assert_eq!(kind_of("noextension"), None);
+    }
+
+    #[test]
+    fn a_folder_brings_its_files_two_levels_deep_and_nothing_hidden() {
+        let root = std::env::temp_dir().join(format!("hash-lmg-folder-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(root.join("shots/old/older")).unwrap();
+        fs::create_dir_all(root.join(".cache")).unwrap();
+        for f in ["logo.png", "brand.md", "notes.zip", ".secret.txt", "shots/a.png", "shots/old/b.png", "shots/old/older/c.png", ".cache/d.png"] {
+            fs::write(root.join(f), b"x").unwrap();
+        }
+        let got: Vec<String> = expand(vec![root.clone()]).iter().map(|p| p.strip_prefix(&root).unwrap().to_string_lossy().replace('\\', "/")).collect();
+        assert_eq!(got, vec!["brand.md", "logo.png", "shots/a.png"]);
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

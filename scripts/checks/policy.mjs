@@ -66,7 +66,8 @@ for (const f of readdirSync(appDir)) {
 }
 
 section('The bridge between the page and the Rust side');
-const platform = readFileSync(join(root, 'src', 'platform', 'index.js'), 'utf8');
+// Every platform module, since the calls into the desktop side live there.
+const platform = readdirSync(join(root, 'src', 'platform')).filter((f) => f.endsWith('.js')).map((f) => readFileSync(join(root, 'src', 'platform', f), 'utf8')).join('\n');
 const calls = new Map();
 for (const m of platform.matchAll(/invoke\('([a-z0-9_:|]+)'(?:,\s*(\{[^}]*\}|[A-Za-z0-9_.()\s,]+?))?[,)]/g)) {
   if (m[1].startsWith('plugin:')) continue;

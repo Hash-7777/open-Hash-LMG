@@ -180,7 +180,7 @@ export function createDirector(deps) {
     return notes;
   }
 
-  // opts: { brief, tier, style, aspect, seconds, fps, narration, voice, vision, rounds, assets, palette, score, drafts, verify,
+  // opts: { brief, tier, style, aspect, seconds, fps, narration, voice, vision, rounds, assets, palette, score, drafts, verify, docs,
   //         media: the person's own pictures and clips (media.js mediaList), mediaImages: them as pictures, for a model that sees }
   async function make(opts) {
     const brief = String(opts.brief || '').trim();

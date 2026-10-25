@@ -1,5 +1,6 @@
 // Writing the storyboard: the brief, with the person's own media listed (and
-// shown to a model that can see) and any notes looked up on the web, in; the
+// shown to a model that can see), their text files, and any notes looked up
+// on the web, in; the
 // beats out. A small model writes better by choosing than by trying once, so
 // in the guided way it can write several and the cleanest is kept.
 
@@ -9,6 +10,7 @@ import { STORYBOARD_SCHEMA, storyboardPrompt } from './prompts.js';
 import { draftScore } from './scene-io.js';
 import { mediaPromptText } from '../scene/media.js';
 import { researchBlock } from '../research/research.js';
+import { docsBlock } from './brand.js';
 
 // deps: { askJson, note(id, text), compile(storyboard, opts) -> { scene }, measured(scene) }
 export function createStoryWriter({ askJson, note, compile, measured }) {
@@ -16,7 +18,7 @@ export function createStoryWriter({ askJson, note, compile, measured }) {
     // The person's own media is listed for the model, and shown to one that can see.
     const system = storyboardPrompt({ seconds: opts.seconds, narration: opts.narration }) + mediaPromptText(opts.media || []);
     const images = opts.mediaImages?.length ? opts.mediaImages : null;
-    let raw = await askJson(system, `Brief:\n${brief}${researchBlock(opts.facts)}`, { schema: STORYBOARD_SCHEMA, purpose: 'storyboard', part, temperature, images });
+    let raw = await askJson(system, `Brief:\n${brief}${docsBlock(opts.docs)}${researchBlock(opts.facts)}`, { schema: STORYBOARD_SCHEMA, purpose: 'storyboard', part, temperature, images });
     let { storyboard, notes } = normalizeStoryboard(raw || {});
     if (!storyboard.beats.length) {
       note('story', 'The first answer had no usable beats; asking again.');

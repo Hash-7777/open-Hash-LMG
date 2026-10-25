@@ -9,7 +9,11 @@
 // is never ignored. Sounds are not listed: a sound chosen as the music stays
 // the music.
 
+import { looksLikeLogo } from '../director/brand.js';
+
 const SHOWS = ['hook', 'statement', 'title', 'logo', 'quote', 'end'];
+// Where a picture named like the brand's mark goes first.
+const MARK_BEATS = ['logo', 'end', 'title'];
 
 // The person's media in a film's assets, numbered from 1:
 // [{ n, key, kind: 'image' | 'video', name, width, height, duration }]
@@ -25,7 +29,7 @@ const shapeOf = (m) => (!m.width || !m.height ? '' : m.width / m.height > 1.25 ?
 // The lines added to the storyboard prompt when the person gave media.
 export function mediaPromptText(list) {
   if (!list.length) return '';
-  const lines = list.map((m) => `${m.n}. ${m.kind === 'video' ? `a video clip, ${m.duration.toFixed(1)} s` : 'a picture'}${shapeOf(m) ? `, ${shapeOf(m)}` : ''}, "${m.name}"${m.about ? `: ${m.about}` : ''}`);
+  const lines = list.map((m) => `${m.n}. ${m.kind === 'video' ? `a video clip, ${m.duration.toFixed(1)} s` : 'a picture'}${shapeOf(m) ? `, ${shapeOf(m)}` : ''}, "${m.name}"${m.kind === 'image' && looksLikeLogo(m.name) ? ', named like the brand\u2019s logo: show it on the logo or end beat' : ''}${m.about ? `: ${m.about}` : ''}`);
   return `\n\nThe person gave their own media for this film:\n${lines.join('\n')}\nShow each of them on a beat it suits (a hook, statement, title, logo, quote or end beat) by adding "media": its number to that beat; the beat's words then sit beside it, so keep them short. Write about what each shows when you know it; never describe one you cannot see beyond its name.`;
 }
 
@@ -46,9 +50,12 @@ export function placeMedia(storyboard, list) {
   const used = new Set(beats.map((b) => b.media).filter(Boolean));
   const free = (b) => SHOWS.includes(b.kind) && !b.media && !b.picture;
   let placed = 0;
-  for (const m of list) {
+  // Marks first, so they take the beats that show the brand.
+  const marksFirst = [...list].sort((a, b) => (looksLikeLogo(b.name) && b.kind === 'image') - (looksLikeLogo(a.name) && a.kind === 'image'));
+  for (const m of marksFirst) {
     if (used.has(m.key)) continue;
-    const order = [...beats.keys()].sort((a, b) => (a === 0) - (b === 0) || a - b);
+    const mark = m.kind === 'image' && looksLikeLogo(m.name);
+    const order = [...beats.keys()].sort((a, b) => (mark ? (MARK_BEATS.includes(beats[b].kind) - MARK_BEATS.includes(beats[a].kind)) : 0) || (a === 0) - (b === 0) || a - b);
     const at = order.find((i) => free(beats[i])) ?? order.find((i) => SHOWS.includes(beats[i].kind) && !beats[i].media);
     if (at === undefined) continue;
     const { picture, ...rest } = beats[at];

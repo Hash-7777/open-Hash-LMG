@@ -10,6 +10,8 @@ import { h, clear, toast } from './dom.js';
 import { ICONS } from './icons.js';
 import { media } from '../platform/index.js';
 
+// The most of a text file read: notes, not books.
+const DOC_BYTES = 2 * 1024 * 1024;
 const fmtTime = (s) => (s >= 60 ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}` : `${s.toFixed(1)} s`);
 const stem = (name) => String(name || 'Clip').replace(/\.[^.]+$/, '').slice(0, 60);
 
@@ -39,28 +41,40 @@ async function pictureData(item) {
 
 export function createMediaPanel({ store }) {
   const list = h('div', { class: 'media-list' });
-  const importBtn = h('button', { type: 'button', class: 'secondary-btn wide', onclick: () => importFiles() }, h('span', { html: ICONS.plus }), h('span', { text: 'Import footage, pictures or sound' }));
+  const importBtn = h('button', { type: 'button', class: 'secondary-btn wide', onclick: () => importFiles() }, h('span', { html: ICONS.plus }), h('span', { text: 'Import files' }));
+  const folderBtn = h('button', { type: 'button', class: 'secondary-btn wide', onclick: () => importFiles({ folder: true }) }, h('span', { html: ICONS.open }), h('span', { text: 'Import a folder' }));
   const el = h('div', { class: 'media-panel', hidden: true },
-    h('div', { class: 'media-body' }, importBtn,
-      h('p', { class: 'field-hint', text: 'Video (MP4, MOV, WebM), pictures (PNG, JPEG, WebP, GIF) and sound (MP3, WAV, M4A, FLAC, Ogg). Files stay where they are; the film links to them.' }),
+    h('div', { class: 'media-body' }, h('div', { class: 'media-import' }, importBtn, folderBtn),
+      h('p', { class: 'field-hint', text: 'Video (MP4, MOV, WebM), pictures (PNG, JPEG, WebP, GIF), sound (MP3, WAV, M4A, FLAC, Ogg), and text the model reads (TXT, Markdown, CSV, JSON), or a whole folder of them. Files stay where they are; the film links to them.' }),
       list));
 
-  // Returns the names of the files added.
-  async function importFiles() {
+  // Each returns what was added: [{ key, name, kind }].
+  async function importFiles({ folder = false } = {}) {
     let items;
-    try { items = await media.import(); } catch (err) { toast(err.message || String(err), 'error'); return []; }
+    try { items = await (folder ? media.importFolder() : media.import()); } catch (err) { toast(err.message || String(err), 'error'); return []; }
     return addItems(items);
   }
 
-  // Adds imported or dropped files to the film's media; returns their names.
+  // Adds imported or dropped files to the film: pictures, clips and sound to
+  // its media, text files to the notes the model reads.
   async function addItems(items) {
     if (!items.length) return [];
     const names = [];
-    importBtn.disabled = true;
+    importBtn.disabled = folderBtn.disabled = true;
     let added = 0;
     for (const item of items) {
       const key = `${item.kind}-${item.id.slice(0, 10)}`;
       try {
+        if (item.kind === 'doc') {
+          const blob = await media.read(item.id);
+          const text = await blob.slice(0, DOC_BYTES).text();
+          const docKey = `doc-${item.id.slice(0, 10)}`;
+          const docs = store.get().project.docs.filter((d) => d.key !== docKey);
+          store.patch({ docs: [...docs, { key: docKey, name: item.name, text }] });
+          added++;
+          names.push({ key: docKey, name: item.name, kind: 'doc' });
+          continue;
+        }
         if (item.kind === 'image') {
           const pic = await pictureData(item);
           store.edit((doc) => { doc.assets[key] = { kind: 'image', name: item.name, ...pic }; });
@@ -74,11 +88,11 @@ export function createMediaPanel({ store }) {
           });
         }
         added++;
-        names.push(item.name);
+        names.push({ key, name: item.name, kind: item.kind });
       } catch (err) { toast(`"${item.name}": ${err.message || err}`, 'error'); }
     }
-    importBtn.disabled = false;
-    if (added) toast(`${added} file${added === 1 ? '' : 's'} added to the film's media`);
+    importBtn.disabled = folderBtn.disabled = false;
+    if (added) toast(`${added} file${added === 1 ? '' : 's'} added to the film`);
     return names;
   }
 
@@ -104,19 +118,34 @@ export function createMediaPanel({ store }) {
     toast('Playing as the film’s music, in place of the score');
   }
 
+  // Takes a file out of the film: a text file at once, media when no scene
+  // or the music uses it. True when it was taken out.
   function remove(key) {
+    if (key.startsWith('doc-')) {
+      store.patch({ docs: store.get().project.docs.filter((d) => d.key !== key) });
+      return true;
+    }
+    let gone = false;
     store.edit((doc) => {
       const used = JSON.stringify(doc.scenes).includes(`"asset":"${key}"`) || (doc.sound.clips || []).some((c) => c.asset === key);
       if (used) { toast('That file is used in the film. Take it out of the film first.'); return false; }
       delete doc.assets[key];
+      gone = true;
       return undefined;
     });
+    return gone;
   }
 
   function paint() {
-    const { assets, sound } = store.get().project.scene;
+    const { scene: { assets, sound }, docs } = store.get().project;
     const items = Object.entries(assets).filter(([, a]) => ['video', 'sound', 'image'].includes(a.kind));
-    clear(list).append(...(items.length ? items.map(([key, a]) => {
+    const notes = docs.map((d) => h('div', { class: 'media-item' },
+      h('span', { class: 'media-thumb icon', html: ICONS.text }),
+      h('div', { class: 'media-info' },
+        h('span', { class: 'media-name', text: d.name, title: d.name }),
+        h('span', { class: 'media-meta', text: `Text the model reads, ${d.text.length.toLocaleString()} characters` }),
+        h('span', { class: 'media-actions' }, h('button', { type: 'button', class: 'text-btn danger', text: 'Remove', onclick: () => remove(d.key) })))));
+    clear(list).append(...notes, ...(items.length || notes.length ? items.map(([key, a]) => {
       const music = (sound.clips || []).some((c) => c.asset === key);
       const thumb = a.kind === 'image' ? h('img', { class: 'media-thumb', src: a.data, alt: '' }) : h('span', { class: 'media-thumb icon', html: a.kind === 'video' ? ICONS.film : ICONS.music });
       return h('div', { class: 'media-item' }, thumb,
@@ -133,5 +162,5 @@ export function createMediaPanel({ store }) {
 
   store.on('project', paint);
   paint();
-  return { el, show(on) { el.hidden = !on; }, importFiles, addItems };
+  return { el, show(on) { el.hidden = !on; }, importFiles, addItems, remove };
 }

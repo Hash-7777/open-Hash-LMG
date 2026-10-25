@@ -55,3 +55,20 @@
 .chat-input { flex: 1; resize: none; min-height: 40px; max-height: 140px; line-height: 1.45; padding-top: 8px; padding-bottom: 8px; }
 .attach-btn { width: 32px; height: 32px; border-radius: var(--r-m); border: 1px solid var(--line); background: transparent; color: var(--muted); }
 .attach-btn:hover { color: var(--ink); }
+
+/* Files for the film, waiting over the box, and kept in the message they went with. */
+.chat-attach { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-attach[hidden] { display: none; }
+.msg-attach { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.attach-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 4px 3px 8px; border: 1px solid var(--line-strong); border-radius: var(--r-m); background: var(--panel-2); font-size: var(--text-xs); color: var(--ink-2); }
+.msg-attach .attach-chip { padding-right: 8px; background: transparent; }
+.attach-kind { color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; }
+.attach-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px; }
+.attach-x { display: grid; place-items: center; width: 18px; height: 18px; border: 0; border-radius: var(--r-s); background: transparent; color: var(--muted); cursor: pointer; }
+.attach-x:hover { color: var(--ink); background: var(--raised); }
+.attach-x svg { width: 10px; height: 10px; }
+
+.chat-compose { position: relative; }
+.attach-menu { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 20; display: flex; flex-direction: column; min-width: 240px; padding: 4px; border: 1px solid var(--line-strong); border-radius: var(--r-l); background: var(--raised); box-shadow: var(--shadow); }
+.attach-menu button { padding: 8px 10px; border: 0; border-radius: var(--r-s); background: transparent; text-align: left; font-size: var(--text-s); color: var(--ink); cursor: pointer; }
+.attach-menu button:hover, .attach-menu button:focus-visible { background: var(--panel-2); outline: none; }

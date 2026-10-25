@@ -6,7 +6,7 @@ import { mediaList, keptAssets } from '../core/scene/media.js';
 
 // A picture as a JPEG data address no longer than `side` on its long side,
 // small enough to send to a model.
-async function preview(dataUrl, side = 768) {
+export async function previewPicture(dataUrl, side = 768) {
   try {
     const blob = await (await fetch(dataUrl)).blob();
     const bmp = await createImageBitmap(blob);
@@ -24,7 +24,7 @@ async function preview(dataUrl, side = 768) {
 export async function mediaFor(scene, { vision = false } = {}) {
   const assets = keptAssets(scene.assets);
   const media = mediaList(assets);
-  const mediaImages = vision ? (await Promise.all(media.filter((m) => m.kind === 'image').slice(0, 4).map((m) => preview(assets[m.key].data)))).filter(Boolean) : [];
+  const mediaImages = vision ? (await Promise.all(media.filter((m) => m.kind === 'image').slice(0, 4).map((m) => previewPicture(assets[m.key].data)))).filter(Boolean) : [];
   const music = (scene.sound?.clips || []).filter((c) => assets[c.asset]?.kind === 'sound');
   return { assets, media, mediaImages, music };
 }

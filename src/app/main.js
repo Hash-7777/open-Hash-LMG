@@ -100,7 +100,7 @@ async function boot() {
   const progress = createProgress();
   // The chat's attach button imports through the Media panel, made below.
   let mediaPanel = null;
-  const director = createDirectorPanel({ store, settings, openSettings, progress, onAttach: () => mediaPanel.importFiles() });
+  const director = createDirectorPanel({ store, settings, openSettings, progress, onAttach: (opts) => mediaPanel.importFiles(opts), onDetach: (key) => mediaPanel.remove(key) });
 
   const titleInput = h('input', { class: 'film-title', type: 'text', maxlength: '120', 'aria-label': 'Film title', spellcheck: 'false' });
   titleInput.value = store.get().project.scene.title;
@@ -151,14 +151,15 @@ async function boot() {
   // The left column: the director, or the film's media, by tab.
   mediaPanel = createMediaPanel({ store });
   // Files dropped anywhere on the window join the film's media.
-  const veil = h('div', { class: 'drop-veil', hidden: true }, h('div', { class: 'drop-veil-text', text: 'Drop to add to the film\u2019s media' }));
+  const veil = h('div', { class: 'drop-veil', hidden: true }, h('div', { class: 'drop-veil-text', text: 'Drop to add to the film and the conversation' }));
   document.body.append(veil);
   media.onDrop({
     onDrag: (over) => { veil.hidden = !over; },
     onDrop: async (items) => {
-      if (!items.length) { toast('Only footage, pictures and sound can be added to a film.'); return; }
-      const names = await mediaPanel.addItems(items);
-      if (names.length) director.say(`Added ${names.map((n) => `"${n}"`).join(', ')}. I will show ${names.length === 1 ? 'it' : 'them'} in the film.`);
+      if (!items.length) { toast('Only footage, pictures, sound and text files can be added to a film.'); return; }
+      // What was dropped waits as attachments to the next message to the director.
+      const added = await mediaPanel.addItems(items);
+      if (added.length) { showSide('director'); director.attach(added); }
     },
   });
   const tabs = h('div', { class: 'panel-head side-tabs', role: 'tablist' });

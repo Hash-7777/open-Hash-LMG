@@ -338,3 +338,4 @@ svg { display: block; flex: none; }
 .drop-veil { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: var(--scrim); pointer-events: none; }
 .drop-veil[hidden] { display: none; }
 .drop-veil-text { padding: 14px 20px; border: 1px dashed var(--line-strong); border-radius: var(--r-l); background: var(--raised); color: var(--ink); font-size: var(--text-l); }
+.media-import { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }

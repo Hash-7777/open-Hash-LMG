@@ -60,7 +60,9 @@ export function filmState(project, settings) {
 // The messages for one turn: the last few turns, the film's state before the
 // person's newest message.
 export function chatMessages(history, state) {
-  const turns = history.slice(-KEEP_TURNS).map((m) => ({ role: m.role === 'person' ? 'user' : 'assistant', content: m.role === 'person' ? m.text : JSON.stringify({ reply: m.text, ...(m.questions?.length ? { questions: m.questions } : {}) }) }));
+  const KIND = { image: 'picture', video: 'clip', sound: 'sound', doc: 'text file' };
+  const said = (m) => `${m.text}${m.attachments?.length ? `\n[Added to the film: ${m.attachments.map((a) => `${KIND[a.kind] || 'file'} "${a.name}"`).join(', ')}]` : ''}`;
+  const turns = history.slice(-KEEP_TURNS).map((m) => ({ role: m.role === 'person' ? 'user' : 'assistant', content: m.role === 'person' ? said(m) : JSON.stringify({ reply: m.text, ...(m.questions?.length ? { questions: m.questions } : {}) }) }));
   if (turns.length && turns[0].role === 'assistant') turns.shift();
   if (!turns.length) return [];
   // The state goes with the person's newest message, the one being answered.
@@ -109,6 +111,11 @@ export function normalizeChat(list) {
     const text = typeof m.text === 'string' ? m.text.slice(0, MAX_TEXT) : '';
     if (!role || !text) return null;
     const out = { role, text, at: Number.isFinite(m.at) ? m.at : 0 };
+    if (role === 'person' && Array.isArray(m.attachments)) {
+      const files = m.attachments.filter((a) => a && typeof a.key === 'string' && typeof a.name === 'string').slice(0, 20)
+        .map((a) => ({ key: a.key.slice(0, 40), name: a.name.slice(0, 200), kind: ['image', 'video', 'sound', 'doc'].includes(a.kind) ? a.kind : 'doc' }));
+      if (files.length) out.attachments = files;
+    }
     if (role === 'director') {
       const q = normalizeChatReply({ reply: text, questions: m.questions, action: 'ask' }).questions;
       if (q.length) out.questions = q;

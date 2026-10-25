@@ -182,7 +182,14 @@ export function chooseDirection({ brief = '', look = {}, style = 'auto', take = 
   const wanted = readableAccent(look?.accent, palette) || readableAccent(briefColour(brief), palette);
   palette.accent = wanted || pickOf(r, ACCENTS[chosen]);
   if (chosen === 'vivid') {
-    palette.bg = pickOf(r, VIVID_FIELDS.filter((f) => contrast(palette.ink, f) >= 4.5));
+    // A brand colour stays the brand's: the colour field is one it reads on,
+    // or, when none is, the brand colour itself, with white for the accent.
+    const brand = [look?.accent, briefColour(brief)].map((c) => (c && parseColor(c) ? toHex(parseColor(c)) : null)).find(Boolean);
+    const fields = VIVID_FIELDS.filter((f) => contrast(palette.ink, f) >= 4.5);
+    const onBrand = brand ? fields.filter((f) => contrast(brand, f) >= 3) : [];
+    palette.bg = pickOf(r, onBrand.length ? onBrand : fields);
+    if (onBrand.length) palette.accent = brand;
+    else if (brand && contrast(palette.ink, brand) >= 4.5) { palette.bg = brand; palette.accent = '#ffffff'; }
     if (contrast(palette.accent, palette.bg) < 3) palette.accent = '#ffffff';
   }
 

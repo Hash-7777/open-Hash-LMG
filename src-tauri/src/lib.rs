@@ -36,6 +36,7 @@ pub fn run() {
             commands::encode::encoder_close,
             commands::encode::mp3_encode,
             commands::media::media_import,
+            commands::media::media_import_folder,
             commands::voice::voice_status,
             commands::voice::voice_folder,
             commands::voice::voice_speak,

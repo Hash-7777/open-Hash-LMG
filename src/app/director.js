@@ -25,7 +25,8 @@ import { runs } from '../platform/runs.js';
 import { appVersion, fetchFor, logUsage, web } from '../platform/index.js';
 import { askToLookUp } from './web-permission.js';
 import { speakLines } from './narration.js';
-import { mediaFor, withMusic } from './film-media.js';
+import { mediaFor, withMusic, previewPicture } from './film-media.js';
+import { docsForChat, brandColours } from '../core/director/brand.js';
 import { createChatPanel } from './chat-panel.js';
 import { CHAT_SCHEMA, chatPrompt, chatMessages, filmState, normalizeChatReply, ASKS_FOR_NARRATION } from '../core/director/chat.js';
 import { mediaList } from '../core/scene/media.js';
@@ -52,7 +53,7 @@ const TIER_HELP = {
   code: 'The model writes its own animation code, run with no network or storage.',
 };
 
-export function createDirectorPanel({ store, settings, openSettings, progress, onAttach }) {
+export function createDirectorPanel({ store, settings, openSettings, progress, onAttach, onDetach }) {
   const lists = createModelLists(settings);
   const picker = createModelPicker({ settings, lists, openSettings });
   // The main button lives in the top bar; the panel hands it over.
@@ -72,7 +73,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
   }
 
   const chat = createChatPanel({
-    store, settings, picker, onAttach,
+    store, settings, picker, onAttach, onDetach,
     converse: (history) => converse(history),
     onMake: (text, opts) => make(text, opts),
     onChange: (text) => change(text),
@@ -102,8 +103,14 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
     const hasFilm = project.scene.scenes.length > 0;
     const media = mediaList(project.scene.assets);
     const session = createModelSession(settings, fetchFor(m.provider));
-    const system = chatPrompt({ hasFilm, media, narrationReady: s.voice.engine !== 'none' });
+    const system = chatPrompt({ hasFilm, media, narrationReady: s.voice.engine !== 'none' }) + docsForChat(project.docs);
     const messages = chatMessages(history, filmState(project, s));
+    // A model that sees pictures is shown the ones just attached, made small.
+    const lastAttached = (history[history.length - 1]?.attachments || []).filter((a) => a.kind === 'image' && project.scene.assets[a.key]?.data).slice(0, 4);
+    if (lastAttached.length && profile()?.vision && messages.length) {
+      const images = (await Promise.all(lastAttached.map((a) => previewPicture(project.scene.assets[a.key].data, 512)))).filter(Boolean);
+      if (images.length) messages[messages.length - 1] = { ...messages[messages.length - 1], images };
+    }
     const extra = await session.options('chat', { system, messages });
     const text = await ask({
       provider: m.provider, model: m.model, key: settings.key(m.provider), keyHeld: settings.keyHeld(), base: settings.base(m.provider),
@@ -242,11 +249,15 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
       const vision = typeof caps.vision === 'boolean' && session.local ? caps.vision : Boolean(p?.vision);
       // The person's own media goes into the film; a song chosen as the music stays it.
       const own = await mediaFor(store.get().project.scene, { vision });
+      // The person's text files go to the storyboard step; colours written in
+      // them steer the film's palette, as a colour named in the brief does.
+      const docs = store.get().project.docs;
+      const colours = brandColours(docs);
       const out = await director.make({
-        assets: own.assets, media: useMedia ? own.media : [], mediaImages: useMedia ? own.mediaImages : [],
+        docs, assets: own.assets, media: useMedia ? own.media : [], mediaImages: useMedia ? own.mediaImages : [],
         // A new take each time: the same brief made again is a new film.
         take: Math.floor(Math.random() * 1e6),
-        brief: text, tier: way, style: s.film.style, aspect: s.film.aspect, seconds: s.film.seconds, fps: s.film.fps,
+        brief: colours.length && !colours.some((c) => text.toLowerCase().includes(c)) ? `${text}\nBrand colours: ${colours.join(', ')}` : text, tier: way, style: s.film.style, aspect: s.film.aspect, seconds: s.film.seconds, fps: s.film.fps,
         narration: s.film.narration, vision: vision && s.model.review, drafts: s.model.drafts, verify: s.model.verify, compose: s.model.compose && !own.music.length,
         research: lookUp,
       });
@@ -322,5 +333,5 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
   // the film from its brief.
   makeBtn.addEventListener('click', () => { if (!running && chat.hasDraft()) chat.send(); else make(); });
   paintButtons();
-  return { el, makeBtn, busy: () => Boolean(running), say: (text) => chat.say(text) };
+  return { el, makeBtn, busy: () => Boolean(running), say: (text) => chat.say(text), attach: (list) => chat.attach(list) };
 }

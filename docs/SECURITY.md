@@ -66,7 +66,14 @@ The page reaches the computer only through the commands in
   dialog, or dropped on the window, where the desktop side reads the drop
   itself (`src-tauri/src/lib.rs`), and are remembered by an id in a list in
   the app's data folder; only files of the kinds a film takes are kept, and
-  the page never sees a path. The window reads a file through the app's own
+  the page never sees a path. A folder stands for the files of those kinds
+  inside it and in the folders directly in it, at most sixty, in name order;
+  hidden files and folders and links are left out
+  (`src-tauri/src/commands/media.rs`).
+- **Text files** the person adds are read by the page through the same
+  address, at most two megabytes each, kept with the film, and given to the
+  model fenced and marked as material, never instructions
+  (`src/core/director/brand.js`). The window reads a file through the app's own
   address (`lmgmedia`), by id only, in pieces of at most a few megabytes, and
   only files on that list can be read. The content policy names that address
   for media, pictures and reading sound, and nothing more.
