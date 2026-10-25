@@ -19,6 +19,8 @@ import { sampleTimes } from '../core/scene/lint.js';
 import { ASPECTS, STYLE_PACKS, STYLE_NAMES } from '../core/scene/format.js';
 import { select, toggle, ASPECT_SHORT } from './fields.js';
 import { createModelSession } from './model-session.js';
+import { createModelLists } from './model-lists.js';
+import { createModelPicker } from './model-picker.js';
 import { createSuggestions, openIdeasDialog } from './suggestions.js';
 import { createRunRecord } from '../core/director/run-record.js';
 import { runs } from '../platform/runs.js';
@@ -69,7 +71,9 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
   brief.addEventListener('input', showIdeas);
 
   const options = h('div', { class: 'dir-options' });
-  const modelLine = h('button', { class: 'model-line', type: 'button', title: 'Choose the model in Settings', onclick: () => openSettings('model') });
+  const lists = createModelLists(settings);
+  const picker = createModelPicker({ settings, lists, openSettings });
+  const modelLine = picker.el;
   const tierHelp = h('div', { class: 'field-hint' });
   // The main button lives in the top bar; the panel hands it over.
   const makeBtn = h('button', { class: 'primary-btn make-btn', type: 'button' });
@@ -108,12 +112,6 @@ export function createDirectorPanel({ store, settings, openSettings, progress })
         labelled('Look', select(f.style, [['auto', 'Auto'], ...STYLE_NAMES.map((k) => [k, STYLE_PACKS[k].label])], (v) => setFilm({ style: v }))),
         labelled('Way of working', select(m.tier, [['auto', p ? `Suggested: ${TIER_SHORT[p.tier]}` : 'Suggested'], ['guided', 'Guided'], ['plan', 'Plan'], ['code', 'Code']], (v) => settings.update({ model: { tier: v } })))),
       toggle(f.narration, (v) => setFilm({ narration: v }), 'Narration for each scene'));
-    const prov = PROVIDERS[m.provider];
-    clear(modelLine).append(
-      h('span', { class: 'model-dot', html: ICONS.dot }),
-      h('span', { class: 'model-name', text: m.model ? m.model : 'Choose a model' }),
-      h('span', { class: 'model-where', text: prov ? prov.label : '' }));
-    modelLine.classList.toggle('missing', !m.model);
     tierHelp.textContent = TIER_HELP[tier()];
   }
 

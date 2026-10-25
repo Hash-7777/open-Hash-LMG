@@ -69,6 +69,9 @@ export function normalizeSettings(input) {
     model: {
       provider: pick(model.provider, PROVIDER_IDS, 'ollama'),
       model: text(model.model, 200),
+      // The model last chosen on each service, so going back to a service
+      // picks up where it was left.
+      recent: Object.fromEntries(PROVIDER_IDS.map((id) => [id, text(isObj(model.recent) ? model.recent[id] : '', 200)]).filter(([, v]) => v)),
       tier: pick(model.tier, TIERS, 'auto'),
       // A model that can see pictures reviews a contact sheet of stills; it can
       // be turned off to save time and tokens.

@@ -80,11 +80,12 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
     const service = h('select', { class: 'input select' });
     const group = (label, ids) => h('optgroup', { label }, ...ids.map((x) => { const o = h('option', { value: x, text: PROVIDERS[x].label }); if (x === id) o.selected = true; return o; }));
     service.append(group('On this computer', LOCAL_IDS), group('In the cloud, with your own key', CLOUD_IDS));
-    service.addEventListener('change', () => { models = []; settings.update({ model: { provider: service.value, model: '' } }); paint(); refresh(); });
+    service.addEventListener('change', () => { models = []; settings.update({ model: { provider: service.value, model: settings.get().model.recent[service.value] || '' } }); paint(); refresh(); });
 
     const listId = `models-${id}`;
     const modelInput = h('input', { class: 'input', type: 'text', list: listId, value: s.model.model, placeholder: 'Model name', spellcheck: 'false' });
-    modelInput.addEventListener('change', () => { settings.update({ model: { model: modelInput.value.trim() } }); paint(); });
+    const remember = (model) => settings.update({ model: { model, recent: { ...settings.get().model.recent, [settings.get().model.provider]: model } } });
+    modelInput.addEventListener('change', () => { remember(modelInput.value.trim()); paint(); });
     const options = h('datalist', { id: listId }, ...models.map((m) => h('option', { value: m.id, text: describeModel(m) })));
     const meta = (models.find((m) => m.id === s.model.model) || {}).meta || {};
     const prof = s.model.model ? modelProfile(id, s.model.model, meta) : null;
@@ -102,7 +103,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
       options,
       models.length ? h('ul', { class: 'model-list' }, ...models.slice(0, 40).map((m) => {
         const b = h('button', { type: 'button', class: m.id === s.model.model ? 'on' : '' }, h('span', { class: 'model-id', text: m.id }), h('span', { class: 'model-meta', text: describeModel(m) }));
-        b.addEventListener('click', () => { settings.update({ model: { model: m.id } }); paint(); });
+        b.addEventListener('click', () => { remember(m.id); paint(); });
         return h('li', {}, b);
       })) : null,
       field('Storyboards to choose from', segmented(String(s.model.drafts), [['1', 'One'], ['2', 'Two'], ['3', 'Three']], (v) => { settings.update({ model: { drafts: Number(v) } }); paint(); }),

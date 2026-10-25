@@ -66,6 +66,10 @@ newest first, grouped by what it does for the person making a film.
   with sound on phones and in the system's own player.
 
 ### Models
+- The model is chosen from one list in the director panel: every model that
+  can be used now, grouped by service, each list asked of its service when
+  the list opens, with a search. Each service remembers the model last
+  chosen on it, in the list and in Settings.
 - Current cloud models are sent only the settings they accept, with room to
   think; model lists come newest first.
 - A model that spends its answer's room on thinking is asked once more with

@@ -1,0 +1,44 @@
+/* The model picker: a list under the model button, grouped by service. */
+
+.model-chevron { color: var(--muted); display: inline-flex; }
+
+.picker {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-l);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.picker-search { flex: none; width: auto; margin: 10px 10px 6px; }
+.picker-model, .picker-more, .picker-link { background: none; border: 0; padding: 0; }
+.picker-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 6px 6px; }
+.picker-group + .picker-group { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+.picker-head { display: flex; align-items: baseline; gap: 8px; padding: 8px 8px 4px; }
+.picker-service { font-size: var(--text-s); font-weight: 600; color: var(--ink-2); }
+.picker-kind { font-size: var(--text-xs); color: var(--faint); }
+.picker-state { padding: 4px 8px 8px; font-size: var(--text-s); color: var(--muted); }
+.picker-state.warn { color: var(--danger); }
+.picker-model {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "id check" "meta check";
+  align-items: center;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: var(--r-s);
+  text-align: left;
+  cursor: pointer;
+}
+.picker-model:hover, .picker-model:focus-visible { background: var(--panel-2); outline: none; }
+.picker-model.on { background: var(--accent-soft); }
+.picker-id { grid-area: id; font-size: var(--text-m); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-meta { grid-area: meta; font-size: var(--text-xs); color: var(--muted); }
+.picker-check { grid-area: check; color: var(--accent); display: inline-flex; padding-left: 8px; }
+.picker-more { display: block; margin: 2px 8px 6px; font-size: var(--text-s); color: var(--accent); cursor: pointer; }
+.picker-foot { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); }
+.picker-link { font-size: var(--text-s); color: var(--muted); cursor: pointer; }
+.picker-link:hover { color: var(--ink); }

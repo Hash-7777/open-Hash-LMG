@@ -62,6 +62,12 @@ await claim('a damaged stored entry reads as the defaults', () => {
   assert.equal(createSettingsStore(mem).get().film.style, 'auto');
 });
 
+await claim('the model last chosen on each service is remembered, for known services only', () => {
+  const s = normalizeSettings({ model: { recent: { ollama: 'qwen2.5:7b', deepseek: 'a-model', nowhere: 'x', groq: 42 } } });
+  assert.deepEqual(s.model.recent, { ollama: 'qwen2.5:7b', deepseek: 'a-model' });
+  assert.deepEqual(normalizeSettings({}).model.recent, {});
+});
+
 section('Keys kept by the desktop side');
 await claim('a key goes to the vault, never into the page\u2019s storage, and is never handed back', async () => {
   const mem = memory(); const vault = fakeVault(); const st = createSettingsStore(mem, vault);

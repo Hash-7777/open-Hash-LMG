@@ -64,7 +64,8 @@ src/
                          encoder sinks, export
   platform/              the desktop app or a browser: films, files, media, voices, the
                          relay, settings and keys, the run history, the window
-  app/                   the editor: its state, panels, dialogs and the director panel
+  app/                   the editor: its state, panels, dialogs, the director panel and
+                         its model picker
 src-tauri/src/commands/  films, exports, sound, encoders, media, voices, keys, the relay
 scripts/checks/          the check suite: every script runs on npm run check
 ```
