@@ -21,7 +21,7 @@ const BLUR = [['0', 'Off'], ['4', 'Soft'], ['8', 'Full']];
 const FORMATS = {
   mp4: { label: 'MP4 video', hint: 'Plays everywhere and uploads to every platform.', mime: 'video/mp4' },
   mov: { label: 'MOV video', hint: 'For video editing apps. To send to a phone or a chat app, choose MP4.', mime: 'video/quicktime' },
-  webm: { label: 'WebM video', hint: 'AV1 with Vorbis sound: small files for the web, played by Chrome, Edge and Firefox. Slower to make than MP4.', mime: 'video/webm' },
+  webm: { label: 'WebM video', hint: 'AV1 with Vorbis sound: small files for the web, played by browsers that read AV1. Slower to make than MP4.', mime: 'video/webm' },
   gif: { label: 'GIF animation', hint: 'Loops by itself, with no sound. Kept small: GIFs grow large quickly.', mime: 'image/gif' },
   png: { label: 'PNG picture', hint: 'The frame under the playhead, as a picture.', mime: 'image/png' },
   zip: { label: 'PNG frames (ZIP)', hint: 'Every frame as a PNG picture, with the soundtrack as a WAV, for editing and compositing apps. Large: each frame is a full picture.', mime: 'application/zip' },
