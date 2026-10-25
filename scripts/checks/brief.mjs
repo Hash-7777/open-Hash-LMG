@@ -35,6 +35,11 @@ ok('enters-from: the stat rises from below', judge({ subject: '38%', check: 'ent
 ok('enters-from: and not from above', !judge({ subject: '38%', check: 'enters-from', from: 'above' }).ok);
 ok('holds: the name holds a second and a half', judge({ subject: 'Lumen Desk', check: 'holds', seconds: 1.5 }).ok);
 ok('holds: but not half a minute', !judge({ subject: 'Lumen Desk', check: 'holds', seconds: 30 }).ok);
+await claim('ends: a name shown as a small label early and again on the end card ends the film', () => {
+  const box = (tag, text, alpha = 1) => ({ kind: 'text', tag, text, x: 100, y: 100, w: 200, h: 40, alpha });
+  const smp = [0, 1, 2, 8, 9, 10].map((t) => ({ t, boxes: [...(t < 3 ? [box('label-1', 'Brightway')] : []), ...(t > 7 ? [box('end-1', 'Brightway')] : [])] }));
+  assert.equal(verifyIntent(normalizeIntent({ checks: [{ subject: 'Brightway', check: 'ends' }] }), smp, { duration: 10, width: 1920 })[0].ok, true);
+});
 ok('a failure is said as a sentence', /asks the film to show "free trial", but it never appears/.test(intentFailures([judge({ subject: 'free trial', check: 'appears' })])[0]));
 
 section('A film drawn by code is checked the same way');

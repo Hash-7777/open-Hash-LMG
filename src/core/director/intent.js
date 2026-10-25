@@ -91,14 +91,16 @@ function tracks(samples) {
   return map;
 }
 
-// The track that best fits the subject: the same words, then a line that
+// The tracks that best fit the subject: the same words, then a line that
 // contains them, then a line of at least four letters that is a whole part of
 // them; a number matches on its digits. Short lines (a step's "3") never
-// stand in for a longer subject.
-function find(map, subject) {
+// stand in for a longer subject. A name shown in several places (a small
+// label early, the end card late) is one subject: every track of the best
+// rank is kept, merged in time order, the strongest sighting at each moment.
+function findAll(map, subject) {
   const digits = (s) => s.replace(/[^\d]/g, '');
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  let best = null, rank = 0;
+  let best = [], rank = 0;
   for (const list of map.values()) {
     const last = list[list.length - 1].text;
     let r = 0;
@@ -106,9 +108,17 @@ function find(map, subject) {
     else if (digits(subject).length >= 2 && digits(last) === digits(subject)) r = 3;
     else if (last.includes(subject)) r = 2;
     else if (last.length >= 4 && new RegExp(`(^|\\s)${esc(last)}(\\s|$)`).test(subject)) r = 1;
-    if (r > rank) { rank = r; best = list; }
+    if (r > rank) { rank = r; best = [list]; } else if (r && r === rank) best.push(list);
   }
   return best;
+}
+
+function find(map, subject) {
+  const tracks = findAll(map, subject);
+  if (tracks.length <= 1) return tracks[0] || null;
+  const at = new Map();
+  for (const list of tracks) for (const p of list) if (!at.has(p.t) || at.get(p.t).alpha < p.alpha) at.set(p.t, p);
+  return [...at.values()].sort((a, b) => a.t - b.t);
 }
 
 const firstSeen = (list) => (list ? list.find((p) => p.alpha >= 0.5)?.t ?? null : null);
@@ -149,8 +159,10 @@ export function verifyIntent(checks, samples, { duration, width, counters = [] }
     if (c.check === 'enters-from') {
       // Where it first shows against where it is just after arriving; the
       // scene's slow camera moves it too, so the end of the scene is no guide.
-      const start = list[0];
-      const rest = seen.find((p) => p.t >= start.t + 0.7) || seen[seen.length - 1];
+      const first = findAll(map, c.subject).sort((a, b) => a[0].t - b[0].t)[0];
+      const own = first.filter((p) => p.alpha >= 0.5);
+      const start = first[0];
+      const rest = own.find((p) => p.t >= start.t + 0.7) || own[own.length - 1] || start;
       const dx = start.cx - rest.cx, dy = start.cy - rest.cy;
       const moved = { below: dy > minMove, above: dy < -minMove, left: dx < -minMove, right: dx > minMove }[c.from];
       return say(moved, moved ? '' : `it does not arrive from ${c.from}`);
