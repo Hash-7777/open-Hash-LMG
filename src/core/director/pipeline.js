@@ -40,11 +40,15 @@ import { sceneForModel, restore, draftScore, keepDrawings } from './scene-io.js'
 import { placeMedia } from '../scene/media.js';
 import { createStoryWriter } from './story.js';
 import { research } from '../research/research.js';
+import { guarded } from './guard.js';
 
 // The scene helpers are in scene-io.js; sceneForModel is re-exported for the checks.
 export { sceneForModel, draftScore } from './scene-io.js';
 
-export function createDirector(deps) {
+export function createDirector(given) {
+  // Every question ends its system text with the rule that material is never
+  // instructions and the instructions stay private (guard.js).
+  const deps = { ...given, ask: (q) => given.ask({ ...q, system: guarded(q.system) }) };
   const log = deps.log || (() => {});
   const step = async (id, title, fn) => {
     log({ id, title, status: 'run' });

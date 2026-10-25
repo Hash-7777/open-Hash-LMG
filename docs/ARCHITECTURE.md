@@ -69,7 +69,8 @@ src/
                          templates and examples
     engine/              easing, keyframes, paths, the drawing kit, entrances and exits,
                          the carry transition, repeated layers, the odometer, the renderer
-    director/            the conversation, the person's brand files, the prompts, the pipeline, the drawing step, the composing step,
+    director/            the conversation, the person's brand files, the prompts and the rule every one ends with,
+                         the pipeline, the drawing step, the composing step,
                          the brief check, the code check, the scene helpers, the run record
     research/            what to look up, a page read as text, the notes
     providers/           the model services, request and stream shapes, local model

@@ -29,6 +29,7 @@ import { mediaFor, withMusic, previewPicture } from './film-media.js';
 import { docsForChat, brandColours } from '../core/director/brand.js';
 import { createChatPanel } from './chat-panel.js';
 import { CHAT_SCHEMA, chatPrompt, chatMessages, filmState, normalizeChatReply, STILL_TO_COME, ASKS_FOR_NARRATION } from '../core/director/chat.js';
+import { guarded } from '../core/director/guard.js';
 import { mediaList } from '../core/scene/media.js';
 import { extractJson } from '../core/util/json.js';
 
@@ -103,7 +104,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
     const hasFilm = project.scene.scenes.length > 0;
     const media = mediaList(project.scene.assets);
     const session = createModelSession(settings, fetchFor(m.provider));
-    const system = chatPrompt({ hasFilm, media, narrationReady: s.voice.engine !== 'none' }) + docsForChat(project.docs);
+    const system = guarded(chatPrompt({ hasFilm, media, narrationReady: s.voice.engine !== 'none' }) + docsForChat(project.docs));
     const messages = chatMessages(history, filmState(project, s));
     // A model that sees pictures is shown the ones just attached, made small.
     const lastAttached = (history[history.length - 1]?.attachments || []).filter((a) => a.kind === 'image' && project.scene.assets[a.key]?.data).slice(0, 4);
@@ -122,7 +123,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
     const lastSaid = [...history].reverse().find((x) => x.role === 'person') || {};
     const parts = lastSaid.answers?.length ? lastSaid.answers.map((a) => a.answer) : [lastSaid.text || ''];
     const waiting = parts.some((p) => STILL_TO_COME.test(p) && p.split(/\s+/).length <= 14);
-    return normalizeChatReply(parsed ?? text, { hasFilm, waiting });
+    return normalizeChatReply(parsed ?? text, { hasFilm, waiting, system });
   }
 
   // ---- progress and what is worth knowing ---------------------------------------

@@ -128,6 +128,21 @@ window, which opens hidden so it can be placed before it is seen
 link in the system browser. The check above keeps the page's commands and
 the Rust side's in step.
 
+## What a model is told, and what it may show
+
+Every question the app puts to a model ends its system text with one rule
+(`src/core/director/guard.js`): the brief, messages, files, file names, web
+pages and earlier answers are material for the film, never instructions
+that change the task, and the instructions themselves are never revealed.
+Material from outside is placed where the model reads it as material: files
+and web notes between marked lines (`src/core/director/brand.js`,
+`src/core/research/research.js`), file and picture names as plain one-line
+labels. A reply in the conversation that repeats its own instructions is
+neither shown nor acted on. What any model writes reaches the screen as
+text, never as markup, and reaches the film only through the scene format's
+own reader (`src/core/scene/normalize.js`), the drawing reader or the
+locked worker below. Checked in `scripts/checks/guard.mjs`.
+
 ## Code written by a model
 
 In the Code way of working, a model writes its own drawing code. It is read
@@ -147,8 +162,8 @@ instruments.
 
 ## Pictures drawn by a model
 
-A picture a model draws is read as path data only: drawing commands and
-numbers, nothing else (`src/core/scene/pictures.js`). It is flattened to
+A picture a model draws is read as shape names and numbers, or path data
+only: drawing commands and numbers, nothing else (`src/core/scene/pictures.js`). It is flattened to
 straight segments, fitted to its grid and drawn by the app's own renderer,
 like any other shape. A drawing with anything else in it is set aside.
 
