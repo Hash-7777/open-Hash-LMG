@@ -3,6 +3,13 @@
 What Hash LMG protects, how, and where its protections stop. Every statement
 here points at the code that makes it true.
 
+## Reporting a security problem
+
+Please report a security problem privately, through the repository's
+private reporting on GitHub (the Security tab), not in a public issue. Say
+what you did, what happened and which version or commit you ran. Nothing in
+Hash LMG has been released yet, so a report is about the main branch.
+
 ## Where your keys live
 
 Keys for cloud services are kept by the desktop side

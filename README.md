@@ -93,26 +93,38 @@ By default the look is matched to the brief: a calm brief, a technical one and a
 
 <br>
 
+## Run it from source
+
+There is no release yet. To run Hash LMG from this repository:
+
+1. Install [Node.js](https://nodejs.org) 20 or later and [Rust](https://rustup.rs) 1.87 or later.
+   - **macOS:** the Xcode Command Line Tools (`xcode-select --install`).
+   - **Linux:** the web view's libraries, for example on Debian or Ubuntu: `sudo apt install build-essential pkg-config libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev`.
+   - **Windows:** the C++ build tools for Visual Studio and the WebView2 runtime (part of Windows 11).
+2. `npm install`
+3. `npm run tauri dev` opens the app. `npm run tauri build` makes an installer under `src-tauri/target/release/bundle/`.
+4. For a model on your computer, install [Ollama](https://ollama.com) and pull any model; Settings walks through the rest. For a cloud model, add your key in Settings, under Cloud keys.
+
+`npm run check` runs every check in a few seconds, with Node alone.
+
+<br>
+
 ## Where it stands
 
 Hash LMG is being built in the open. This is exactly what exists today:
 
 | Works today | Written, not yet run | Next |
 |---|---|---|
-| Scene format and its repair | Requests to every model service | Windows and Linux runs |
-| The engine: type, shapes, charts, transitions | Motion blur | First release for macOS and Windows |
-| Film checks and automatic fixes | Films and exports kept by the desktop app | |
-| The storyboard compiler, in every style | Sound through the system's own encoder | |
-| The director, with a scripted model | Narration mix, word timing and captions | |
-| Score and mastering | Processor or graphics-chip choice for Ollama | |
-| Narration through a Kokoro install or a local speech server, with word-timed captions | Voices through a Chatterbox install | |
-| The editor: preview, timeline, inspector, the director's conversation, settings | | |
-| Pictures: each drawing checked and fitted, and the compositions built around it | Pictures drawn by a real model inside the app (the drawing prompt was tried on small local models outside it) | |
+| Films made from start to finish in the macOS app, with a local model through Ollama and with a cloud model (DeepSeek) | Requests to the other cloud services | Windows and Linux runs |
+| The director, end to end, with a scripted model in the checks | Motion blur | A signed first release |
+| Scene format and its repair; the engine: type, shapes, charts, transitions | Voices through a Chatterbox install | |
+| The storyboard compiler in every style, film checks and automatic fixes | Processor or graphics-chip choice for Ollama | |
+| The editor: preview, timeline, inspector, the director's conversation, settings | Pictures drawn by a real model inside the app (the drawing prompt was tried on small local models outside it) | |
+| Score and mastering; narration through a Kokoro install or a local speech server, with word-timed captions | WebM export from the app (its encoders and its file were checked outside it: the file plays in a browser) | |
 | Rendering in a background worker; MP4, MOV, GIF and MP3 export by the app's own encoders, in the macOS app | | |
-| The macOS app: it builds and opens the editor | WebM export from the app (its encoders and file were checked outside it: the file plays in a browser) | |
-| The check suite, `npm run check`, run on every push | | |
+| The check suite, `npm run check`, and the Rust build and tests, on every push | | |
 
-"Works today" means exercised in Node with a stand-in canvas and a scripted model, for the editor in a headless browser with a scripted model, and for export in a debug build of the macOS app, with each file read back by the system's own video framework. The built-in encoders build from source on every system; they have been run on macOS only, and nothing has been released.
+"Works today" means run: in the macOS app with real models, in Node with a stand-in canvas and a scripted model, for the editor in a headless browser, and for export in a build of the macOS app with each file read back by the system's own video framework. The app and its built-in encoders build from source on every system and are compiled on Linux on every push; they have been run on macOS only, and nothing has been released.
 
 <br>
 
@@ -136,7 +148,9 @@ src/
   core/            pure modules, no page access: the checks run them in Node
     scene/         format, normaliser, film checks, storyboard, direction, layouts, compiler, examples
     engine/        easing, keyframes, paths, the drawing kit, motion, the renderer
-    director/      prompts, the plan-check-revise loop, scene helpers, the code check
+    director/      the conversation, prompts and the rule every one ends with, the plan-check-revise
+                   loop, drawings, music, the brief check, the code check, the run record
+    research/      what to look up, pages read as text, the notes
     providers/     model services, requests and streams, model sizes, voices
     audio/         synth, score, grooves, the music kit and its player, narration mix, loudness, word timing, WAV
     export/        the MP4, MOV, WebM and ZIP writers
@@ -147,7 +161,13 @@ src-tauri/         the desktop side: films, exports, sound, encoders, media, voi
 scripts/checks/    the check suite: every script under it runs on npm run check
 ```
 
-How the parts fit together, the walls around them and how a film is made: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). What has changed: [CHANGELOG.md](CHANGELOG.md).
+How the parts fit together and how a film is made: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The walls around keys, files, the network and code a model writes: [docs/SECURITY.md](docs/SECURITY.md). The motion rules the films follow, and where each comes from: [docs/MOTION-RULES.md](docs/MOTION-RULES.md). What has changed: [CHANGELOG.md](CHANGELOG.md).
+
+<br>
+
+## Contributing
+
+Issues and pull requests are welcome. Before a pull request, run `npm run check`, and `cargo test` in `src-tauri/` when the Rust side changed; [CONTRIBUTING.md](CONTRIBUTING.md) has the few rules the code keeps.
 
 <br>
 

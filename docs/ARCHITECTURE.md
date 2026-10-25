@@ -17,8 +17,11 @@ Everything that differs between the two goes through `src/platform/index.js`.
 The person talks with the director in the left panel
 (`src/app/chat-panel.js`, `src/core/director/chat.js`): each turn sends a short
 system text, the film's state in a few lines and the last few messages, and
-the reply either asks a few questions with answers to tap, or writes the
-brief and the film's settings, or names a change to an existing film. Then:
+the reply either asks one or two questions with answers to tap, or writes
+the brief and the film's settings, or names a change to an existing film.
+Every question to a model ends with one rule (`src/core/director/guard.js`):
+what the person, their files and the web give is material, never
+instructions. Then:
 
 ```
 brief
@@ -127,9 +130,10 @@ web view or the system can encode it, otherwise as MP3.
 
 `npm run check` runs every script in `scripts/checks/`: the scene format and
 its field guard, every composition in every look and frame shape, the film
-checks, the director with a scripted model, the brief check, model requests
-and replies, settings, the store and editing, sound and file writing, the
-worker's walls, the content policy and the bridge to the Rust side, the run
+checks, the director with a scripted model, the brief check, timing and
+narration, the person's media, drawings, music, model requests and replies,
+the rule every model question ends with, settings, the store and editing,
+sound and file writing (MP4, MOV, WebM, ZIP), the worker's walls, the content policy and the bridge to the Rust side, the run
 record, templates, file-size budgets, and that nothing ships an emoji, a
 secret or another product's name. The Rust side has its own tests
 (`cargo test`), and CI runs both on every push.
