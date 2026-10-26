@@ -154,6 +154,12 @@ await claim('a model known to think that thinks through its room is asked once w
   assert.equal(await ask(q('deepseek', { model: 'ds-c', maxTokens: 3500 }), r), '{"ok":1}');
   assert.deepEqual(r.limits, [3500 + THINKING_ROOM, 3500 + MORE_THINKING_ROOM]);
 });
+await claim('a model with room to think whose answer is cut off part way is asked once with a larger room, and comes back whole', async () => {
+  const thoughtThenCut = 'data: {"choices":[{"delta":{"reasoning_content":"Let me think at length"}}]}\n\ndata: {"choices":[{"delta":{"content":"export default function compose(m) {"},"finish_reason":"length"}]}\n\n';
+  const r = recorder([thoughtThenCut, answered]);
+  assert.equal(await ask(q('deepseek', { model: 'ds-c', maxTokens: 8000 }), r), '{"ok":1}');
+  assert.deepEqual(r.limits, [8000 + THINKING_ROOM, 8000 + MORE_THINKING_ROOM]);
+});
 await claim('a long answer cut off without thinking is not asked again', async () => {
   const r = recorder(['data: {"choices":[{"delta":{"content":"partial"},"finish_reason":"length"}]}\n\n']);
   assert.equal(await ask(q('deepseek', { model: 'plain-a', maxTokens: 600 }), r), 'partial');

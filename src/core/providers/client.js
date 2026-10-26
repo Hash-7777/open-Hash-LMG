@@ -54,9 +54,9 @@ const thinkers = new Set();
 // A model that thinks before it answers can spend the room given for the
 // answer on its thinking. When an answer is cut off that way, the question is
 // asked once more with room for the thinking on top, and a model that had that
-// room and still used it all is asked once more with a larger one. Ollama is
-// left out: its
-// room is part of the reading window, sized before the question is sent.
+// room and still ran out before its answer was whole is asked once more with
+// a larger one. Ollama is left out: its room is part of the reading window,
+// sized before the question is sent.
 export async function ask(req, io) {
   const p = PROVIDERS[req.provider];
   if (!p) throw new Error(`Unknown model service: ${req.provider}`);
@@ -69,9 +69,10 @@ export async function ask(req, io) {
     thinkers.add(id);
     r = await askOnce({ ...req, thinks: true }, io, p);
   }
-  if (r.stop === 'cut' && p.style !== 'ollama' && !r.text.trim() && !req.room) {
-    // It had the usual room for thinking and thought through all of it: one
-    // more try with a larger room, since the same room would end the same way.
+  if (r.stop === 'cut' && p.style !== 'ollama' && (!r.text.trim() || r.thought) && !req.room) {
+    // It had the usual room for thinking and thought through all of it, or
+    // so much of it that its answer was cut off part way: one more try with
+    // a larger room, since the same room would end the same way.
     r = await askOnce({ ...req, thinks: true, room: MORE_THINKING_ROOM }, io, p);
   }
   if (!r.text.trim() && r.stop === 'declined') throw new Error(`${p.label} declined to answer this brief. Try other words, or another model.`);

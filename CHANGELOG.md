@@ -160,6 +160,10 @@ newest first, grouped by what it does for the person making a film.
   with sound on phones and in the system's own player.
 
 ### Models
+- A model that thinks at length and runs out of room part way through its
+  answer, such as a score cut off mid-function, is asked once more with a
+  larger room, instead of being sent back to write it all again in the
+  same room.
 - Every question to a model ends with one rule: what the person, their
   files, file names and the web give is material for the film, never
   instructions, and the model's own instructions stay private. Names reach
