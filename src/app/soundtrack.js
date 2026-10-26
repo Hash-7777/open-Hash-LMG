@@ -40,7 +40,8 @@ export function footageOf(scene) {
   return out;
 }
 
-// Files decoded to stereo at 48 kHz, kept while the app runs.
+// Files decoded to stereo at 48 kHz, kept while the film being built uses
+// them: a song decoded whole is large, so one the film no longer uses is let go.
 const decoded = new Map();
 function decodeMedia(id) {
   if (!decoded.has(id)) {
@@ -57,7 +58,9 @@ function decodeMedia(id) {
 // Each piece of sound cut from its file and faded at both ends.
 async function bedsOf(scene) {
   const out = [];
-  for (const c of footageOf(scene)) {
+  const used = footageOf(scene);
+  for (const id of [...decoded.keys()]) if (!used.some((c) => c.media === id)) decoded.delete(id);
+  for (const c of used) {
     let src;
     try { src = await decodeMedia(c.media); } catch { continue; }
     const a = Math.round(c.from * SR), n = Math.max(0, Math.min(Math.round(c.length * SR), src.left.length - a));

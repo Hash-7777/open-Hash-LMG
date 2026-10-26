@@ -116,7 +116,9 @@ scripts/checks/          the check suite: every script runs on npm run check
 ## Rendering and export
 
 The render host (`src/render/host.js`) keeps the worker and, for each film,
-one hidden video element a clip of footage. For the preview it asks for a
+one hidden video element a clip of footage. Pictures are decoded no larger
+than the frame can show them and moved into the worker, which keeps them
+until they change. For the preview it asks for a
 frame as a picture; for an export it asks for RGBA pixels, which move from
 the worker without copying. In the desktop app every export is encoded by
 the app's own encoders (`src-tauri/src/commands/encode.rs`): H.264 for MP4

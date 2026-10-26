@@ -98,7 +98,9 @@ self.onmessage = async (e) => {
   try {
     if (m.type === 'scene') {
       scene = m.scene;
-      assets = m.assets || assets;
+      // New pictures replace the ones held, which are let go at once; a scene
+      // sent without them keeps what it has.
+      if (m.assets) { for (const b of Object.values(assets)) b?.close?.(); assets = m.assets; }
       ensureCanvas(scene.width, scene.height);
       kit = null;
       reply({ id: m.id, ok: true });

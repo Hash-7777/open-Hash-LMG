@@ -28,8 +28,18 @@ export function forWorker(scene) {
 }
 const lean = forWorker;
 
+// Pictures are decoded no larger than they can be drawn: the frame's long
+// side, with room for a slow push in. A picture decoded whole holds four bytes
+// a pixel, so a large photo would hold many times what the frame can show.
+const PUSH_ROOM = 1.1;
+const sideFor = (scene) => Math.round(Math.max(scene.width || 1920, scene.height || 1080) * PUSH_ROOM);
+
+// Which pictures a scene holds, at which size: a new key means decode again.
+const imageKeyOf = (scene) => `${sideFor(scene)}|${Object.keys(scene.assets || {}).filter((k) => scene.assets[k].kind === 'image').map((k) => k + ':' + scene.assets[k].data.length).join('|')}`;
+
 async function decodeImages(scene) {
   const out = {};
+  const side = sideFor(scene);
   for (const [id, a] of Object.entries(scene.assets || {})) {
     if (a.kind !== 'image') continue;
     try {
@@ -37,11 +47,17 @@ async function decodeImages(scene) {
       // fetch only the services it names, and a data address is not one.
       const [head, body] = a.data.split(',');
       const type = head.slice(5).split(';')[0];
-      out[id] = await createImageBitmap(new Blob([base64ToBytes(body)], { type }));
+      const blob = new Blob([base64ToBytes(body)], { type });
+      const k = a.width && a.height ? side / Math.max(a.width, a.height) : 1;
+      out[id] = k < 1
+        ? await createImageBitmap(blob, { resizeWidth: Math.round(a.width * k), resizeHeight: Math.round(a.height * k), resizeQuality: 'high' }).catch(() => createImageBitmap(blob))
+        : await createImageBitmap(blob);
     } catch { /* a picture that will not decode is drawn as nothing */ }
   }
   return out;
 }
+
+const closeAll = (images) => { for (const b of Object.values(images || {})) b?.close?.(); };
 
 export function supportsWorkerRendering() {
   return typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined'
@@ -55,7 +71,8 @@ export class WorkerHost {
     this.pending = new Map();
     this.scene = null;
     this.code = null;
-    this.images = {};
+    // The key of the pictures the worker holds; they live there alone, moved
+    // rather than copied, and are sent again only when they change.
     this.imageKey = '';
     this.footage = createFootage();
     // While the preview plays, footage plays along instead of seeking.
@@ -91,7 +108,8 @@ export class WorkerHost {
     this.start();
     const code = this.code;
     this.code = null;
-    if (this.scene) await this.send({ type: 'scene', scene: lean(this.scene), assets: this.images });
+    this.imageKey = '';
+    if (this.scene) await this.setScene(this.scene);
     return code;
   }
 
@@ -107,14 +125,12 @@ export class WorkerHost {
 
   async setScene(scene) {
     this.scene = scene;
-    const key = Object.keys(scene.assets || {}).filter((k) => scene.assets[k].kind === 'image').map((k) => k + ':' + scene.assets[k].data.length).join('|');
-    if (key !== this.imageKey) {
-      this.images = await decodeImages(scene);
-      this.imageKey = key;
-      // Bitmaps are copied to the worker, not moved: the page keeps its own for
-      // when the worker has to be started again.
-    }
-    await this.send({ type: 'scene', scene: lean(scene), assets: this.images });
+    const key = imageKeyOf(scene);
+    if (key === this.imageKey) { await this.send({ type: 'scene', scene: lean(scene) }); return; }
+    // Moved to the worker; a worker started again is sent them decoded afresh.
+    const images = await decodeImages(scene);
+    this.imageKey = key;
+    await this.send({ type: 'scene', scene: lean(scene), assets: images }, Object.values(images));
   }
 
   async setCode(code) {
@@ -175,6 +191,7 @@ export class InlineHost {
     this.canvas = document.createElement('canvas');
     this.ctx = this.canvas.getContext('2d', { alpha: false });
     this.images = {};
+    this.imageKey = '';
     this.footage = createFootage();
     this.live = false;
   }
@@ -183,7 +200,12 @@ export class InlineHost {
     this.scene = scene;
     this.canvas.width = scene.width;
     this.canvas.height = scene.height;
-    this.images = await decodeImages(scene);
+    const key = imageKeyOf(scene);
+    if (key !== this.imageKey) {
+      closeAll(this.images);
+      this.images = await decodeImages(scene);
+      this.imageKey = key;
+    }
     this.kit = createKit(this.ctx, {
       width: scene.width, height: scene.height, fps: scene.fps, bpm: scene.bpm, seed: scene.seed,
       palette: scene.palette, assets: this.images,
@@ -214,7 +236,7 @@ export class InlineHost {
   async trial() { return { ok: false, error: 'This system cannot run animation code.' }; }
   async compose() { return { ok: false, error: 'This system cannot run composing code.' }; }
 
-  dispose() { this.footage.dispose(); }
+  dispose() { closeAll(this.images); this.images = {}; this.footage.dispose(); }
 }
 
 export function createHost() {

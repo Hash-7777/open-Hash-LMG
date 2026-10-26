@@ -9,6 +9,7 @@
 import { h, clear, toast } from './dom.js';
 import { ICONS } from './icons.js';
 import { media } from '../platform/index.js';
+import { showThumb } from './film-media.js';
 
 // The most of a text file read: notes, not books.
 const DOC_BYTES = 2 * 1024 * 1024;
@@ -147,7 +148,7 @@ export function createMediaPanel({ store }) {
         h('span', { class: 'media-actions' }, h('button', { type: 'button', class: 'text-btn danger', text: 'Remove', onclick: () => remove(d.key) })))));
     clear(list).append(...notes, ...(items.length || notes.length ? items.map(([key, a]) => {
       const music = (sound.clips || []).some((c) => c.asset === key);
-      const thumb = a.kind === 'image' ? h('img', { class: 'media-thumb', src: a.data, alt: '' }) : h('span', { class: 'media-thumb icon', html: a.kind === 'video' ? ICONS.film : ICONS.music });
+      const thumb = a.kind === 'image' ? showThumb(h('img', { class: 'media-thumb', alt: '' }), key, a.data) : h('span', { class: 'media-thumb icon', html: a.kind === 'video' ? ICONS.film : ICONS.music });
       return h('div', { class: 'media-item' }, thumb,
         h('div', { class: 'media-info' },
           h('span', { class: 'media-name', text: a.name || key, title: a.name || key }),

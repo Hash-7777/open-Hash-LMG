@@ -10,6 +10,7 @@
 import { h, dialog } from './dom.js';
 import { ICONS } from './icons.js';
 import { media } from '../platform/index.js';
+import { showThumb } from './film-media.js';
 
 const KIND_WORD = { image: 'Picture', video: 'Clip', sound: 'Sound', doc: 'Text' };
 const length = (s) => (s >= 60 ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}` : `${Math.max(0.1, s).toFixed(1)} s`);
@@ -31,7 +32,7 @@ export function attachmentTile(a, project, { large = false, onRemove = null } = 
   if (gone) {
     face = h('div', { class: 'attach-face blank', html: ICONS.cross });
   } else if (a.kind === 'image') {
-    face = h('img', { class: 'attach-face', src: asset.data, alt: a.name, draggable: 'false' });
+    face = showThumb(h('img', { class: 'attach-face', alt: a.name, draggable: 'false' }), a.key, asset.data, large ? 720 : 360);
     // A large tile keeps the picture's own shape.
     if (large && asset.width && asset.height) tile.style.aspectRatio = `${Math.min(2.4, Math.max(0.6, asset.width / asset.height))}`;
     tile.classList.add('opens');

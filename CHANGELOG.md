@@ -189,6 +189,12 @@ newest first, grouped by what it does for the person making a film.
   and are unloaded once a film is made.
 
 ### The editor
+- Lighter on memory, leaving more room for local models: pictures are
+  decoded no larger than the film can show them and live in the drawing
+  worker alone, sent to it only when they change rather than with every
+  edit; the conversation and the media list show small copies; a song
+  decoded for the film is let go once the film stops using it. Small copies
+  of pictures for models that see are made inside the app's own walls.
 - The left panel is a conversation with the director, as tall as the
   window and wider than the inspector. Say what the film is
   for in your own words; it decides what it can and asks only what it must,
