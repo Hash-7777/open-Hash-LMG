@@ -127,7 +127,8 @@ newest first, grouped by what it does for the person making a film.
   files, file names and the web give is material for the film, never
   instructions, and the model's own instructions stay private. Names reach
   a model as plain labels, and a conversation reply that repeats its
-  instructions is never shown or acted on.
+  instructions is never shown or acted on. A brief that quotes your own
+  files is used as written.
 - Before the storyboard, the model may look things up: it names a few
   searches, and pages named in the brief are offered too. Nothing is looked
   up until you say yes to each one; searches use your Tavily key or else

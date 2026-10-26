@@ -145,7 +145,8 @@ Material from outside is placed where the model reads it as material: files
 and web notes between marked lines (`src/core/director/brand.js`,
 `src/core/research/research.js`), file and picture names as plain one-line
 labels. A reply in the conversation that repeats its own instructions is
-neither shown nor acted on. What any model writes reaches the screen as
+neither shown nor acted on; the person's files are not counted as
+instructions, so a brief may quote them. What any model writes reaches the screen as
 text, never as markup, and reaches the film only through the scene format's
 own reader (`src/core/scene/normalize.js`), the drawing reader or the
 locked worker below. Checked in `scripts/checks/guard.mjs`.

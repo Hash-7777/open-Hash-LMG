@@ -15,7 +15,8 @@
 // messages only, so a long conversation costs no more than a short one.
 
 import { ASPECTS, STYLE_NAMES } from '../scene/format.js';
-import { leaksPrompt, plainName } from './guard.js';
+import { leaksPrompt, plainName, guarded } from './guard.js';
+import { docsForChat } from './brand.js';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120];
 const MAX_QUESTIONS = 2;
@@ -57,6 +58,15 @@ Reply with JSON only:
  "action": "ask" | "make"${hasFilm ? ' | "change" | "answer"' : ''},
  "brief": "with make: the complete brief, written for the film maker: purpose, audience, the message, every name, fact and number they gave, the tone, and how to use their media",
  "film": {"seconds": number, "aspect": "16:9" | "9:16" | "1:1" | "4:5", "style": "auto" or a look, "narration": true | false, "useMedia": true | false}${hasFilm ? ',\n "change": "with change: the change, in one or two sentences"' : ''}}`;
+}
+
+// The system text a turn sends (`system`: the instructions, then the opening
+// of the person's files) and the part a reply is checked against (`own`: the
+// instructions alone). A brief that quotes the person's own files is doing
+// its job, so the files never count as instructions shown.
+export function chatSystem(opts, docs) {
+  const prompt = chatPrompt(opts);
+  return { system: guarded(prompt + docsForChat(docs)), own: guarded(prompt) };
 }
 
 // A few lines on the film as it stands, for the director to talk about it.

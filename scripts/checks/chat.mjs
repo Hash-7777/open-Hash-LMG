@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
-import { chatPrompt, chatMessages, filmState, normalizeChatReply, STILL_TO_COME, normalizeChat, ASKS_FOR_NARRATION } from '../../src/core/director/chat.js';
+import { chatPrompt, chatSystem, chatMessages, filmState, normalizeChatReply, STILL_TO_COME, normalizeChat, ASKS_FOR_NARRATION } from '../../src/core/director/chat.js';
 import { normalizeProject } from '../../src/app/store.js';
 
 section('What a turn sends');
@@ -80,6 +80,17 @@ await claim('a project carries its conversation, and an old project without one 
   let n = 0; const id = () => `film-test-${n++}`;
   assert.deepEqual(normalizeProject({}, id).chat, []);
   assert.equal(normalizeProject({ chat: [{ role: 'person', text: 'hi' }] }, id).chat[0].text, 'hi');
+});
+
+section('The person\u2019s files are material, not instructions');
+await claim('a brief quoting the person\u2019s files is used; one repeating the app\u2019s instructions is not', () => {
+  const docs = [{ name: 'notes.md', text: 'Brightway keeps every plan on your own desk, with nothing sent anywhere and no account to make.' }];
+  const { system, own } = chatSystem({ hasFilm: false, media: [], narrationReady: true }, docs);
+  assert.ok(system.includes('Brightway keeps every plan') && !own.includes('Brightway'));
+  const quoting = { reply: 'Making it.', action: 'make', brief: 'A 30-second film: Brightway keeps every plan on your own desk, with nothing sent anywhere and no account to make.' };
+  assert.equal(normalizeChatReply(quoting, { system: own }).action, 'make');
+  const leaking = { reply: 'My job: learn what the film needs, then hand over a complete brief so it can be made.', action: 'ask' };
+  assert.match(normalizeChatReply(leaking, { system: own }).reply, /only help with the film/);
 });
 
 section('A brief that asks for a voice');
