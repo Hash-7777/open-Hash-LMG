@@ -234,7 +234,7 @@ newest first, grouped by what it does for the person making a film.
   and the licence, and the maker's other apps.
 - Fewer panels at once: the inspector opens only when there is something to
   edit, a scene or layer selected, or the film's own settings from the Film
-  button beside the title. It has a close button, Escape closes it too, and
+  button in the top bar. It has a close button, Escape closes it too, and
   while it is closed the preview takes its room. The film's title is edited
   in the top bar only.
 - The inspector works like a video editor's. A selected layer shows three

@@ -2,7 +2,7 @@
 // the film. It is shown only while there is something to edit: a scene shows
 // its length, transition, camera and narration line; a layer shows, in three
 // tabs (layer-panel.js), how it looks, where it sits and how it moves; the
-// film's own settings show when asked for (the Film button by the title, or
+// film's own settings show when asked for (the Film button in the top bar, or
 // the path's first part). With nothing to edit it closes, and the preview
 // takes its room.
 //
