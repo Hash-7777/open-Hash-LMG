@@ -96,7 +96,10 @@ async function boot() {
       toast(`${version.scene.title} is open. The film it came from is in Films.`);
     } catch (err) { toast(err.message || String(err), 'error'); }
   };
-  const inspector = createInspector({ store, onVersion, settings });
+  // The inspector opens for a selection or the film's settings; while it is
+  // closed the preview takes its room.
+  let workspace = null;
+  const inspector = createInspector({ store, onVersion, settings, onShow: (open) => workspace?.classList.toggle('no-inspector', !open) });
   const progress = createProgress();
   // The chat's attach button imports through the Media panel, made below.
   let mediaPanel = null;
@@ -139,6 +142,7 @@ async function boot() {
     iconButton(ICONS.open, 'Films', () => openProjectsDialog({ currentId: store.get().project.id, onOpen: openFilm, onNew: startFresh, onTemplates: openTemplates })),
     iconButton(ICONS.templates, 'Start from a template', openTemplates),
     titleInput,
+    iconButton(ICONS.film, 'Film settings: format, frame rate, tempo, look and sound', () => inspector.toggleFilm(), 'film-settings-btn'),
     progress.label,
     h('span', { class: 'spacer', 'data-tauri-drag-region': true }),
     undoBtn, redoBtn,
@@ -172,7 +176,7 @@ async function boot() {
   director.el.classList.add('side-panel');
   const side = h('div', { class: 'director' }, tabs, director.el, mediaPanel.el);
   showSide('director');
-  const workspace = h('main', { class: 'workspace' }, side, player.el, inspector.el, timeline.el);
+  workspace = h('main', { class: `workspace${inspector.el.hidden ? ' no-inspector' : ''}` }, side, player.el, inspector.el, timeline.el);
   document.body.append(topbar, workspace);
 
   store.on('history', paintHistory);
@@ -196,7 +200,7 @@ async function boot() {
     else if (e.key === 'Home') { e.preventDefault(); player.seek(0); }
     else if (e.key === 'End') { e.preventDefault(); player.seek(store.get().project.scene.duration); }
     else if (e.key === 's' || e.key === 'S') { e.preventDefault(); timeline.split(); }
-    else if (e.key === 'Escape') store.select(null);
+    else if (e.key === 'Escape') inspector.close();
     else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); inspector.deleteSelected(); }
   });
 

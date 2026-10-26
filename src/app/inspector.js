@@ -1,16 +1,21 @@
 // The inspector: hand edits to whatever is selected, after the model has made
-// the film. Nothing selected shows the film's own settings; a scene shows its
-// length, transition, camera and narration line; a layer shows, in three tabs
-// (layer-panel.js), how it looks, where it sits and how it moves.
+// the film. It is shown only while there is something to edit: a scene shows
+// its length, transition, camera and narration line; a layer shows, in three
+// tabs (layer-panel.js), how it looks, where it sits and how it moves; the
+// film's own settings show when asked for (the Film button by the title, or
+// the path's first part). With nothing to edit it closes, and the preview
+// takes its room.
 //
-// A path across the top (Film, Scene, Layer) goes back up a level. The panel
+// A path across the top (Film, Scene, Layer) goes back up a level, and a
+// close button beside it closes the panel. The panel
 // is drawn from the scene each time, and left alone while one of its own
 // fields has focus or a label is being dragged, so neither is interrupted by
 // a redraw. A layer with keyframes is drawn again as the playhead moves, so
 // its values are the ones at the playhead.
 
 import { narrationSection } from './narration-fields.js';
-import { h, clear, perFrame } from './dom.js';
+import { h, clear, perFrame, iconButton } from './dom.js';
+import { ICONS } from './icons.js';
 import { findLayer, layerSlot } from './store.js';
 import {
   ASPECT_SHORT, field, pair, section, textInput, numberInput, select, toggle, segmented, colourInput, buttonRow, textButton, scrubbing,
@@ -33,11 +38,17 @@ function allLayers(list, out = []) {
   return out;
 }
 
-export function createInspector({ store, onVersion, settings = null }) {
+// onShow(open): the panel opened or closed, for the layout to make room.
+export function createInspector({ store, onVersion, settings = null, onShow = () => {} }) {
   const body = h('div', { class: 'insp-body' });
   const crumbs = h('nav', { class: 'crumbs', 'aria-label': 'Selection' });
   const foot = h('div', { class: 'insp-foot' });
-  const el = h('aside', { class: 'inspector', 'aria-label': 'Inspector' }, h('div', { class: 'panel-head' }, crumbs), body, foot);
+  // The film's settings, asked for; a selection made afterwards takes over.
+  let filmOpen = false;
+  const close = () => { filmOpen = false; store.select(null); render(); };
+  const openFilm = () => { filmOpen = true; store.select(null); render(); };
+  const closeBtn = iconButton(ICONS.cross, 'Close the panel', close, 'insp-close');
+  const el = h('aside', { class: 'inspector', 'aria-label': 'Inspector' }, h('div', { class: 'panel-head' }, crumbs, closeBtn), body, foot);
   // The path to what is selected; every part but the last goes back to it.
   const setPath = (...parts) => {
     clear(crumbs).append(...parts.flatMap(([label, go], i) => {
@@ -75,7 +86,6 @@ export function createInspector({ store, onVersion, settings = null }) {
     }
     return [
       section(null,
-        field('Title', textInput(s.title, (v) => film((doc) => { doc.title = v; }), { max: 120 })),
         pair(
           field('Format', select(s.aspect, Object.keys(ASPECTS).map((k) => [k, ASPECT_SHORT[k] || k]), (v) => film((doc) => { doc.aspect = v; delete doc.width; delete doc.height; }))),
           field('Frame rate', select(String(s.fps), FPS_CHOICES.map((f) => [String(f), `${f} fps`]), (v) => film((doc) => { doc.fps = Number(v); })))),
@@ -122,7 +132,7 @@ export function createInspector({ store, onVersion, settings = null }) {
   function scenePanel(S) {
     const s = scene();
     const index = s.scenes.indexOf(S);
-    setPath(['Film', () => store.select(null)], [`Scene ${index + 1} of ${s.scenes.length}`]);
+    setPath(['Film', openFilm], [`Scene ${index + 1} of ${s.scenes.length}`]);
     const tr = S.transition;
     return [
       section('Scene',
@@ -278,12 +288,15 @@ export function createInspector({ store, onVersion, settings = null }) {
 
   function render() {
     const { selection, project } = st();
+    const open = Boolean(selection.scene) || filmOpen;
+    if (el.hidden === open) { el.hidden = !open; onShow(open); }
+    if (!open) return;
     const S = selection.scene ? project.scene.scenes.find((x) => x.id === selection.scene) : null;
     const L = S && selection.layer ? findLayer(S.layers, selection.layer) : null;
     let parts;
     clear(foot);
     if (L) {
-      setPath(['Film', () => store.select(null)], [`Scene ${project.scene.scenes.indexOf(S) + 1}`, () => store.select({ scene: S.id, layer: null })], [L.name || layerTitle(L)]);
+      setPath(['Film', openFilm], [`Scene ${project.scene.scenes.indexOf(S) + 1}`, () => store.select({ scene: S.id, layer: null })], [L.name || layerTitle(L)]);
       parts = layerPanel(S, L);
       foot.append(layerActions(() => duplicateLayer(S.id, L.id), () => deleteLayer(S.id, L.id)));
     } else if (S) parts = scenePanel(S);
@@ -308,7 +321,7 @@ export function createInspector({ store, onVersion, settings = null }) {
   el.addEventListener('focusout', settle);
   el.addEventListener('scrub-end', settle);
   store.on('project', maybeRender);
-  store.on('selection', () => { deferred = false; render(); });
+  store.on('selection', () => { if (st().selection.scene) filmOpen = false; deferred = false; render(); });
   // A layer's Position tab shows its values and keyframes at the playhead, so
   // it follows the playhead while it is moved by hand; while the film plays,
   // the panel waits.
@@ -317,7 +330,7 @@ export function createInspector({ store, onVersion, settings = null }) {
   store.on('playing', () => { if (!st().playing && following()) maybeRender(); });
   render();
 
-  return { el, deleteSelected() {
+  return { el, openFilm, close, toggleFilm: () => (filmOpen && !st().selection.scene ? close() : openFilm()), deleteSelected() {
     const { selection } = st();
     if (selection.layer) deleteLayer(selection.scene, selection.layer);
   } };

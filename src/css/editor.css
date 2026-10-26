@@ -60,6 +60,10 @@ svg { display: block; flex: none; }
 }
 .director { border-right: 1px solid var(--line); }
 .inspector { border-left: 1px solid var(--line); }
+/* With nothing to edit the inspector is closed and the preview takes its room. */
+.inspector[hidden] { display: none; }
+.workspace.no-inspector { grid-template-columns: var(--chat-w) minmax(var(--stage-min-w), 1fr) 0; }
+.insp-close { margin-left: auto; flex: none; }
 
 .panel-head {
   display: flex;
