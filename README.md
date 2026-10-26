@@ -128,6 +128,7 @@ The app suggests the way of working from the model's size; you can always choose
 |---|---|
 | **Kinetic type** | Letters, words, typewriter, mask reveals and wipes; accent words, underlines drawn on, highlighter sweeps |
 | **Motion** | Sixteen entrances, among them a panel that unfolds from its top edge, plus exits, holds and keyframes, eased the way motion designers ease: fast in, no bounce |
+| **Hand edits** | An inspector like a video editor's: design, position and animate tabs, keyframes set at the playhead, numbers dragged from their labels, align and stacking order, camera pans |
 | **Camera and cuts** | Slow pushes and pans; push, slide, zoom-through, wipe, fade and dip; a carry that moves one element, the same words or the same picture, into the next scene |
 | **Shapes and data** | Rings, lines, arrows and paths drawn on stroke by stroke; counters that count up; bar and line charts that grow |
 | **Your media** | Your pictures, clips and songs, linked where they are and never copied. A model's film puts them on the beats they suit, with a closer second look on the next one |

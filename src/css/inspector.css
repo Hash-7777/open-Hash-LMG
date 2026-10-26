@@ -1,0 +1,188 @@
+/* The inspector's own controls: the path to the selection, tabs, sections
+   that fold, numbers whose label drags, sliders, icon rows, keyframe
+   diamonds and the footer of a layer. Greys and hairlines; the accent marks
+   only what is on (a tab, a key at the playhead, a chosen alignment). */
+
+/* ---- the path: Film / Scene 3 / Text ---- */
+.crumbs { display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; }
+.crumb {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 3px 5px;
+  margin: 0 -1px;
+  border: 0;
+  border-radius: var(--r-s);
+  background: none;
+  font-size: var(--text-s);
+  color: var(--muted);
+  cursor: pointer;
+}
+button.crumb:hover { color: var(--ink); background: var(--raised); }
+.crumb.now { color: var(--ink); font-weight: 600; cursor: default; flex: 1 1 auto; }
+.crumb-sep { color: var(--faint); font-size: var(--text-s); flex: none; }
+
+/* ---- tabs ---- */
+.insp-tabs-row { padding: 10px 14px 0; position: sticky; top: 0; z-index: 2; background: var(--panel); }
+.insp-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border-bottom: 1px solid var(--line); }
+.insp-tab {
+  height: 30px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  font-size: var(--text-s);
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+}
+.insp-tab:hover { color: var(--ink); }
+.insp-tab.on { color: var(--ink); border-bottom-color: var(--accent); }
+.insp-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--r-s); }
+
+/* ---- sections that fold ---- */
+.insp-section.foldable { gap: 0; }
+.insp-head-row { display: flex; align-items: center; gap: 6px; }
+.insp-head {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: left;
+}
+.insp-head:hover, .insp-head:hover .insp-title { color: var(--ink); }
+.insp-head:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-s); }
+.insp-chevron { display: inline-flex; flex: none; transition: transform 0.18s var(--ease); }
+.foldable.folded .insp-chevron { transform: rotate(-90deg); }
+.insp-section-body { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
+.foldable.folded .insp-section-body { display: none; }
+.foldable.folded { padding-bottom: 12px; }
+.insp-reset {
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--r-s);
+  background: none;
+  font-size: var(--text-xs);
+  color: var(--faint);
+  cursor: pointer;
+}
+.insp-reset:hover { color: var(--ink); background: var(--raised); }
+.foldable.folded .insp-reset { display: none; }
+
+/* ---- a label that drags its number ---- */
+.field-label.scrub { cursor: ew-resize; user-select: none; -webkit-user-select: none; align-self: flex-start; }
+.field-label.scrub:hover { color: var(--ink); }
+body.scrubbing, body.scrubbing * { cursor: ew-resize !important; user-select: none; -webkit-user-select: none; }
+
+/* ---- slider with its number ---- */
+.range-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 78px; gap: 8px; align-items: center; }
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  background: none;
+  cursor: pointer;
+}
+.range::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: var(--line-strong); }
+.range::-moz-range-track { height: 3px; border-radius: 2px; background: var(--line-strong); }
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 2px solid var(--panel);
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+.range::-moz-range-thumb { width: 11px; height: 11px; border-radius: 50%; background: var(--ink); border: 2px solid var(--panel); }
+.range:focus-visible { outline: none; }
+.range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--accent); }
+
+/* ---- rows of icon buttons ---- */
+.icon-row { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--field); width: max-content; max-width: 100%; }
+.icon-row.wide { width: 100%; }
+.icon-row.wide .icon-row-btn { flex: 1; }
+.icon-row-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--r-s);
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.icon-row-btn:hover { color: var(--ink); background: var(--raised); }
+.icon-row-btn.on { color: var(--accent); background: var(--accent-soft); }
+.icon-row-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+/* ---- keyframes ---- */
+.keyed { display: grid; grid-template-columns: minmax(0, 1fr) 22px; gap: 4px; align-items: end; min-width: 0; }
+.key-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-s);
+  background: none;
+  color: var(--faint);
+  cursor: pointer;
+}
+.key-btn svg { width: 13px; height: 13px; }
+.key-btn:hover:not(:disabled) { color: var(--ink); background: var(--raised); }
+.key-btn.some { color: var(--ink-2); }
+.key-btn.on { color: var(--accent); }
+.key-btn:disabled { cursor: default; opacity: 0.45; }
+.key-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+.keyed.has-keys .field-label::after { content: " \00b7  keyed"; color: var(--accent); }
+.key-bar { display: flex; align-items: center; gap: 10px; }
+.key-count { flex: 1; font-size: var(--text-s); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.key-bar .text-btn { height: 26px; }
+
+/* ---- a number with a button beside it ---- */
+.with-btn { display: grid; grid-template-columns: minmax(0, 1fr) 28px; gap: 4px; }
+.mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  background: var(--field);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.mini-btn:hover { color: var(--ink); border-color: var(--line-strong); }
+.mini-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---- the footer of a layer ---- */
+.insp-foot { flex: none; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--panel); }
+.insp-foot[hidden] { display: none; }
+.insp-foot .button-row { justify-content: flex-end; }
+
+/* A short window gives the fields the room. */
+@media (max-height: 640px) {
+  .insp-foot { padding: 6px 14px; }
+  .insp-foot .text-btn { height: 24px; }
+  .insp-tabs-row { padding-top: 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .insp-chevron { transition: none; }
+}

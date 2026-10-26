@@ -189,6 +189,19 @@ newest first, grouped by what it does for the person making a film.
   and are unloaded once a film is made.
 
 ### The editor
+- The inspector works like a video editor's. A selected layer shows three
+  tabs: Design (words, type, spacing, a panel behind the words, shape,
+  picture), Position (align in the frame, place, scale, turn and opacity,
+  stacking order) and Animate (when it appears and leaves, set from the
+  playhead, and each entrance and exit's style, length, feel, start,
+  distance and the gap between its letters or words). A diamond beside each
+  value sets a keyframe at the playhead; with keyframes, a value changed at
+  the playhead records one there, and the previous and next keyframes are a
+  press away. Any number changes by dragging its label sideways, sliders sit
+  beside values with a natural range, sections fold away and stay folded,
+  several offer to go back to the usual values, a path at the top goes back
+  to the scene or the film, and Duplicate and Delete stay at the bottom.
+  Scenes gain camera pans and the feel of the camera's move.
 - Lighter on memory, leaving more room for local models: pictures are
   decoded no larger than the film can show them and live in the drawing
   worker alone, sent to it only when they change rather than with every

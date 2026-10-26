@@ -1,32 +1,32 @@
 // The inspector: hand edits to whatever is selected, after the model has made
 // the film. Nothing selected shows the film's own settings; a scene shows its
-// length, transition, camera and narration line; a layer shows what it says,
-// where it sits, when it appears and how it moves.
+// length, transition, camera and narration line; a layer shows, in three tabs
+// (layer-panel.js), how it looks, where it sits and how it moves.
 //
-// The panel is drawn from the scene each time, and left alone while one of its
-// own fields has focus, so typing is never interrupted by a redraw.
+// A path across the top (Film, Scene, Layer) goes back up a level. The panel
+// is drawn from the scene each time, and left alone while one of its own
+// fields has focus or a label is being dragged, so neither is interrupted by
+// a redraw. A layer with keyframes is drawn again as the playhead moves, so
+// its values are the ones at the playhead.
 
 import { narrationSection } from './narration-fields.js';
-import { h, clear } from './dom.js';
+import { h, clear, perFrame } from './dom.js';
 import { findLayer, layerSlot } from './store.js';
 import {
-  ASPECT_SHORT, field, pair, section, textInput, textArea, numberInput, select, toggle, segmented, colourInput, listInput, buttonRow, textButton,
+  ASPECT_SHORT, field, pair, section, textInput, numberInput, select, toggle, segmented, colourInput, buttonRow, textButton, scrubbing,
 } from './fields.js';
 import {
-  ASPECTS, FPS_CHOICES, STYLE_PACKS, STYLE_NAMES, FONT_NAMES, ANCHORS, IN_PRESETS, OUT_PRESETS, HOLD_PRESETS,
-  TRANSITIONS, DIRECTIONS, BACKGROUNDS, SCORES, SHAPES, LIMITS, PALETTE_TOKENS,
+  ASPECTS, FPS_CHOICES, STYLE_PACKS, STYLE_NAMES, TRANSITIONS, DIRECTIONS, BACKGROUNDS, SCORES, LIMITS, PALETTE_TOKENS,
 } from '../core/scene/format.js';
 import { toHex } from '../core/util/color.js';
 import { resizeScene } from '../core/scene/edit.js';
 import { staggerSection } from './stagger-fields.js';
-import { videoSection } from './video-fields.js';
-import { repeatSection } from './repeat-fields.js';
+import { createLayerPanel, layerTitle, layerActions, followsPlayhead, layerTab } from './layer-panel.js';
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ');
 const labelled = (list) => list.map((v) => [v, cap(v)]);
 const SCORE_LABELS = { composed: 'Composed by the model for this film', pulse: 'Pulse: deep and minimal', soft: 'Soft: bright and light', cinematic: 'Cinematic: wide, no drums', bounce: 'Bounce: playful, mallets and claps', drive: 'Drive: fast, four on the floor', keys: 'Keys: warm electric piano', arp: 'Arp: running synth, precise', none: 'No music' };
-const FONT_LABELS = { sans: 'Sans', display: 'Display', condensed: 'Condensed', serif: 'Serif', mono: 'Mono', rounded: 'Rounded' };
-const WEIGHTS = [[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold'], [800, 'Heavy'], [900, 'Black']].map(([v, l]) => [String(v), l]);
+const CAMERA_FEELS = [['inOutSine', 'Soft in and out'], ['linear', 'Even'], ['inOutCubic', 'Ease in and out'], ['outExpo', 'Fast, then slow']];
 
 function allLayers(list, out = []) {
   for (const L of list) { out.push(L); if (L.layers) allLayers(L.layers, out); }
@@ -35,8 +35,17 @@ function allLayers(list, out = []) {
 
 export function createInspector({ store, onVersion, settings = null }) {
   const body = h('div', { class: 'insp-body' });
-  const title = h('span', { class: 'panel-title' });
-  const el = h('aside', { class: 'inspector', 'aria-label': 'Inspector' }, h('div', { class: 'panel-head' }, title), body);
+  const crumbs = h('nav', { class: 'crumbs', 'aria-label': 'Selection' });
+  const foot = h('div', { class: 'insp-foot' });
+  const el = h('aside', { class: 'inspector', 'aria-label': 'Inspector' }, h('div', { class: 'panel-head' }, crumbs), body, foot);
+  // The path to what is selected; every part but the last goes back to it.
+  const setPath = (...parts) => {
+    clear(crumbs).append(...parts.flatMap(([label, go], i) => {
+      const last = i === parts.length - 1;
+      const part = last ? h('span', { class: 'crumb now', text: label, 'aria-current': 'true' }) : h('button', { type: 'button', class: 'crumb', text: label, title: `Back to the ${label.toLowerCase().startsWith('scene') ? 'scene' : 'film'}`, onclick: go });
+      return i ? [h('span', { class: 'crumb-sep', 'aria-hidden': 'true', text: '/' }), part] : [part];
+    }));
+  };
 
   const st = () => store.get();
   const scene = () => st().project.scene;
@@ -57,7 +66,7 @@ export function createInspector({ store, onVersion, settings = null }) {
   // ---- film ---------------------------------------------------------------------
   function filmPanel() {
     const s = scene();
-    title.textContent = 'Film';
+    setPath(['Film']);
     const palette = h('div', { class: 'palette' });
     for (const k of PALETTE_TOKENS) {
       const input = h('input', { type: 'color', value: toHex(s.palette[k]) || '#000000', title: k, 'aria-label': `Palette colour ${k}` });
@@ -113,7 +122,7 @@ export function createInspector({ store, onVersion, settings = null }) {
   function scenePanel(S) {
     const s = scene();
     const index = s.scenes.indexOf(S);
-    title.textContent = `Scene ${index + 1} of ${s.scenes.length}`;
+    setPath(['Film', () => store.select(null)], [`Scene ${index + 1} of ${s.scenes.length}`]);
     const tr = S.transition;
     return [
       section('Scene',
@@ -136,11 +145,18 @@ export function createInspector({ store, onVersion, settings = null }) {
           ? field('Direction', segmented(tr.direction, labelled(DIRECTIONS), (v) => inScene(S.id, (T) => { T.transition.direction = v; })))
           : null,
         tr.kind === 'carry' ? carryFields(S, s.scenes[index - 1]) : null) : null,
-      section('Camera',
+      section('Camera', { reset: () => inScene(S.id, (T) => { T.camera = { zoom: [1, 1.04] }; }) },
         pair(
-          field('Zoom from', numberInput(S.camera.zoom[0], (v) => inScene(S.id, (T) => { T.camera.zoom[0] = v; }), { min: 0.25, max: 4, step: 1, scale: 100, unit: '%', digits: 0 })),
-          field('Zoom to', numberInput(S.camera.zoom[1], (v) => inScene(S.id, (T) => { T.camera.zoom[1] = v; }), { min: 0.25, max: 4, step: 1, scale: 100, unit: '%', digits: 0 }))),
-        h('div', { class: 'field-hint', text: 'A slow push of a few percent keeps a scene alive without drawing the eye.' })),
+          field('Zoom from', camNum(S, 'zoom', 0, { min: 0.25, max: 4, step: 1, scale: 100, unit: '%', digits: 0 })),
+          field('Zoom to', camNum(S, 'zoom', 1, { min: 0.25, max: 4, step: 1, scale: 100, unit: '%', digits: 0 }))),
+        pair(
+          field('Pan across from', camNum(S, 'x', 0, { min: -0.5, max: 0.5, step: 0.5, scale: 100, unit: '%', digits: 1 })),
+          field('Pan across to', camNum(S, 'x', 1, { min: -0.5, max: 0.5, step: 0.5, scale: 100, unit: '%', digits: 1 }))),
+        pair(
+          field('Pan down from', camNum(S, 'y', 0, { min: -0.5, max: 0.5, step: 0.5, scale: 100, unit: '%', digits: 1 })),
+          field('Pan down to', camNum(S, 'y', 1, { min: -0.5, max: 0.5, step: 0.5, scale: 100, unit: '%', digits: 1 }))),
+        field('Feel', select(S.camera.ease, CAMERA_FEELS.some(([k]) => k === S.camera.ease) ? CAMERA_FEELS : [...CAMERA_FEELS, [S.camera.ease, cap(S.camera.ease)]], (v) => inScene(S.id, (T) => { T.camera.ease = v; }))),
+        h('div', { class: 'field-hint', text: 'A slow push or pan of a few percent keeps a scene alive without drawing the eye.' })),
       staggerSection(S, inScene),
       narrationSection(S, s, { store, settings }),
       section('Add to this scene',
@@ -220,103 +236,14 @@ export function createInspector({ store, onVersion, settings = null }) {
     store.select(null);
   }
 
-  // ---- layer ------------------------------------------------------------------------
-  function layerPanel(S, L) {
-    const s = scene();
-    title.textContent = { text: 'Text', shape: 'Shape', image: 'Picture', video: 'Clip', counter: 'Counter', bars: 'Bar chart', 'line-chart': 'Line chart', group: 'Group' }[L.type] || 'Layer';
-    const set = (fn) => inLayer(S.id, L.id, fn);
-    const parts = [];
-
-    if (L.type === 'text') {
-      parts.push(section('Words',
-        field('Text', textArea(L.text, { onLive: (v) => { if (v.trim()) inLayer(S.id, L.id, (M) => { M.text = v; }, { live: true }); }, onCommit: () => store.commit(), rows: 3, max: LIMITS.maxTextChars })),
-        field('Accent words', listInput(L.highlight, (v) => set((M) => { M.highlight = v; }), { placeholder: 'Words to set in the accent colour' })),
-        pair(
-          field('Size', numberInput(L.size, (v) => set((M) => { M.size = v; }), { min: 8, max: 600, step: 2, unit: 'pt', digits: 0 })),
-          field('Weight', select(String(L.weight), WEIGHTS, (v) => set((M) => { M.weight = Number(v); })))),
-        pair(
-          field('Font', select(L.font, FONT_NAMES.map((f) => [f, FONT_LABELS[f] || f]), (v) => set((M) => { M.font = v; }))),
-          field('Colour', colourInput(L.color, s.palette, (v) => set((M) => { M.color = v || 'ink'; })))),
-        field('Align', segmented(L.align, [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], (v) => set((M) => { M.align = v; }))),
-        field('Capitals', toggle(L.upper, (v) => set((M) => { M.upper = v; }), 'Set in capitals'))));
-    } else if (L.type === 'counter') {
-      parts.push(section('Counter',
-        pair(
-          field('From', numberInput(L.from, (v) => set((M) => { M.from = v; }), { step: 1 })),
-          field('To', numberInput(L.to, (v) => set((M) => { M.to = v; }), { step: 1 }))),
-        pair(
-          field('Before', textInput(L.prefix, (v) => set((M) => { M.prefix = v; }), { max: 12 })),
-          field('After', textInput(L.suffix, (v) => set((M) => { M.suffix = v; }), { max: 24 }))),
-        pair(
-          field('Decimals', numberInput(L.decimals, (v) => set((M) => { M.decimals = Math.round(v); }), { min: 0, max: 6, digits: 0 })),
-          field('Counts for', numberInput(L.count, (v) => set((M) => { M.count = v; }), { min: 0, max: 30, step: 0.1, unit: 's' }))),
-        field('Odometer', toggle(L.roll, (v) => set((M) => { M.roll = v; }), 'Roll the digits into place')),
-        pair(
-          field('Size', numberInput(L.size, (v) => set((M) => { M.size = v; }), { min: 8, max: 800, step: 2, unit: 'pt', digits: 0 })),
-          field('Colour', colourInput(L.color, s.palette, (v) => set((M) => { M.color = v || 'ink'; }))))));
-    } else if (L.type === 'shape') {
-      parts.push(section('Shape',
-        field('Shape', select(L.shape, labelled(SHAPES.filter((x) => x !== 'path' || L.shape === 'path')), (v) => set((M) => { M.shape = v; }))),
-        pair(
-          field('Width', numberInput(L.w, (v) => set((M) => { M.w = v; }), { min: 0, max: 8000, step: 2, unit: 'pt', digits: 0 })),
-          field('Height', numberInput(L.h, (v) => set((M) => { M.h = v; }), { min: 0, max: 8000, step: 2, unit: 'pt', digits: 0 }))),
-        pair(
-          field('Fill', colourInput(L.fill, s.palette, (v) => set((M) => { M.fill = v; }), { allowNone: true })),
-          field('Line', colourInput(L.stroke, s.palette, (v) => set((M) => { M.stroke = v; }), { allowNone: true }))),
-        field('Line width', numberInput(L.strokeWidth, (v) => set((M) => { M.strokeWidth = v; }), { min: 0, max: 400, step: 1, unit: 'pt', digits: 0 }))));
-    } else if (L.type === 'bars' || L.type === 'line-chart') {
-      parts.push(section('Chart',
-        field('Values', listInput(L.values, (v) => { if (v.length) set((M) => { M.values = v; }); }, { numbers: true, placeholder: '12, 18, 27' })),
-        field('Labels', listInput(L.labels, (v) => set((M) => { M.labels = v; }), { placeholder: 'Q1, Q2, Q3' })),
-        pair(
-          field('Width', numberInput(L.w, (v) => set((M) => { M.w = v; }), { min: 40, max: 8000, step: 10, unit: 'pt', digits: 0 })),
-          field('Height', numberInput(L.h, (v) => set((M) => { M.h = v; }), { min: 40, max: 8000, step: 10, unit: 'pt', digits: 0 }))),
-        pair(
-          field('Colour', colourInput(L.color, s.palette, (v) => set((M) => { M.color = v || 'accent'; }))),
-          field('After values', textInput(L.suffix, (v) => set((M) => { M.suffix = v; }), { max: 12 })))));
-    } else if (L.type === 'image') {
-      parts.push(section('Picture',
-        field('Fit', segmented(L.fit, [['contain', 'Whole picture'], ['cover', 'Fill the box']], (v) => set((M) => { M.fit = v; }))),
-        pair(
-          field('Width', numberInput(L.w, (v) => set((M) => { M.w = v; }), { min: 1, max: 8000, step: 10, unit: 'pt', digits: 0 })),
-          field('Height', numberInput(L.h, (v) => set((M) => { M.h = v; }), { min: 1, max: 8000, step: 10, unit: 'pt', digits: 0 })))));
-    }
-
-    if (L.type === 'video') parts.push(videoSection(L, set, s.assets[L.asset]));
-    if (L.type === 'shape' || L.type === 'text') parts.push(repeatSection(L, set));
-
-    parts.push(section('Place',
-      pair(
-        field('Across', numberInput(L.x, (v) => set((M) => { M.x = v; }), { min: -0.5, max: 1.5, step: 0.5, scale: 100, unit: '%', digits: 1 })),
-        field('Down', numberInput(L.y, (v) => set((M) => { M.y = v; }), { min: -0.5, max: 1.5, step: 0.5, scale: 100, unit: '%', digits: 1 }))),
-      pair(
-        field('Anchor', select(L.anchor, labelled(ANCHORS), (v) => set((M) => { M.anchor = v; }))),
-        field('Opacity', numberInput(L.opacity, (v) => set((M) => { M.opacity = v; }), { min: 0, max: 1, step: 5, scale: 100, unit: '%', digits: 0 }))),
-      pair(
-        field('Scale', numberInput(L.scale, (v) => set((M) => { M.scale = v; }), { min: 0, max: 20, step: 5, scale: 100, unit: '%', digits: 0 })),
-        field('Turn', numberInput(L.rotate, (v) => set((M) => { M.rotate = v; }), { min: -3600, max: 3600, step: 1, unit: '°', digits: 1 })))));
-
-    parts.push(section('Timing',
-      pair(
-        field('Appears at', numberInput(L.at, (v) => set((M) => { M.at = Math.min(v, M.until - 0.1); }), { min: 0, max: S.duration, step: 0.05, unit: 's' })),
-        field('Leaves at', numberInput(L.until, (v) => set((M) => { M.until = Math.max(v, M.at + 0.1); }), { min: 0, max: S.duration, step: 0.05, unit: 's' }))),
-      h('div', { class: 'field-hint', text: 'Seconds from the start of the scene.' })));
-
-    parts.push(section('Motion',
-      pair(
-        field('Entrance', select(L.in.preset, labelled(IN_PRESETS), (v) => set((M) => { M.in.preset = v; if (!M.in.duration) M.in.duration = 0.7; }))),
-        field('Takes', numberInput(L.in.duration, (v) => set((M) => { M.in.duration = v; }), { min: 0, max: 10, step: 0.05, unit: 's' }))),
-      pair(
-        field('Exit', select(L.out.preset, labelled(OUT_PRESETS), (v) => set((M) => { M.out.preset = v; if (!M.out.duration) M.out.duration = 0.45; }))),
-        field('Takes', numberInput(L.out.duration, (v) => set((M) => { M.out.duration = v; }), { min: 0, max: 10, step: 0.05, unit: 's' }))),
-      field('While it holds', select(L.hold, labelled(HOLD_PRESETS), (v) => set((M) => { M.hold = v; })))));
-
-    parts.push(section('Layer',
-      buttonRow(
-        textButton('Duplicate', () => duplicateLayer(S.id, L.id)),
-        textButton('Delete', () => deleteLayer(S.id, L.id), 'danger'))));
-    return parts;
+  // One end of a camera move, following a drag of its label.
+  function camNum(S, prop, end, opts) {
+    const put = (v) => (T) => { T.camera[prop][end] = v; };
+    return numberInput(S.camera[prop][end], (v) => { inScene(S.id, put(v), { live: true }); store.commit(); }, { ...opts, onLive: (v) => inScene(S.id, put(v), { live: true }) });
   }
+
+  // ---- layer ------------------------------------------------------------------------
+  const layerPanel = createLayerPanel({ store, inScene, inLayer, rerender: () => render() });
 
   function duplicateLayer(sid, lid) {
     let made = null;
@@ -354,25 +281,40 @@ export function createInspector({ store, onVersion, settings = null }) {
     const S = selection.scene ? project.scene.scenes.find((x) => x.id === selection.scene) : null;
     const L = S && selection.layer ? findLayer(S.layers, selection.layer) : null;
     let parts;
-    if (L) parts = layerPanel(S, L);
-    else if (S) parts = scenePanel(S);
+    clear(foot);
+    if (L) {
+      setPath(['Film', () => store.select(null)], [`Scene ${project.scene.scenes.indexOf(S) + 1}`, () => store.select({ scene: S.id, layer: null })], [L.name || layerTitle(L)]);
+      parts = layerPanel(S, L);
+      foot.append(layerActions(() => duplicateLayer(S.id, L.id), () => deleteLayer(S.id, L.id)));
+    } else if (S) parts = scenePanel(S);
     else parts = filmPanel();
+    foot.hidden = !L;
     if (project.code) parts.unshift(codeNotice());
-    const scrollTop = body.scrollTop;
-    const same = body.dataset.target === `${S?.id || ''}/${L?.id || ''}`;
+    // The same view drawn again keeps its scroll; a new one opens at the top.
+    const target = `${S?.id || ''}/${L?.id || ''}/${L ? layerTab() : ''}`;
+    const scrollTop = body.dataset.target === target ? body.scrollTop : 0;
     clear(body).append(...parts.filter(Boolean));
-    body.dataset.target = `${S?.id || ''}/${L?.id || ''}`;
-    if (same) body.scrollTop = scrollTop;
+    body.dataset.target = target;
+    body.scrollTop = scrollTop;
   }
 
   let deferred = false;
+  const busy = () => scrubbing.active || (el.contains(document.activeElement) && document.activeElement !== document.body && document.activeElement.matches('input, textarea, select'));
   const maybeRender = () => {
-    if (el.contains(document.activeElement) && document.activeElement !== document.body && document.activeElement.matches('input, textarea, select')) { deferred = true; return; }
+    if (busy()) { deferred = true; return; }
     render();
   };
-  el.addEventListener('focusout', () => setTimeout(() => { if (deferred && !el.contains(document.activeElement)) { deferred = false; render(); } }, 0));
+  const settle = () => setTimeout(() => { if (deferred && !busy()) { deferred = false; render(); } }, 0);
+  el.addEventListener('focusout', settle);
+  el.addEventListener('scrub-end', settle);
   store.on('project', maybeRender);
   store.on('selection', () => { deferred = false; render(); });
+  // A layer's Position tab shows its values and keyframes at the playhead, so
+  // it follows the playhead while it is moved by hand; while the film plays,
+  // the panel waits.
+  const following = () => Boolean(st().selection.layer) && followsPlayhead();
+  store.on('time', perFrame(() => { if (!st().playing && following()) maybeRender(); }));
+  store.on('playing', () => { if (!st().playing && following()) maybeRender(); });
   render();
 
   return { el, deleteSelected() {

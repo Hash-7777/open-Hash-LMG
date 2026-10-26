@@ -52,6 +52,24 @@ export const ICONS = {
   scissors: svg('<circle cx="4.5" cy="11.5" r="2"/><circle cx="11.5" cy="11.5" r="2"/><path d="M5.9 10 12 2.5M10.1 10 4 2.5"/>'),
   templates: svg('<rect x="2.5" y="2.5" width="4.5" height="4.5" rx=".8"/><rect x="9" y="2.5" width="4.5" height="4.5" rx=".8"/><rect x="2.5" y="9" width="4.5" height="4.5" rx=".8"/><rect x="9" y="9" width="4.5" height="4.5" rx=".8"/>'),
   code: svg('<path d="m5.5 4.5-3.5 3.5 3.5 3.5M10.5 4.5l3.5 3.5-3.5 3.5"/>'),
+  // Placing a layer in the frame: a frame edge and the block set against it.
+  alignLeft: svg('<path d="M2.5 2.5v11"/><rect x="5" y="5" width="7" height="6" rx="1"/>'),
+  alignCentre: svg('<path d="M8 2.5v11"/><rect x="4" y="5" width="8" height="6" rx="1"/>'),
+  alignRight: svg('<path d="M13.5 2.5v11"/><rect x="4" y="5" width="7" height="6" rx="1"/>'),
+  alignTop: svg('<path d="M2.5 2.5h11"/><rect x="5" y="5" width="6" height="7" rx="1"/>'),
+  alignMiddle: svg('<path d="M2.5 8h11"/><rect x="5" y="4" width="6" height="8" rx="1"/>'),
+  alignBottom: svg('<path d="M2.5 13.5h11"/><rect x="5" y="4" width="6" height="7" rx="1"/>'),
+  // Stacking order: the layer, and how many it passes.
+  toFront: svg('<rect x="5.5" y="5.5" width="8" height="8" rx="1" fill="currentColor"/><path d="M2.5 10.5v-7a1 1 0 0 1 1-1h7"/>'),
+  forward: svg('<rect x="5.5" y="5.5" width="8" height="8" rx="1" fill="currentColor"/><path d="M2.5 8.5v-5a1 1 0 0 1 1-1h5"/>'),
+  backward: svg('<rect x="2.5" y="2.5" width="8" height="8" rx="1"/><path d="M13.5 7.5v5a1 1 0 0 1-1 1h-5" stroke-dasharray="1.6 1.8"/>'),
+  toBack: svg('<rect x="2.5" y="2.5" width="8" height="8" rx="1"/><path d="M13.5 5.5v7a1 1 0 0 1-1 1h-7" stroke-dasharray="1.6 1.8"/>'),
+  // Keyframes: a diamond, filled where a key sits at the playhead.
+  key: svg('<path d="M8 3.2 12.8 8 8 12.8 3.2 8z"/>'),
+  keyOn: svg('<path d="M8 3.2 12.8 8 8 12.8 3.2 8z" fill="currentColor"/>'),
+  prevKey: svg('<path d="M6 4.5 2.5 8 6 11.5"/><path d="M10.5 5.5 13 8l-2.5 2.5L8 8z"/>'),
+  nextKey: svg('<path d="M10 4.5 13.5 8 10 11.5"/><path d="M5.5 5.5 8 8l-2.5 2.5L3 8z"/>'),
+  playhead: svg('<path d="M8 5v8.5"/><path d="M5.5 2.5h5L8 5.5z" fill="currentColor"/>'),
 };
 
 export const LAYER_ICONS = { text: ICONS.text, shape: ICONS.shape, image: ICONS.image, video: ICONS.film, counter: ICONS.counter, bars: ICONS.chart, 'line-chart': ICONS.chart, group: ICONS.group };
