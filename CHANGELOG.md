@@ -1,9 +1,11 @@
 # Changelog
 
-Hash LMG has not been released yet. Everything below is on the main branch,
-newest first, grouped by what it does for the person making a film.
+What has changed in Hash LMG, newest first, grouped by what it does for the
+person making a film.
 
-## Unreleased
+## 1.0.0, 26 October 2026: the first release
+
+The first release, for macOS on Apple Silicon. Everything below is in it.
 
 ### Making films
 - Captions break where a reader would: a word or two before a full stop

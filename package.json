@@ -1,7 +1,7 @@
 {
   "name": "hash-lmg",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Hash LMG: local motion graphics, made with local and cloud models",
   "license": "GPL-3.0-or-later",
   "type": "module",

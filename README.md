@@ -11,6 +11,7 @@ made by a model on your laptop or any cloud model on your own key. No account, n
 
 **In the making since 13 October 2026.**
 
+<a href="https://github.com/Hash-7777/open-Hash-LMG/releases/latest"><img alt="Download" src="https://img.shields.io/badge/Download-238636?style=flat-square&logo=apple&logoColor=ffffff"></a>
 <a href="https://github.com/Hash-7777/open-Hash-LMG"><img alt="Source" src="https://img.shields.io/badge/Source-373e47?style=flat-square&logo=github&logoColor=e8eaed"></a>
 <a href="https://github.com/Hash-7777/open-Hash-LMG/blob/main/CHANGELOG.md"><img alt="What has changed" src="https://img.shields.io/badge/What%20has%20changed-373e47?style=flat-square&logo=github&logoColor=e8eaed"></a>
 <a href="https://github.com/Hash-7777/open-Hash-LMG/issues"><img alt="Report a problem" src="https://img.shields.io/badge/Report%20a%20problem-373e47?style=flat-square&logo=github&logoColor=e8eaed"></a>
@@ -19,6 +20,7 @@ made by a model on your laptop or any cloud model on your own key. No account, n
 <img alt="GPL v3" src="https://img.shields.io/badge/GPL%20v3-2d333b?style=flat-square">
 <img alt="macOS Apple Silicon" src="https://img.shields.io/badge/macOS%20Apple%20Silicon-2d333b?style=flat-square&logo=apple&logoColor=c9d1d9">
 <img alt="Built with Tauri v2" src="https://img.shields.io/badge/Tauri%20v2-2d333b?style=flat-square&logo=tauri&logoColor=c9d1d9">
+<img alt="Version 1.0.0" src="https://img.shields.io/badge/v1.0.0-2d333b?style=flat-square">
 <img alt="Ollama, LM Studio, llama.cpp" src="https://img.shields.io/badge/Ollama%20%C2%B7%20LM%20Studio%20%C2%B7%20llama.cpp-2d333b?style=flat-square">
 <img alt="MP4, MOV, WebM, GIF" src="https://img.shields.io/badge/MP4%20%C2%B7%20MOV%20%C2%B7%20WebM%20%C2%B7%20GIF-2d333b?style=flat-square">
 
@@ -37,6 +39,8 @@ made by a model on your laptop or any cloud model on your own key. No account, n
 | **It checks its own work** | Frames are rendered and measured: words off the frame, too small, too faint, too fast to read, words crossing words mid-move. What rules can fix, they fix, and the film is held to what the brief asked to see. |
 | **It looks things up, with your yes** | Ask the director to look something up, or let it ask: it searches the whole web with no key and reads the pages it finds, and you see every search and every page first. |
 | **Nothing leaves without you** | No account and no server of ours. With a local model every part of a film is made on your computer; a cloud model is asked only when you choose one, on your own key. |
+
+> **Version 1.0.0, the first release.** For macOS on Apple Silicon. [Download it](https://github.com/Hash-7777/open-Hash-LMG/releases/tag/v1.0.0), or run it from source on any system.
 
 > Type *"a 30-second launch film for my desk lamp, calm, with a voice"*. Hash LMG writes the storyboard, draws the lamp, lays out every frame, composes music for that one film, speaks the lines, checks its own stills, and has it ready to export.
 
@@ -127,6 +131,16 @@ The app suggests the way of working from the model's size; you can always choose
 **Voices:** Chatterbox and Kokoro through your own install, any local speech server, or OpenAI's voices.
 
 The voices are not part of the app: it runs the ones you install. Kokoro's code is MIT and its model Apache 2.0, with a GPL v3 pronunciation library; Chatterbox is MIT and marks what it speaks with an inaudible watermark; OpenAI's usage policies ask that listeners are told a voice is AI-generated.
+
+## Install
+
+Download `Hash-LMG_1.0.0_aarch64.dmg` from the [release](https://github.com/Hash-7777/open-Hash-LMG/releases/tag/v1.0.0), open it and drag Hash LMG into Applications. It is for Macs with Apple Silicon, on macOS 11 or later.
+
+The app is not signed by Apple yet, so the first time macOS says it cannot check it. Open it once this way: in Applications, Control-click Hash LMG and choose **Open**, then **Open** again. If macOS still refuses, open **System Settings**, **Privacy & Security**, and choose **Open Anyway** beside Hash LMG. Or, in Terminal:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Hash LMG.app"
+```
 
 ## Run it from source
 
