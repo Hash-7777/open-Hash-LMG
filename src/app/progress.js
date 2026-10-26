@@ -1,8 +1,8 @@
 // The making of a film, step by step: a chip in the top bar with the step
 // under way and the time so far, a segmented bar under the top bar, and a
 // panel, opened from the chip, that lists every step of the way of working
-// chosen, how long each took, what the model is doing now, and the last lines
-// it has written as they arrive.
+// chosen, how long each took, what the model is doing now, and the latest
+// words of the film it is writing, as they arrive.
 //
 // A film is made in steps of very different lengths (the model writing takes
 // most of the time), so each step is given a share of the bar by weight, and
@@ -26,6 +26,17 @@ const NAMES = {
 const PREVIEW_LINES = 4;
 
 const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+// The words in an answer that is still arriving: string values of the fields
+// that hold what the film says or shows, newest last.
+const SAID = /"(text|sub|say|title|label|heading|line|ask|by)"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+export function readable(all) {
+  const text = String(all || '');
+  if (!text.trim()) return '';
+  const said = [...text.matchAll(SAID)].map((m) => m[2].replace(/\\n/g, ' ').replace(/\\(.)/g, '$1').replace(/\*/g, '').trim()).filter((w) => w.length > 1);
+  if (said.length) return said.slice(-PREVIEW_LINES).map((w) => `\u201c${w.length > 90 ? `${w.slice(0, 90)}...` : w}\u201d`).join('\n');
+  return `${text.length.toLocaleString('en')} characters written so far`;
+}
 
 export function createProgress() {
   const track = h('div', { class: 'run-track' });
@@ -168,10 +179,11 @@ export function createProgress() {
       if (part) set(part.base + part.span * Math.max(0, Math.min(0.95, f)));
       if (text) this.say(text);
     },
-    // The model's answer so far: its last few lines are shown in the panel.
+    // The model's answer so far, as words a person reads: the latest lines
+    // of the film it has written, quoted; an answer that is code or numbers
+    // only (a score, a layout) shows how much of it has arrived.
     writing(all) {
-      const lines = String(all || '').replace(/\s+$/, '').split('\n').slice(-PREVIEW_LINES).map((l) => (l.length > 140 ? `${l.slice(0, 140)}...` : l));
-      peek.textContent = lines.join('\n');
+      peek.textContent = readable(all);
       peek.hidden = !peek.textContent;
     },
     say(text) {

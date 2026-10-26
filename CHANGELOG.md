@@ -8,6 +8,9 @@ newest first, grouped by what it does for the person making a film.
 ### Making films
 - Captions break where a reader would: a word or two before a full stop
   joins the line before it instead of standing alone.
+- While a model writes, the steps panel shows the words of the film it is
+  writing, quoted, instead of the raw answer; music and other code show how
+  much has arrived.
 - Lines and arrows sit centred on the point they are placed at, like every
   other shape: the hairline between a name and its tagline stands beside the
   words instead of hanging below them, and corner marks meet at their corner.

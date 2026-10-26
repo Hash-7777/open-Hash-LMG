@@ -4,6 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
+import { readable } from '../../src/app/progress.js';
 import { createRunRecord, runToMarkdown, runsToMarkdown, runUsage } from '../../src/core/director/run-record.js';
 
 const make = () => {
@@ -57,5 +58,14 @@ await claim('the tokens each request used are summed for the run and shown in it
 await claim('a history of runs nests each run one level down', () => {
   const md = runsToMarkdown([make(), make()]);
   assert.match(md, /^# Hash LMG run history \(2 runs\)/); assert.equal((md.match(/\n## Hash LMG run/g) || []).length, 2);
+});
+section('What the steps panel shows while the model writes');
+await claim('the latest words of the film are quoted, accent marks taken out, and layout numbers never shown', () => {
+  const partial = '{"scenes":[{"layers":[{"type":"text","text":"A *quiet* desk lamp.","w": 1028},{"type":"text","sub":"Made for late \\"work\\"","h": 748, "radius": 22, "fill';
+  assert.equal(readable(partial), '“A quiet desk lamp.”\n“Made for late "work"”');
+});
+await claim('an answer with no words in it says how much has arrived', () => {
+  assert.equal(readable('export default function compose(m) { m.note(60, 0, 1); }'), '56 characters written so far');
+  assert.equal(readable('  '), '');
 });
 done();
