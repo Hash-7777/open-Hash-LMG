@@ -112,10 +112,12 @@ await claim('a narrated film shows no captions unless the brief asked for them',
 section('The voice is given a budget that fits the film');
 await claim('the storyboard prompt names the words a line and in all, and the brief’s own order', () => {
   const b = narrationBudget(45, 14);
-  assert.ok(b.perLine <= 8 && b.perLine >= 6, `per line ${b.perLine}`);
-  assert.ok(b.total <= 100);
+  // Room for the total over nearly every beat, without lines that hold a scene still.
+  assert.ok(b.perLine <= 10 && b.perLine >= 8, `per line ${b.perLine}`);
+  assert.ok(b.total <= 100 && b.perLine * 14 * 0.8 >= b.total);
   const p = storyboardPrompt({ seconds: 45, narration: true });
-  assert.ok(p.includes(`at most ${b.perLine} words`) && p.includes(`about ${b.total} words in all`));
+  assert.ok(p.includes(`at most ${b.perLine} words`) && p.includes(`about ${b.total} words in all`) && p.includes('nearly every beat needs a line'));
   assert.ok(/follow that order beat for beat/.test(p));
+  assert.ok(/never more than two plain statements in a row/.test(p), 'the storyboard is told to show more than it says');
 });
 done();

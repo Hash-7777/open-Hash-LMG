@@ -52,10 +52,30 @@ function filmOf(scene) {
   return compact({ title: m.title, aspect: m.aspect, style: m.style, fps: m.fps, bpm: m.bpm, palette: m.palette, fonts: m.fonts, background: m.background, duration: m.duration });
 }
 
-// The scenes of one part as the model is shown them.
+// The scenes of one part as the model is shown them, each with the line the
+// voice says over it, so words and voice are changed together.
 function partScenes(scene, ids) {
   const m = sceneForModel(scene);
-  return compact(m.scenes.filter((S) => ids.includes(S.id)));
+  const said = new Map((scene.voice?.lines || []).map((l) => [l.scene, l.say || l.text]));
+  return compact(m.scenes.filter((S) => ids.includes(S.id)).map((S) => ({ ...S, say: said.get(S.id) || '' })));
+}
+
+// A changed spoken line comes back as the scene's "say": it replaces the line
+// the voice speaks over that scene, which is spoken again. Returns the voice
+// with the new lines, and the scenes without "say", which is no scene field.
+export function takeSaid(scene, scenes) {
+  const said = new Map();
+  const bare = scenes.map((S) => {
+    if (!S || typeof S !== 'object' || !('say' in S)) return S;
+    const { say, ...rest } = S;
+    if (typeof say === 'string' && say.trim()) said.set(rest.id, say.replace(/\s+/g, ' ').trim().slice(0, 300));
+    return rest;
+  });
+  const lines = (scene.voice?.lines || []).map((l) => {
+    const next = said.get(l.scene);
+    return next && next !== (l.say || l.text) ? { ...l, text: next, say: '', clip: null } : l;
+  });
+  return { scenes: bare, voice: scene.voice ? { ...scene.voice, lines } : scene.voice };
 }
 
 // Puts a part's answer in place of its scenes: each scene by its id, else the
@@ -71,7 +91,7 @@ export function mergePart(scenes, ids, answer) {
     const next = got.find((G) => G.id === S.id) || (got.length === ids.length ? got[at] : null);
     if (!next || !Array.isArray(next.layers)) return S;
     used++;
-    return { ...next, id: S.id };
+    return { ...next, id: S.id, ...(typeof next.say === 'string' ? { say: next.say } : {}) };
   });
   return { scenes: out, used };
 }
@@ -107,7 +127,8 @@ export async function designInParts({ askJson, note, system, brief, storyboard, 
     scenes = await onePart({ askJson, note, system, scenes, ids, content, purpose: 'plan part', part });
     from += ids.length;
   }
-  return { ...draft, scenes };
+  const { scenes: bare, voice } = takeSaid(draft, scenes);
+  return { ...draft, scenes: bare, ...(voice ? { voice } : {}) };
 }
 
 // Sends back only the scenes the checks named, with their problems. Problems
@@ -126,5 +147,6 @@ export async function reviseInParts({ askJson, note, system, brief, scene, issue
     const content = `${head(brief, null, scene)}\n\n${task(own)}\n\nThe scenes to change (ids ${partIds.join(', ')}):\n${JSON.stringify(partScenes({ ...scene, scenes }, partIds))}\n\nReply with JSON only: {"scenes": [these ${partIds.length} scenes, corrected, with the same ids, in order]}.`;
     scenes = await onePart({ askJson, note, system, scenes, ids: partIds, content, purpose: 'revise part', part });
   }
-  return { ...scene, scenes };
+  const { scenes: bare, voice } = takeSaid(scene, scenes);
+  return { ...scene, scenes: bare, ...(voice ? { voice } : {}) };
 }

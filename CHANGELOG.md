@@ -6,6 +6,16 @@ newest first, grouped by what it does for the person making a film.
 ## Unreleased
 
 ### Making films
+- Words and voice stay together: a model redesigning or fixing scenes sees
+  the line the voice says over each one, and a scene whose words it changes
+  gets a new line to match, spoken again. A line the brief asks to see goes
+  into the one scene closest to it, never pasted into several.
+- Narration fills the film: nearly every beat gets a spoken line, each with
+  room to run a little into the next scene, so the voice reaches the length
+  the film needs instead of short lines with silences between them.
+- Storyboards show more than they say: at least half the beats draw
+  something (a list, steps, a figure, a chart, a comparison, punch words or
+  your own media) and no more than two plain statements come in a row.
 - No empty frames mid-film: a scene whose words would arrive after the one
   before has gone brings them in as it arrives, and a longer gap inside a
   scene goes back to the model.

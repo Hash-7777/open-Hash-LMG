@@ -10,7 +10,8 @@ import { STORYBOARD, measure, loadCode } from './lib/fixtures.mjs';
 import { createDirector } from '../../src/core/director/pipeline.js';
 import { compileStoryboard } from '../../src/core/scene/compile.js';
 import { sceneForModel } from '../../src/core/director/pipeline.js';
-import { reviseInParts, partsOf, compact, mergePart } from '../../src/core/director/design.js';
+import { reviseInParts, partsOf, compact, mergePart, takeSaid } from '../../src/core/director/design.js';
+import { PART_DESIGN_TASK, revisePartTask } from '../../src/core/director/prompts.js';
 
 const GOOD_CODE = '```js\nexport default function render(t, lmg) {\n  lmg.clear("bg");\n  lmg.text("Lumen", lmg.W / 2, lmg.H / 2, { size: 120 * lmg.u, color: "ink" });\n}\n```';
 const BAD_CODE = '```js\nexport default function render(t, lmg) { const x = Math.random(); lmg.clear("bg"); }\n```';
@@ -149,6 +150,30 @@ await claim('a part answered with scenes in place of ids is merged by place', ()
   assert.equal(used, 2);
   assert.deepEqual(out.map((S) => S.id), ['a', 'b', 'c']);
   assert.equal(out[1].layers[0].type, 'text');
+});
+
+section('Words on screen and the voice change together');
+await claim('a part shows each scene with the line the voice says over it', async () => {
+  const draft = compileStoryboard(STORYBOARD, { style: 'studio', targetDuration: 30, narration: true }).scene;
+  const line = draft.voice.lines[0];
+  assert.ok(line, 'the draft has narration');
+  const sent = [];
+  const askJson = async (system, content) => { sent.push(content); return null; };
+  await reviseInParts({ askJson, note: () => {}, system: 's', brief: 'b', scene: draft, issues: [{ level: 'warn', message: 'x', scene: line.scene }], task: () => 'Fix it.' });
+  const shown = JSON.parse(sent[0].split('):\n')[1].split('\n\nReply')[0]);
+  assert.equal(shown[0].say, line.say || line.text);
+});
+await claim('a rewritten "say" replaces that scene\u2019s line, to be spoken again; one given back as it was keeps its voice', () => {
+  const scene = { voice: { engine: 'kokoro', lines: [{ scene: 'a', text: 'Old words here.', say: '', clip: 'voice-1' }, { scene: 'b', text: 'Kept line.', say: '', clip: 'voice-2' }] } };
+  const { scenes, voice } = takeSaid(scene, [{ id: 'a', layers: [], say: 'New words  here.' }, { id: 'b', layers: [], say: 'Kept line.' }, { id: 'c', layers: [] }]);
+  assert.ok(scenes.every((S) => !('say' in S)), 'say is no scene field');
+  assert.deepEqual(voice.lines[0], { scene: 'a', text: 'New words here.', say: '', clip: null });
+  assert.equal(voice.lines[1].clip, 'voice-2');
+});
+await claim('a redesign is told to change words and voice together, and a brief fix to touch one scene only', () => {
+  assert.match(PART_DESIGN_TASK, /rewrite its "say" to match/);
+  const t = revisePartTask([{ level: 'warn', message: 'The brief asks the film to show "x".' }]);
+  assert.match(t, /ONE scene closest to it in meaning, never into several/); assert.match(t, /rewrite its "say" to match/);
 });
 
 section('Code: the model writes its own drawing code');

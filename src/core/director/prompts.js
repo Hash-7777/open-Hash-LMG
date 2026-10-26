@@ -14,6 +14,7 @@
 import { IN_PRESETS, OUT_PRESETS, HOLD_PRESETS, TRANSITIONS, STYLE_PACKS, SHAPES, FONT_NAMES, ASPECTS } from '../scene/format.js';
 import { BEAT_KINDS } from '../scene/storyboard.js';
 import { EXAMPLE_LAUNCH } from '../scene/examples.js';
+import { SPILL } from '../scene/narration-timing.js';
 
 // The craft, in the words every prompt shares.
 export const CRAFT = [
@@ -83,10 +84,12 @@ export const STORYBOARD_SCHEMA = {
 };
 
 // A narrator says about 2.6 words a second; the voice has the whole film to
-// say its lines in, a breath between each.
+// say its lines in, a breath between each. A line may run a little way into
+// the next scene (narration-timing.js), so it can be a little longer than its
+// own beat; the total is only reached when nearly every beat has one.
 export function narrationBudget(seconds, beats) {
   const total = Math.max(6, Math.floor((seconds - 1) * 2.6 * 0.85));
-  const perLine = Math.max(4, Math.min(12, Math.floor((seconds / beats - 0.4) * 2.6)));
+  const perLine = Math.max(4, Math.min(12, Math.floor((seconds / beats - 0.4 + SPILL * 0.6) * 2.6)));
   return { total, perLine };
 }
 
@@ -110,10 +113,12 @@ Beat kinds:
 - logo: the brand name in "text", tagline in "sub"
 - end: the name in "text", a web address or call to action in "sub"
 Put one accent word in "accent" when a word deserves the accent colour.
-Add "look": {"mood": one of calm, bold, playful, technical, luxury, warm, serious, energetic; "accent": a hex colour that suits the subject; "tempo": slow, medium or fast}.${narration ? `\nNarration: give beats a "say", one short spoken sentence in plain speech, at most ${voice.perLine} words; the voice speaks them one after another over the whole film, about ${voice.total} words in all, so a beat may have no line (a logo, a run of single words). The voice says the idea in full; the screen shows only its key words.` : ''}
+Add "look": {"mood": one of calm, bold, playful, technical, luxury, warm, serious, energetic; "accent": a hex colour that suits the subject; "tempo": slow, medium or fast}.${narration ? `\nNarration: give beats a "say", one short spoken sentence in plain speech, at most ${voice.perLine} words; the voice speaks them one after another over the whole film, about ${voice.total} words in all, so nearly every beat needs a line, using most of its words (a logo or a run of single words may have none). The voice says the idea in full; the screen shows only its key words.` : ''}
 
 Craft:
 ${craftList()}
+
+Show more than you say: use the kinds that draw something (list, steps, stat, chart, compare, words, or a beat showing the person's media) for at least half the beats, and never more than two plain statements in a row.
 
 The film should run about ${Math.round(seconds)} seconds: about ${beats} beats. When the brief sets out the order of its moments (what it opens on, what comes next, what it closes on), follow that order beat for beat, even when it opens on a name or a logo; otherwise start with a hook. End with an end beat.
 Reply with JSON only, no other text:
@@ -196,9 +201,13 @@ Reply with the complete scene plan as JSON only.`;
 // pictures and clips stay large and uncovered.
 const DRAWINGS = 'Layers with an id starting "picture" are drawings of what the film is about: keep every one in its scene. You may move one, change when it arrives or set its opacity; its path data shows as "kept:" and stays as it is. Layers of type image or video are the person\'s own pictures and clips, the film\'s best material: keep each one large (at least two fifths of the frame\'s width; a screenshot as large as the words beside it allow), whole and uncovered. Never draw a shape, tint or panel over one; a card or frame behind it is fine.';
 
+// Each scene a part shows carries "say", the line the voice speaks over it:
+// words on screen and voice are changed together, or not at all.
+const SAY = 'Each scene\'s "say" is the line the voice speaks over it; the words on screen show its key words. If you change a scene\'s words, rewrite its "say" to match in one short spoken sentence; otherwise give it back as it is.';
+
 // What a part of the redesign is asked to do (src/core/director/design.js).
-export const PART_DESIGN_TASK = `Improve these scenes into a finished design for this brief alone: stronger composition and hierarchy, scale and placement that differ from the scene before, motion designed for each beat (custom keys, hairlines and rings that draw on, a repeat field that fills in, a counter, a chart), and moments of stillness before reveals. Keep the words, the timing grid, the style and the palette. ${DRAWINGS}`;
-export const revisePartTask = (issues) => `The checks found these problems:\n${issuesText(issues)}\n\nFix every one in the scenes below and keep the drawings. ${DRAWINGS}`;
+export const PART_DESIGN_TASK = `Improve these scenes into a finished design for this brief alone: stronger composition and hierarchy, scale and placement that differ from the scene before, motion designed for each beat (custom keys, hairlines and rings that draw on, a repeat field that fills in, a counter, a chart), and moments of stillness before reveals. Keep the words, the timing grid, the style and the palette. ${DRAWINGS} ${SAY}`;
+export const revisePartTask = (issues) => `The checks found these problems:\n${issuesText(issues)}\n\nFix every one in the scenes below, changing as little as each needs, and keep the drawings. Each scene keeps its own message: a line the brief asks to see goes into the ONE scene closest to it in meaning, never into several, and no line is shown in two scenes. Add no words a problem does not ask for. ${DRAWINGS} ${SAY}`;
 
 // ---- free drawing code (strong models) -------------------------------------
 
