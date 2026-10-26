@@ -8,6 +8,7 @@ import { createStore, normalizeProject, findLayer } from '../../src/app/store.js
 import { staggerLayers, splitScene } from '../../src/core/scene/edit.js';
 import { normalizeScene } from '../../src/core/scene/normalize.js';
 import { EXAMPLE_LAUNCH } from '../../src/core/scene/examples.js';
+import { createJog, editTime } from '../../src/app/jog.js';
 
 let n = 0;
 const newId = () => `film-test-${++n}`;
@@ -113,5 +114,30 @@ await claim('each layer goes to the half it belongs to, and so does narration', 
 await claim('too near an edge, nothing is split', () => {
   const doc = clipFilm();
   assert.equal(splitScene(doc, 2.05), false); assert.equal(splitScene(doc, 9.95), false); assert.equal(doc.scenes.length, 2);
+});
+section('The playhead moved by hand');
+await claim('a trackpad swipe adds up to a frame every few pixels, either way, across or down', () => {
+  const jog = createJog();
+  assert.equal(jog({ deltaX: 4, deltaY: 1, deltaMode: 0 }), 0);
+  assert.equal(jog({ deltaX: 4, deltaY: 0, deltaMode: 0 }), 1);
+  assert.equal(jog({ deltaX: -13, deltaY: 2, deltaMode: 0 }), -1);
+  const down = createJog();
+  assert.equal(down({ deltaX: 0, deltaY: 12.5, deltaMode: 0 }), 2);
+});
+await claim('a mouse wheel moves a frame a notch, ten with Shift, and a wheel counting lines a frame a line', () => {
+  const jog = createJog();
+  assert.equal(jog({ deltaX: 0, deltaY: 100, deltaMode: 0 }), 1);
+  assert.equal(jog({ deltaX: 0, deltaY: -100, deltaMode: 0, shiftKey: true }), -10);
+  assert.equal(jog({ deltaX: 0, deltaY: 3, deltaMode: 1 }), 1);
+});
+await claim('back and forward go to the scene start before or after the playhead, the ends counting too', () => {
+  const sc = { fps: 30, duration: 12, scenes: [{ start: 0 }, { start: 4 }, { start: 8 }] };
+  assert.equal(editTime(sc, 5, 1), 8);
+  assert.equal(editTime(sc, 4, 1), 8);
+  assert.equal(editTime(sc, 9, 1), 12);
+  assert.equal(editTime(sc, 12, 1), 12);
+  assert.equal(editTime(sc, 5, -1), 4);
+  assert.equal(editTime(sc, 4, -1), 0);
+  assert.equal(editTime(sc, 0, -1), 0);
 });
 done();

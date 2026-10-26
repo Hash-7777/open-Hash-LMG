@@ -25,6 +25,7 @@ import { makeVersion } from './versions.js';
 import { createMediaPanel } from './media-panel.js';
 import { openTemplatesDialog } from './templates-dialog.js';
 import { createProgress } from './progress.js';
+import { attachJog } from './jog.js';
 import { createHost } from '../render/host.js';
 
 const LAST_KEY = 'lmg.last-project';
@@ -185,6 +186,20 @@ async function boot() {
   });
   paintHistory();
 
+  // Scrolling or swiping over the picture moves the playhead (jog.js).
+  const { jumpEdit } = attachJog(player.el.querySelector('.preview-viewport'), { store, player });
+
+  // ---- the mouse's own buttons and the pinch ----------------------------------------
+  // A mouse's back and forward buttons go to the scene before or after the
+  // playhead, as in a video editor. A pinch never zooms the window: the
+  // timeline zooms itself, and elsewhere it does nothing.
+  window.addEventListener('mouseup', (e) => {
+    if (e.button !== 3 && e.button !== 4) return;
+    e.preventDefault();
+    if (!e.target.closest?.('.scrim, input, textarea, select')) jumpEdit(e.button === 3 ? -1 : 1);
+  });
+  window.addEventListener('wheel', (e) => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
+
   // ---- keys ------------------------------------------------------------------------
   window.addEventListener('keydown', (e) => {
     const typing = e.target.closest && e.target.closest('input, textarea, select, [contenteditable]');
@@ -197,6 +212,11 @@ async function boot() {
     if (e.key === ' ') { e.preventDefault(); player.toggle(); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); player.step(e.shiftKey ? -10 : -1); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); player.step(e.shiftKey ? 10 : 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); jumpEdit(-1); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); jumpEdit(1); }
+    else if (e.key === 'j' || e.key === 'J') { e.preventDefault(); player.step(-store.get().project.scene.fps); }
+    else if (e.key === 'k' || e.key === 'K') { e.preventDefault(); player.pause(); }
+    else if (e.key === 'l' || e.key === 'L') { e.preventDefault(); player.play(); }
     else if (e.key === 'Home') { e.preventDefault(); player.seek(0); }
     else if (e.key === 'End') { e.preventDefault(); player.seek(store.get().project.scene.duration); }
     else if (e.key === 's' || e.key === 'S') { e.preventDefault(); timeline.split(); }

@@ -220,6 +220,11 @@ newest first, grouped by what it does for the person making a film.
   and are unloaded once a film is made.
 
 ### The editor
+- The playhead moves by hand as in a video editor: scrolling or a two-finger
+  swipe over the preview turns it like a jog wheel (a frame a mouse-wheel
+  notch, ten with Shift), the mouse's back and forward buttons and the Up
+  and Down keys go to the scene before or after, and J, K and L step back a
+  second, pause and play. A pinch never zooms the window.
 - Settings, redesigned: the sections sit in three groups (making films,
   where models run, the app), each page opens with its title and what it is
   for, and its settings are grouped in cards. Looking things up has a page
