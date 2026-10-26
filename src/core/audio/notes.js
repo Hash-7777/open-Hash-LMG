@@ -6,6 +6,7 @@
 // would put that instrument; the master then brings the whole to platform
 // loudness.
 
+import { arrange } from './music-kit.js';
 import { SR, pad, kick, sub, tick, hat, snap, boom, swell, whoosh, bell, hit, mallet, pluck, epiano, synthPluck, bass, clap, shaker } from './synth.js';
 
 const freq = (midi) => 440 * 2 ** ((midi - 69) / 12);
@@ -14,7 +15,8 @@ const freq = (midi) => 440 * 2 ** ((midi - 69) / 12);
 const LEVEL = {
   pad: [0.55, 0.45], keys: [0.22, 0.15], mallet: [0.4, 0.2], pluck: [0.5, 0.25], synth: [0.32, 0.15], bass: [0.7, 0], sub: [0.75, 0], bell: [0.14, 0.12],
   kick: [1, 0], clap: [0.5, 0.25], snare: [0.4, 0.25], hat: [0.14, 0.03], shaker: [0.2, 0.05], tick: [0.14, 0.03],
-  boom: [1, 0.35], swell: [0.4, 0.25], whoosh: [0.35, 0.1], hit: [0.6, 0.1], chime: [0.14, 0.12],
+  // A boom at a model's usual gain lands where a groove's does, under the voice.
+  boom: [0.55, 0.2], swell: [0.4, 0.25], whoosh: [0.35, 0.1], hit: [0.4, 0.1], chime: [0.14, 0.12],
 };
 
 function voice(inst, midi, len, seed, beat) {
@@ -42,10 +44,11 @@ function voice(inst, midi, len, seed, beat) {
   }
 }
 
-// Lays the notes onto dry and send. duck(t, depth) lowers the bed under a kick.
+// Lays the notes onto dry and send, as arranged (music-kit.js arrange).
+// duck(t, depth) lowers the bed under a kick.
 export function playNotes(notes, { dry, send, duck, seed = 1, beat = 0.5 }) {
   const made = new Map();
-  for (const [t, inst, midi, len, gain, pan] of notes) {
+  for (const [t, inst, midi, len, gain, pan] of arrange(notes, beat)) {
     if (inst === 'chime') {
       for (const [dt, f] of [[0, 88], [0.12, 93]]) { const sig = bell(freq(f), 1.6); dry.add(sig, t + dt, LEVEL.chime[0] * gain, pan); send.add(sig, t + dt, LEVEL.chime[1] * gain, pan); }
       continue;

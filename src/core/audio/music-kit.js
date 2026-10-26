@@ -14,6 +14,11 @@
 import { rand } from '../engine/math.js';
 
 export const INSTRUMENTS = ['pad', 'keys', 'mallet', 'pluck', 'synth', 'bass', 'sub', 'bell'];
+// The two instruments that hold the chords, the four that carry a melody, and
+// the three drums that keep time between the kicks.
+export const CHORD_PARTS = ['pad', 'keys'];
+export const MELODY_PARTS = ['mallet', 'pluck', 'synth', 'bell'];
+export const TIME_PARTS = ['hat', 'shaker', 'tick'];
 export const DRUMS = ['kick', 'clap', 'snare', 'hat', 'shaker', 'tick', 'boom', 'swell', 'whoosh', 'hit', 'chime'];
 export const MAX_NOTES = 6000;
 
@@ -108,4 +113,47 @@ export function runComposition(compose, context) {
   const kit = createMusicKit(context);
   compose(kit.m);
   return cleanNotes(kit.notes);
+}
+
+// What is played of a composition. A model that layers every instrument it
+// was offered in the same few octaves writes a wall of sound, so in each bar
+// one chord instrument, one melody instrument and one time-keeping drum play,
+// the ones it gave the most notes in that bar (the first named, on a tie);
+// bass, sub and the other drums play as written. A chord sounds at most four notes deep, and a boom closer than
+// a beat to the one before is dropped. The saved notes stay as written.
+export function arrange(notes, beat) {
+  const bar = beat * 4;
+  const barOf = (t) => Math.floor((t + 1e-6) / bar);
+  const count = new Map();
+  for (const n of notes) { const k = `${barOf(n[0])}|${n[1]}`; count.set(k, (count.get(k) || 0) + 1); }
+  const chosen = new Map();
+  const choose = (b, family) => {
+    const key = `${b}|${family[0]}`;
+    if (!chosen.has(key)) {
+      let best = null, most = 0;
+      for (const inst of family) { const c = count.get(`${b}|${inst}`) || 0; if (c > most) { most = c; best = inst; } }
+      chosen.set(key, best);
+    }
+    return chosen.get(key);
+  };
+  const depth = new Map();
+  let lastBoom = -Infinity;
+  const out = [];
+  for (const n of notes) {
+    const [t, inst] = n;
+    if (inst === 'boom') {
+      if (t - lastBoom < beat) continue;
+      lastBoom = t;
+    }
+    const family = [CHORD_PARTS, MELODY_PARTS, TIME_PARTS].find((f) => f.includes(inst)) || null;
+    if (family && choose(barOf(t), family) !== inst) continue;
+    if (family === CHORD_PARTS) {
+      const k = `${inst}|${t.toFixed(3)}`;
+      const d = (depth.get(k) || 0) + 1;
+      depth.set(k, d);
+      if (d > 4) continue;
+    }
+    out.push(n);
+  }
+  return out;
 }

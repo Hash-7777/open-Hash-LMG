@@ -48,7 +48,9 @@ The kit, m:
   m.rand(seed)    a seeded random function; never Math.random
 
 How to write it:
-- A chord progression over the whole film (pad or keys), a bass line under it, drums that fit the mood (or none for a calm film), and a melody built from a short motif that repeats and develops.
+- Four parts, never more at once: chords on ONE of pad or keys, a bass line (sub may double it an octave down), ONE melody instrument (mallet, pluck, synth or bell), and drums that fit the mood (or none for a calm film). Change instruments between sections if you like, never stack two chord or two melody instruments in the same bar: the app plays only the busiest of each in a bar.
+- The melody is a short motif that repeats and develops, with rests: about one note a beat, never a run of notes on every slot.
+- Under narration the music is a bed: gains about 0.3 to 0.5, booms 0.6 at most, one boom per drop.
 - Follow the scenes: the hook builds, each drop has a beat of near silence before it and a boom on it, feature scenes groove, the end card resolves on the root and thins out.
 - Put every note on the beat grid: times are multiples of m.beat / 4.
 - Melody between C4 and C6, bass below C3, chords between C3 and C5. Leave space; not every slot filled.

@@ -105,6 +105,11 @@ newest first, grouped by what it does for the person making a film.
   played by the app's instruments. A thin score goes back once; if it still
   fails, the film keeps its built-in score. It can be turned off in
   Settings, and a change that moves the film's timing composes it again.
+- A composed score is arranged before it plays: in each bar one chord
+  instrument, one melody instrument and one time-keeping drum, the ones the
+  model wrote most for that bar, over the bass and the other drums, chords
+  at most four notes deep and booms at the level of the built-in scores. The
+  model is told to write four parts at most, with rests.
 - Narration in a voice installed on this computer (Chatterbox, Kokoro), a
   local speech server or a cloud voice, timed word by word for captions.
 - The score plays in the film's own key and tempo; clips' own sound and

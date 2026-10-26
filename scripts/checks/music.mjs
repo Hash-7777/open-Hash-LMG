@@ -9,9 +9,9 @@
 import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
 import { measure } from './lib/fixtures.mjs';
-import { createMusicKit, midiOf, cleanNotes, judgeNotes, runComposition, MAX_NOTES } from '../../src/core/audio/music-kit.js';
+import { createMusicKit, midiOf, cleanNotes, judgeNotes, runComposition, MAX_NOTES, arrange } from '../../src/core/audio/music-kit.js';
 import { checkCode } from '../../src/core/director/code-check.js';
-import { musicContext, musicMessage, rescore } from '../../src/core/director/music.js';
+import { musicContext, musicMessage, musicPrompt, rescore } from '../../src/core/director/music.js';
 import { makeScore } from '../../src/core/audio/score.js';
 import { integratedLufs, truePeakDb } from '../../src/core/audio/master.js';
 import { normalizeScene } from '../../src/core/scene/normalize.js';
@@ -88,6 +88,31 @@ await claim('composing code is held to the drawing code’s rules, and named for
 await claim('the model is told the film: its scenes, tempo, key, mood and drops', () => {
   const msg = musicMessage('An invented lamp', context);
   assert.match(msg, /beats a minute, key \w+/); assert.match(msg, /hook: Your desk is loud\./); assert.match(msg, /Drops at: \d/);
+});
+
+section('A composition is arranged before it is played');
+await claim('in each bar one chord, one melody and one time-keeping drum play, the busiest; bass, sub and other drums as written', () => {
+  const beat = 0.5;
+  const notes = [
+    [0, 'pad', 60, 2, 0.4, 0], [0, 'keys', 64, 0.5, 0.4, 0], [0.5, 'keys', 64, 0.5, 0.4, 0],
+    [0, 'mallet', 72, 0.25, 0.4, 0], [0.5, 'pluck', 76, 0.25, 0.4, 0], [1, 'pluck', 77, 0.25, 0.4, 0], [1.5, 'bell', 79, 0.5, 0.4, 0],
+    [0, 'bass', 40, 1, 0.5, 0], [0, 'sub', 28, 1, 0.5, 0], [0, 'kick', 0, 0.5, 0.5, 0], [0.5, 'hat', 0, 0.5, 0.3, 0], [1, 'hat', 0, 0.5, 0.3, 0], [1, 'shaker', 0, 0.5, 0.3, 0],
+    [2, 'pad', 60, 2, 0.4, 0], [2, 'mallet', 72, 0.25, 0.4, 0],
+  ];
+  const played = arrange(notes, beat).map((n) => `${n[0]}|${n[1]}`);
+  assert.deepEqual(played, ['0|keys', '0.5|keys', '0.5|pluck', '1|pluck', '0|bass', '0|sub', '0|kick', '0.5|hat', '1|hat', '2|pad', '2|mallet']);
+});
+await claim('a chord sounds at most four notes deep, booms a beat apart at least, and the saved notes are untouched', () => {
+  const notes = [...[48, 52, 55, 59, 62, 64].map((p) => [0, 'pad', p, 2, 0.4, 0]), [1, 'boom', 0, 0.5, 0.6, 0], [1.2, 'boom', 0, 0.5, 0.6, 0], [3, 'boom', 0, 0.5, 0.6, 0]];
+  const copy = JSON.stringify(notes);
+  const played = arrange(notes, 0.5);
+  assert.equal(played.filter((n) => n[1] === 'pad').length, 4);
+  assert.deepEqual(played.filter((n) => n[1] === 'boom').map((n) => n[0]), [1, 3]);
+  assert.equal(JSON.stringify(notes), copy);
+});
+await claim('the composer is told to write four parts at most and to leave rests', () => {
+  const p = musicPrompt();
+  assert.match(p, /Four parts, never more at once/); assert.match(p, /ONE melody instrument/); assert.match(p, /with rests/);
 });
 
 section('A composed score is played and mastered like the others');
