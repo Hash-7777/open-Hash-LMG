@@ -259,7 +259,9 @@ function normLayer(L, ctx, depth = 0) {
       w: size(L.w ?? L.width, shape === 'line' ? 400 : 200, 0, 8000),
       h: size(L.h ?? L.height, shape === 'line' ? 0 : 200, 0, 8000),
       radius: px(L.radius ?? L.r, 0, 0, 4000),
-      fill: L.fill === null || L.fill === 'none' ? null : colour(L.fill, ['line', 'path', 'ring', 'arrow'].includes(shape) ? null : base.color),
+      // A shape given a stroke and no fill is an outline; one given neither is
+      // filled with its colour.
+      fill: L.fill === null || L.fill === 'none' || (L.fill === undefined && L.stroke != null && L.stroke !== 'none') ? null : colour(L.fill, ['line', 'path', 'ring', 'arrow'].includes(shape) ? null : base.color),
       stroke: L.stroke === null || L.stroke === 'none' ? null : colour(L.stroke, ['line', 'path', 'ring', 'arrow'].includes(shape) ? base.color : null),
       strokeWidth: px(L.strokeWidth ?? L.lineWidth, 6, 0, 400),
       d: typeof L.d === 'string' ? L.d.slice(0, 20000) : '',

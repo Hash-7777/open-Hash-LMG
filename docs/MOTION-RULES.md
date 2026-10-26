@@ -20,6 +20,7 @@ rules when it lays a storyboard out, so a guided film starts out passing them.
 |---|---|---|---|
 | Frame one is a picture already forming, never an empty frame. | `empty-open`, fixed by starting the opening line's entrance before the film does; the compiler does it for every film. | Short-video retention is settled in the first one or two seconds; creator briefs ask that frame one be a finished picture. | Fair |
 | Something moves in the first moment. | `slow-open`, fixed by starting the first motion at once. | Onset of motion captures attention (Abrams and Christ, 2003). | Strong |
+| No moment between the opening and the end card shows nothing at all. | `empty-moment`, from frames measured mid-transition and on every beat; as a scene arrives, fixed by starting its first words just before it does; later in a scene, sent back to the model. The middle of a dip through the background is empty on purpose. | An empty frame mid-film reads as the film stopping. | Lore |
 
 ## Reading
 
@@ -37,6 +38,8 @@ rules when it lays a storyboard out, so a guided film starts out passing them.
 | Words stay inside the frame. | `off-frame` from the measured boxes; fixed by shrinking and moving the line inside. | | |
 | Words stay inside the title-safe area, and in a vertical frame clear of where phone apps draw their own buttons and captions. | `safe-area` with `safeArea()`; fixed the same way. | Safe-zone guidance from vertical video platforms. | Fair |
 | Lines do not cover each other. | `overlap` from the measured boxes; fixed by moving one line away. | | |
+| The person's own pictures and clips are shown as they are: nothing filled is drawn over one, and a shape drawn with a stroke alone is an outline, never a pane. | `media-covered` in `src/core/scene/frame-checks.js`; fixed by drawing the shape under the picture as its card. The normaliser keeps stroke-only shapes as outlines. | A screenshot or product shot is the film's evidence; a tint over it hides what it proves. | Lore |
+| A picture is large enough to see what it shows: at least about a third of the frame's width, more in a vertical frame. | `small-media`, sent back to the model with the size it needs; never grown by rule, which could lay it over the words. | Multimedia learning: the picture carries the explanation (Mayer). | Fair |
 | Words never cross other words while they move, not only at rest. | `collide-in-motion`, from frames measured a quarter, half and three quarters through each transition and half way through each line's entrance (`motionTimes`); across a scene change fixed by a dip through the background, within a scene by moving one line aside. The compiler makes every fade and zoom a handoff: the new scene's words arrive as the old ones leave. | Research on generated animation: layout faults appear mid-transition that resting frames never show (2026 preprint). | Fair |
 
 ## Motion

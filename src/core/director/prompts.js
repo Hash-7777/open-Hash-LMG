@@ -192,8 +192,9 @@ The film: about ${Math.round(seconds)} seconds, aspect ${aspect}, style ${style}
 Reply with the complete scene plan as JSON only.`;
 }
 
-// Every plan a model rewrites is told the drawings stay.
-const DRAWINGS = 'Layers with an id starting "picture" are drawings of what the film is about: keep every one in its scene. You may move one, change when it arrives or set its opacity; its path data shows as "kept:" and stays as it is.';
+// Every plan a model rewrites is told the drawings stay, and the person's own
+// pictures and clips stay large and uncovered.
+const DRAWINGS = 'Layers with an id starting "picture" are drawings of what the film is about: keep every one in its scene. You may move one, change when it arrives or set its opacity; its path data shows as "kept:" and stays as it is. Layers of type image or video are the person\'s own pictures and clips, the film\'s best material: keep each one large (at least two fifths of the frame\'s width; a screenshot as large as the words beside it allow), whole and uncovered. Never draw a shape, tint or panel over one; a card or frame behind it is fine.';
 
 // What a part of the redesign is asked to do (src/core/director/design.js).
 export const PART_DESIGN_TASK = `Improve these scenes into a finished design for this brief alone: stronger composition and hierarchy, scale and placement that differ from the scene before, motion designed for each beat (custom keys, hairlines and rings that draw on, a repeat field that fills in, a counter, a chart), and moments of stillness before reveals. Keep the words, the timing grid, the style and the palette. ${DRAWINGS}`;

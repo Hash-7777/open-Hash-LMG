@@ -6,6 +6,9 @@ newest first, grouped by what it does for the person making a film.
 ## Unreleased
 
 ### Making films
+- No empty frames mid-film: a scene whose words would arrive after the one
+  before has gone brings them in as it arrives, and a longer gap inside a
+  scene goes back to the model.
 - Narration is one script over the film: each line follows the one before
   it and may run on across a cut, so no scene stands still waiting for its
   line, and a scene is held longer only by what a line needs. The model is
@@ -62,6 +65,10 @@ newest first, grouped by what it does for the person making a film.
   empty and untitled.
 
 ### Your own footage
+- Your pictures are shown as they are: a shape a model draws as an outline
+  round a screenshot stays an outline instead of filling into a coloured
+  pane over it, anything filled laid over a picture is moved behind it as
+  its card, and a picture shrunk to a corner is sent back to be shown large.
 - Import video, pictures and sound; files stay where they are and are read
   in pieces. A clip or a picture becomes a scene; a song becomes the music.
 - Files dropped anywhere on the window join the film's media; other kinds

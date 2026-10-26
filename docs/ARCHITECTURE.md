@@ -68,7 +68,8 @@ src/
                          the pictures and the compositions built around them,
                          the person's own media and the compositions that show it,
                          the compiler, narration laid over the film as one script,
-                         the film checks and when they look, editing helpers,
+                         the film checks (timing, place, and what each frame shows)
+                         and when they look, editing helpers,
                          templates and examples
     engine/              easing, keyframes, paths, the drawing kit, entrances and exits,
                          the carry transition, repeated layers, the odometer, the renderer

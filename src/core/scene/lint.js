@@ -17,6 +17,7 @@ import { OVERSHOOT } from '../engine/ease.js';
 import { contrast } from '../util/color.js';
 import { normalizeScene } from './normalize.js';
 import { placeNarration } from './narration-timing.js';
+import { checkMedia, checkEmpty, fixFrame } from './frame-checks.js';
 
 const resolve = (doc, c) => (doc.palette[c] ? doc.palette[c] : c);
 
@@ -137,6 +138,7 @@ export function lintScene(doc, opts = {}) {
         if (words > 16) add('info', 'long-text', `"${L.text.slice(0, 40)}..." has ${words} words. Motion graphics read best at seven words or fewer on screen at once; split it across scenes.`, { scene: S.id, layer: L.id });
       }
     }
+    checkMedia(doc, S, si, add);
   });
 
   // Narration is one script over the film (narration-timing.js): each line
@@ -221,6 +223,9 @@ export function lintScene(doc, opts = {}) {
       add('warn', 'collide-in-motion', `"${(a.text || a.tag).slice(0, 30)}" crosses "${(c.text || c.tag).slice(0, 30)}" at ${sample.t.toFixed(1)} s while they move.`, { scene: fix.scene, layer: c.tag, t: sample.t }, fix);
     }
   }
+
+  // No moment between the opening and the end card shows nothing at all.
+  checkEmpty(doc, [...(opts.moving || []), ...(opts.beats || [])].sort((a, b) => a.t - b.t), add);
 
   // Something moves on every beat: frames a beat apart that draw exactly the
   // same picture for more than two beats are a frozen screen. The end card
@@ -342,6 +347,9 @@ export function autofix(doc, issues) {
       S.camera.zoom = [1, 1.05];
       S.camera.ease = 'linear';
       applied.push(`Added a slow camera push to scene ${d.scenes.indexOf(S) + 1}.`);
+    } else if (f.kind === 'uncover' || f.kind === 'arrive-sooner') {
+      const said = fixFrame(d, f);
+      if (said) applied.push(said);
     } else if (f.kind === 'unify-transitions') {
       const pack = STYLE_PACKS[d.style] || STYLE_PACKS.studio;
       d.scenes.slice(1).forEach((S, i) => { if (S.transition.kind !== 'cut' && S.transition.kind !== 'carry') S.transition.kind = pack.transitions[i % pack.transitions.length]; });
