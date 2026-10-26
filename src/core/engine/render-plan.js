@@ -213,11 +213,12 @@ function drawShape(kit, L, s) {
     case 'ellipse':
       kit.ellipse(ax, ay, (w / 2) * (L.in.preset === 'grow' ? p : 1), (h / 2) * (L.in.preset === 'grow' ? p : 1), { fill, stroke, width: sw });
       break;
+    // A line or arrow spans its w by h box, centred on its point like every shape.
     case 'line':
-      kit.line(ax - w / 2, ay, ax + w / 2, ay + h, { color: stroke || fill || 'ink', width: sw, progress: p, cap: L.cap });
+      kit.line(ax - w / 2, ay - h / 2, ax + w / 2, ay + h / 2, { color: stroke || fill || 'ink', width: sw, progress: p, cap: L.cap });
       break;
     case 'arrow':
-      kit.arrow(ax - w / 2, ay, ax + w / 2, ay + h, { color: stroke || fill || 'ink', width: sw, progress: p, head: 18 * u });
+      kit.arrow(ax - w / 2, ay - h / 2, ax + w / 2, ay + h / 2, { color: stroke || fill || 'ink', width: sw, progress: p, head: 18 * u });
       break;
     case 'ring':
       kit.ring(ax, ay, w / 2, { color: stroke || fill || 'accent', width: sw, from: L.arc[0], to: L.arc[1], progress: p, cap: L.cap });

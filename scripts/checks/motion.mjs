@@ -60,6 +60,32 @@ await claim('the left column comes to rest first', () => {
 });
 await claim('the checks still see the figure as a line of text', () => assert.ok(drawn(2.5).boxes.some((b) => b.kind === 'text' && b.text === '4,820+' && b.tag === 'figure')));
 
+section('Lines and arrows sit on their point');
+const ends = (shape, w, h, anchor = 'center') => {
+  const doc = normalizeScene({ scenes: [{ duration: 2, layers: [{ type: 'shape', shape, x: 0.5, y: 0.5, w, h, anchor, strokeWidth: 4, in: { preset: 'none' } }] }] }).scene;
+  const kit = createKit(fakeContext(doc.width, doc.height), { width: doc.width, height: doc.height, palette: doc.palette, assets: {} });
+  const seen = [];
+  for (const name of ['line', 'arrow']) { const f = kit[name]; kit[name] = (...a) => { seen.push(a.slice(0, 4)); return f(...a); }; }
+  renderPlan(kit, doc, 1);
+  assert.equal(seen.length, 1, `${shape} drawn once`);
+  return seen[0];
+};
+await claim('an upright line is centred on its point, not hung below it', () => {
+  const [x1, y1, x2, y2] = ends('line', 0, 180);
+  assert.equal(x1 + x2, 0);
+  assert.ok(Math.abs(y1 + y2) < 1e-9 && y2 - y1 > 0, `${y1} to ${y2}`);
+});
+await claim('a level line and a sloping arrow are centred too', () => {
+  const [a1, b1, a2, b2] = ends('line', 400, 0);
+  assert.ok(Math.abs(a1 + a2) < 1e-9 && Math.abs(b1 + b2) < 1e-9);
+  const [c1, d1, c2, d2] = ends('arrow', 300, 120);
+  assert.ok(Math.abs(c1 + c2) < 1e-9 && Math.abs(d1 + d2) < 1e-9);
+});
+await claim('a line anchored at its top starts there and runs down', () => {
+  const [, y1, , y2] = ends('line', 0, 180, 'top');
+  assert.ok(Math.abs(y1) < 1e-9 && y2 > 0, `${y1} to ${y2}`);
+});
+
 section('One element carried into the next scene');
 const carryDoc = normalizeScene({ scenes: [
   { duration: 3, layers: [{ id: 'name-a', type: 'text', text: 'Lumen Desk', x: 0.5, y: 0.6, size: 132 }] },

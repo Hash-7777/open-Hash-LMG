@@ -6,6 +6,9 @@ newest first, grouped by what it does for the person making a film.
 ## Unreleased
 
 ### Making films
+- Lines and arrows sit centred on the point they are placed at, like every
+  other shape: the hairline between a name and its tagline stands beside the
+  words instead of hanging below them, and corner marks meet at their corner.
 - Films keep to the length asked for. Once a film is otherwise final, each
   scene's timing is drawn closer together: lines arrive sooner and scenes end
   sooner, every move at its own speed, and the checks give back any time a
