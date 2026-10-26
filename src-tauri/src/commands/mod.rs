@@ -5,6 +5,7 @@ pub mod keys;
 pub mod media;
 pub mod projects;
 pub mod relay;
+pub mod search;
 pub mod sound;
 pub mod usage;
 pub mod voice;

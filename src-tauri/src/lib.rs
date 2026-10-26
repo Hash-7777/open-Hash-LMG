@@ -47,7 +47,7 @@ pub fn run() {
             commands::keys::keys_status,
             commands::keys::key_set,
             commands::usage::usage_log_append,
-            commands::web::web_search,
+            commands::search::web_search,
             commands::web::web_fetch,
         ])
         // Files dropped on the window are remembered here, like files chosen in

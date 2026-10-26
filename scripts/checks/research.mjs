@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
 import { STORYBOARD, measure } from './lib/fixtures.mjs';
-import { urlsInBrief, pageText, notesFrom, research, researchBlock } from '../../src/core/research/research.js';
+import { urlsInBrief, pageText, notesFrom, research, researchBlock, lookUpWeb, lookUpSummary, lookupNotes, normalizeLookups } from '../../src/core/research/research.js';
 import { createDirector } from '../../src/core/director/pipeline.js';
 
 const web = (log = []) => ({
@@ -87,5 +87,64 @@ await claim('without research, no question about it is asked', async () => {
   });
   await d.make({ brief: 'A film.', style: 'studio', aspect: '16:9', seconds: 20, tier: 'guided' });
   assert.ok(!asked.includes('research'));
+});
+section('Looking things up from the conversation');
+await claim('what came back is summed up in plain lines: titles for each search, the pages read', async () => {
+  const got = await lookUpWeb({ web: web(), searches: ['Example Lamp'], pages: ['https://lamp.example/about'] });
+  assert.equal(got.n, 2);
+  assert.match(got.notes, /An invented lamp/);
+  assert.equal(lookUpSummary(got), '"Example Lamp": Example Lamp.\nRead https://lamp.example/about.');
+});
+await claim('a search that finds nothing asks for the web address, or a search service key', async () => {
+  const empty = { search: async () => ({ ok: true, source: 'Wikipedia', results: [] }), fetch: async () => ({ ok: false, reason: 'not found' }) };
+  const got = await lookUpWeb({ web: empty, searches: ['Brightway planner'], pages: ['https://brightway.example'], follow: true });
+  assert.equal(got.n, 0); assert.equal(got.notes, '');
+  const said = lookUpSummary(got);
+  assert.match(said, /"Brightway planner": nothing found\. Send its web address and I will read the page, or add a search service key in Settings, under Keys\./);
+  assert.match(said, /https:\/\/brightway\.example could not be read\./);
+});
+await claim('with the person\u2019s yes, the top pages the searches found are read too: two a search, three in all, none twice', async () => {
+  const log = [];
+  const many = {
+    search: async (q) => { log.push(`search ${q}`); return { ok: true, source: 'DuckDuckGo', results: ['a', 'b', 'c'].map((x) => ({ title: `${q} ${x}`, url: `https://${x}.example/${q}`, snippet: 'An invented page.' })) }; },
+    fetch: async (u) => { log.push(`read ${u}`); return { ok: true, contentType: 'text/plain', text: `Words on ${u}` }; },
+  };
+  const got = await lookUpWeb({ web: many, searches: ['one', 'two'], pages: ['https://a.example/one'], follow: true });
+  assert.deepEqual(log, ['search one', 'search two', 'read https://a.example/one', 'read https://b.example/one', 'read https://a.example/two', 'read https://b.example/two']);
+  assert.match(got.notes, /Words on https:\/\/b\.example\/two/);
+  log.length = 0;
+  await lookUpWeb({ web: many, searches: ['one'], pages: [] });
+  assert.deepEqual(log, ['search one']);
+});
+await claim('the film step reads the top pages only when the person allowed it', async () => {
+  const log = [];
+  const w = { search: async () => ({ ok: true, source: 'DuckDuckGo', results: [{ title: 'Lamp', url: 'https://lamp.example/', snippet: 's' }] }), fetch: async (u) => { log.push(u); return { ok: true, contentType: 'text/plain', text: 'Lamp page' }; } };
+  const askJson = async () => ({ searches: ['Example Lamp'] });
+  await research({ askJson, permit: async (x) => ({ ...x, follow: false }), web: w, brief: 'b' });
+  assert.deepEqual(log, []);
+  await research({ askJson, permit: async (x) => ({ ...x, follow: true }), web: w, brief: 'b' });
+  assert.deepEqual(log, ['https://lamp.example/']);
+});
+await claim('kept look-ups give the storyboard their notes, newest first, and empty ones are dropped', () => {
+  const list = normalizeLookups([{ asked: 'a', notes: 'older notes', at: 1 }, { asked: 'b', notes: 'newer notes', at: 2 }, { asked: 'c', notes: '' }, null]);
+  assert.equal(list.length, 2);
+  assert.equal(lookupNotes(list), 'newer notes\n\nolder notes');
+  assert.equal(lookupNotes(undefined), '');
+});
+await claim('facts the conversation looked up go to the storyboard, and the model is not asked again', async () => {
+  const seen = {};
+  const d = createDirector({
+    ask: async ({ purpose, messages }) => {
+      seen[purpose] = messages[0].content;
+      if (purpose === 'storyboard') return JSON.stringify(STORYBOARD);
+      if (purpose === 'pictures') return JSON.stringify({ pictures: [] });
+      throw new Error(`no answer for ${purpose}`);
+    },
+    measure: async ({ scene }, times) => measure(scene, times), trial: async () => ({ ok: true }), sheet: async () => null,
+    web: web(), permit: async () => { throw new Error('asked again'); },
+  });
+  await d.make({ brief: 'A film for Example Lamp.', style: 'studio', aspect: '16:9', seconds: 20, tier: 'guided', research: true, facts: 'Search "Example Lamp": a lamp kept from the conversation.' });
+  assert.ok(!('research' in seen));
+  assert.match(seen.storyboard, /a lamp kept from the conversation/);
 });
 done();

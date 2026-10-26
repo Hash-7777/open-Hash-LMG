@@ -144,7 +144,7 @@ The app suggests the way of working from the model's size; you can always choose
 
 **On your computer:** Ollama, LM Studio and llama.cpp, asked by the desktop app, so no server switch is needed.<br>
 **In the cloud, on your own key:** Anthropic, OpenAI, Google Gemini, OpenRouter, Groq, DeepSeek, Mistral, xAI, Moonshot, Together AI, Fireworks AI and Cerebras.<br>
-**Looking things up:** the model may ask to search the web or read a page named in the brief; you see every search and page and say yes first.<br>
+**Looking things up:** the model may ask to search the web, read a page named in the brief, or look something up when you ask it to; searches reach the whole web with no key, you see every search and page and say yes first.<br>
 **Voices:** Chatterbox and Kokoro through your own install, any local speech server, or OpenAI's voices.
 
 <br>

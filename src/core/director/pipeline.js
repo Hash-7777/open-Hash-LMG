@@ -19,7 +19,7 @@
 //   deps.sheet({ scene, code }, times)                      -> image data URL or null
 //   deps.compose({ code, context })                         -> { ok, notes, error }, a model's score run locked down
 //   deps.log({ id, title, status, detail })                 status: run | done | fail | note
-//   deps.permit({ searches, pages }), deps.web { search, fetch }   looking things up, when opts.research (research.js)
+//   deps.permit({ searches, pages }), deps.web { search, fetch }   looking things up, when opts.research and no opts.facts (research.js)
 
 import { normalizeStoryboard, storyboardForModel, keepPictures } from '../scene/storyboard.js';
 import { drawPictures } from './pictures.js';
@@ -205,9 +205,10 @@ export function createDirector(given) {
     const rounds = opts.rounds ?? (tier === 'guided' ? 0 : 2);
 
     const drafts = tier === 'guided' ? Math.max(1, Math.min(3, opts.drafts || 1)) : 1;
-    // Facts the storyboard needs, looked up on the web once the person says yes.
-    let facts = '';
-    if (opts.research && deps.permit && deps.web) {
+    // Facts the storyboard needs, looked up on the web once the person says
+    // yes; facts the conversation already looked up are used as they are.
+    let facts = String(opts.facts || '');
+    if (!facts && opts.research && deps.permit && deps.web) {
       try {
         facts = (await step('research', 'Looking things up', () => research({ askJson, permit: deps.permit, web: deps.web, brief, note: (n) => note('research', n) }))).notes;
       } catch (err) {

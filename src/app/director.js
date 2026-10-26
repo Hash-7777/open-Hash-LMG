@@ -24,6 +24,7 @@ import { createRunRecord, runUsage } from '../core/director/run-record.js';
 import { runs } from '../platform/runs.js';
 import { appVersion, fetchFor, logUsage, web } from '../platform/index.js';
 import { askToLookUp } from './web-permission.js';
+import { lookUpWeb, lookUpSummary, lookupNotes } from '../core/research/research.js';
 import { speakLines } from './narration.js';
 import { mediaFor, withMusic, previewPicture } from './film-media.js';
 import { brandColours } from '../core/director/brand.js';
@@ -77,6 +78,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
     converse: (history) => converse(history),
     onMake: (text, opts) => make(text, opts),
     onChange: (text) => change(text),
+    onLookup: (list) => lookUpForChat(list),
     busy: () => Boolean(running),
     tierOf: () => ({ way: tier(), suggested: profile()?.tier || null, help: TIER_HELP[tier()] }),
   });
@@ -123,6 +125,23 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
     const parts = lastSaid.answers?.length ? lastSaid.answers.map((a) => a.answer) : [lastSaid.text || ''];
     const waiting = parts.some((p) => STILL_TO_COME.test(p) && p.split(/\s+/).length <= 14);
     return normalizeChatReply(parsed ?? text, { hasFilm, waiting, system: own });
+  }
+
+  // ---- looking things up from the conversation ----------------------------------
+  // The director asked to look something up. The person says yes to each
+  // search and page first; what comes back is kept with the film, summed up
+  // in the conversation, and given to the director's next turns and to the
+  // storyboard. Resolves whether anything came back.
+  async function lookUpForChat(list) {
+    if (!web) { chat.say('Looking things up on the web works in the desktop app.'); return false; }
+    if (settings.get().model.research === 'never') { chat.say('Looking things up is switched off. Turn it on in Settings, under Model, and ask again.'); return false; }
+    const isPage = (q) => /^https?:\/\//i.test(q);
+    const ok = await askToLookUp({ searches: list.filter((q) => !isPage(q)), pages: list.filter(isPage) });
+    if (!ok || (!ok.searches.length && !ok.pages.length)) { chat.say('Nothing was looked up.'); return false; }
+    const got = await lookUpWeb({ web, searches: ok.searches, pages: ok.pages, follow: ok.follow });
+    if (got.notes) store.patch({ lookups: [...store.get().project.lookups, { asked: [...ok.searches, ...ok.pages].join(', '), notes: got.notes, at: Date.now() }] }, { record: false });
+    chat.say(got.n ? `What I found:\n${lookUpSummary(got)}` : lookUpSummary(got) || 'Nothing came back.');
+    return Boolean(got.notes);
   }
 
   // ---- progress and what is worth knowing ---------------------------------------
@@ -244,7 +263,10 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
     const way = tier();
     // With narration on and a voice chosen, the lines are spoken once the film is made.
     const narrate = s.film.narration && s.voice.engine !== 'none';
-    const lookUp = Boolean(web) && s.model.research === 'ask';
+    // Facts the conversation already looked up go to the storyboard as they
+    // are; without them the film asks the model what it needs to look up.
+    const facts = lookupNotes(store.get().project.lookups);
+    const lookUp = Boolean(web) && s.model.research === 'ask' && !facts;
     progress.start([...(lookUp ? [['research', 1]] : []), ...PLANS[way], ...(narrate ? [['voice', 2]] : [])].map(([id, weight]) => ({ id, weight })), 'Starting', whoText(way));
     record = await beginRecord('make', { brief: text, tier: way });
     const { director, session, done } = makeDirector(running.signal);
@@ -264,7 +286,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
         take: Math.floor(Math.random() * 1e6),
         brief: colours.length && !colours.some((c) => text.toLowerCase().includes(c)) ? `${text}\nBrand colours: ${colours.join(', ')}` : text, tier: way, style: s.film.style, aspect: s.film.aspect, seconds: s.film.seconds, fps: s.film.fps,
         narration: s.film.narration, vision: vision && s.model.review, drafts: s.model.drafts, verify: s.model.verify, compose: s.model.compose && !own.music.length,
-        research: lookUp,
+        research: lookUp, facts,
       });
       if (own.music.length) note('Your song stays the film\u2019s music.');
       store.patch({ brief: text, storyboard: out.storyboard, scene: withMusic(out.scene, own.music), code: out.code, tier: out.tier, take: out.take, edited: false });

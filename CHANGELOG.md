@@ -172,10 +172,19 @@ newest first, grouped by what it does for the person making a film.
   files is used as written.
 - Before the storyboard, the model may look things up: it names a few
   searches, and pages named in the brief are offered too. Nothing is looked
-  up until you say yes to each one; searches use your Tavily key or else
-  Wikipedia, pages are read only from public addresses, and a few thousand
+  up until you say yes to each one; searches use your Tavily key, or else
+  DuckDuckGo's results from the whole web with no key, and Wikipedia when
+  that finds nothing. With your yes, the top pages a search finds are read
+  too. Pages are read only from public addresses, and a few thousand
   characters of notes go to the storyboard step alone. Settings can turn it
   off.
+- The director looks things up when you ask it to in the conversation ("look
+  up our product online"), or when the film is about something it does not
+  know: the same window asks you first, what it found is summed up in the
+  conversation, and the director and the storyboard both draw on it.
+- A reply that names a film's frames or the parts of a brief is shown as
+  written; only one that repeats the director's own instructions is held
+  back.
 - A model redesigning a film does it a few scenes at a time: each answer is
   short enough to finish, a part that fails keeps the rule-made scenes it
   covered instead of the whole film losing the model's work, and a fix

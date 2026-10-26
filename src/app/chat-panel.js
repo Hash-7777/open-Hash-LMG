@@ -21,9 +21,10 @@ const LENGTHS = [15, 30, 45, 60, 90, 120];
 const TIER_SHORT = { guided: 'Guided', plan: 'Plan', code: 'Code' };
 
 // deps: { store, settings, picker, converse(history) -> reply, onMake(brief), onChange(text),
-//         busy(), onAttach({ folder }) -> [{ key, name, kind }], onDetach(key) -> taken out,
+//         onLookup([search or address]) -> found anything, busy(),
+//         onAttach({ folder }) -> [{ key, name, kind }], onDetach(key) -> taken out,
 //         tierOf() -> { way, suggested, help } }
-export function createChatPanel({ store, settings, picker, converse, onMake, onChange, busy, onAttach, onDetach, tierOf }) {
+export function createChatPanel({ store, settings, picker, converse, onMake, onChange, onLookup, busy, onAttach, onDetach, tierOf }) {
   const thread = h('div', { class: 'chat-thread', role: 'log', 'aria-live': 'polite', 'aria-label': 'Conversation with the director' });
   const input = h('textarea', { class: 'input textarea chat-input', rows: '2', maxlength: '4000', placeholder: 'Message the director', 'aria-label': 'Message to the director' });
   const sendBtn = iconButton(ICONS.send, 'Send', () => send(), 'send-btn');
@@ -171,6 +172,13 @@ export function createChatPanel({ store, settings, picker, converse, onMake, onC
     if (!text || thinking || busy()) return;
     if (given === undefined) { input.value = ''; input.style.height = ''; pending = []; paintAttach(); }
     push({ role: 'person', text, ...(answers?.length ? { answers } : {}), ...(files.length ? { attachments: files.map(({ key, name, kind }) => ({ key, name, kind })) } : {}) });
+    await turn();
+  }
+
+  // One reply from the director. When it asks to look something up, that
+  // happens first (with the person's yes); a reply that was only waiting on
+  // it is followed by one more turn that uses what came back.
+  async function turn(followUp = false) {
     thinking = true;
     paint();
     let reply;
@@ -189,6 +197,15 @@ export function createChatPanel({ store, settings, picker, converse, onMake, onC
     }
     push({ role: 'director', text: reply.reply, ...(reply.questions.length ? { questions: reply.questions } : {}), ...(reply.action === 'make' ? { brief: reply.brief } : {}) });
     paint();
+    if (reply.lookup?.length && !followUp && onLookup) {
+      thinking = true;
+      paint();
+      let found = false;
+      try { found = await onLookup(reply.lookup); } catch (err) { push({ role: 'director', text: `Looking it up did not work: ${err.message || err}`, kind: 'note' }); }
+      thinking = false;
+      paint();
+      if (found && reply.action !== 'make' && reply.action !== 'change') { await turn(true); return; }
+    }
     if (reply.action === 'make') onMake(reply.brief, { useMedia: reply.film?.useMedia !== false });
     else if (reply.action === 'change') onChange(reply.change);
   }

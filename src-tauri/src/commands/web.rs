@@ -1,13 +1,11 @@
 // Looking things up on the web for a film, once the person has said yes.
 //
-// Two commands, both made here rather than in the page, whose content policy
-// reaches no host on the internet:
+// Made here rather than in the page, whose content policy reaches no host on
+// the internet:
 //
-//   web_search { query } -> { ok, reason, source, results: [{ title, url, snippet }] }
-//       with the person's search key (Tavily) when one is saved, else
-//       Wikipedia's own search, which needs none. The address is built here.
 //   web_fetch { url } -> { ok, reason, status, finalUrl, contentType, text, truncated }
 //       one public page, read as text, at most a megabyte.
+//   web_search (search.rs) reads the search services through the same reader.
 //
 // An address a model chose may name a host that leads to this computer or its
 // private network. The host is resolved once, every address it answers with
@@ -19,7 +17,6 @@ use serde::Serialize;
 use std::io::Read;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::time::Duration;
-use tauri::AppHandle;
 use ureq::config::Config;
 use ureq::http::Uri;
 use ureq::tls::{TlsConfig, TlsProvider};
@@ -27,11 +24,9 @@ use ureq::unversioned::resolver::{ResolvedSocketAddrs, Resolver};
 use ureq::unversioned::transport::{DefaultConnector, NextTimeout};
 use ureq::Agent;
 
-use super::keys;
 
 const MAX_REDIRECTS: usize = 5;
 const MAX_BYTES: u64 = 1_000_000;
-const MAX_QUERY: usize = 300;
 const MAX_URL: usize = 2000;
 
 fn private_v4(ip: &Ipv4Addr) -> bool {
@@ -202,7 +197,7 @@ fn refused(reason: impl Into<String>) -> Page {
 }
 
 /// Reads one public address as text, with an optional JSON body and key.
-fn get(url: &str, post: Option<(&str, &str)>) -> Page {
+pub(crate) fn get(url: &str, post: Option<(&str, &str)>) -> Page {
     let mut current = url.trim().to_string();
     for _ in 0..=MAX_REDIRECTS {
         let target = match parse(&current) {
@@ -251,60 +246,6 @@ fn get(url: &str, post: Option<(&str, &str)>) -> Page {
 #[tauri::command]
 pub async fn web_fetch(url: String) -> Page {
     tauri::async_runtime::spawn_blocking(move || get(&url, None)).await.unwrap_or_else(|_| refused("the request ended unexpectedly."))
-}
-
-#[derive(Serialize, Default)]
-pub struct Hit {
-    pub title: String,
-    pub url: String,
-    pub snippet: String,
-}
-
-#[derive(Serialize, Default)]
-pub struct Found {
-    pub ok: bool,
-    pub reason: Option<String>,
-    pub source: String,
-    pub results: Vec<Hit>,
-}
-
-fn clip(s: &str, n: usize) -> String {
-    s.chars().take(n).collect()
-}
-
-/// Wikipedia's search address for a query, with the opening of each page.
-pub fn wikipedia_url(query: &str) -> String {
-    let q: String = query.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect();
-    format!("https://en.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrlimit=4&gsrsearch={q}&prop=extracts%7Cinfo&exintro=1&explaintext=1&exlimit=4&inprop=url")
-}
-
-fn search(app: &AppHandle, query: &str) -> Found {
-    let query = query.trim();
-    if query.is_empty() || query.len() > MAX_QUERY {
-        return Found { reason: Some("a search is a few words, at most 300 characters.".into()), ..Found::default() };
-    }
-    if let Some(key) = keys::lookup(app, "tavily") {
-        let body = serde_json::json!({ "query": query, "search_depth": "basic", "max_results": 5 }).to_string();
-        let page = get("https://api.tavily.com/search", Some((&body, &key)));
-        if page.ok {
-            let v: serde_json::Value = serde_json::from_str(&page.text).unwrap_or_default();
-            let results = v["results"].as_array().map(|a| a.iter().map(|r| Hit { title: clip(r["title"].as_str().unwrap_or(""), 200), url: clip(r["url"].as_str().unwrap_or(""), 500), snippet: clip(r["content"].as_str().unwrap_or(""), 600) }).collect()).unwrap_or_default();
-            return Found { ok: true, reason: None, source: "Tavily".into(), results };
-        }
-    }
-    let page = get(&wikipedia_url(query), None);
-    if !page.ok {
-        return Found { reason: page.reason, ..Found::default() };
-    }
-    let v: serde_json::Value = serde_json::from_str(&page.text).unwrap_or_default();
-    let mut results: Vec<(i64, Hit)> = v["query"]["pages"].as_object().map(|m| m.values().map(|p| (p["index"].as_i64().unwrap_or(99), Hit { title: clip(p["title"].as_str().unwrap_or(""), 200), url: clip(p["fullurl"].as_str().unwrap_or(""), 500), snippet: clip(p["extract"].as_str().unwrap_or(""), 600) })).collect()).unwrap_or_default();
-    results.sort_by_key(|(i, _)| *i);
-    Found { ok: true, reason: None, source: "Wikipedia".into(), results: results.into_iter().map(|(_, h)| h).collect() }
-}
-
-#[tauri::command]
-pub async fn web_search(app: AppHandle, query: String) -> Found {
-    tauri::async_runtime::spawn_blocking(move || search(&app, &query)).await.unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -361,10 +302,4 @@ mod tests {
         assert!(!readable("image/png") && !readable("application/octet-stream"));
     }
 
-    #[test]
-    fn the_search_address_carries_the_query_and_nothing_else() {
-        let u = wikipedia_url("motion graphics & film");
-        assert!(u.starts_with("https://en.wikipedia.org/w/api.php?"));
-        assert!(u.contains("gsrsearch=motion%20graphics%20%26%20film&"));
-    }
 }

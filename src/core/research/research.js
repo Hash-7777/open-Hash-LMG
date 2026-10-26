@@ -4,7 +4,8 @@
 // about, or give a web address to read. Before writing the storyboard the
 // model is asked, briefly, what it would need to look up; addresses in the
 // brief itself are always offered. The person sees every search and every
-// address and says yes or no. What comes back is cut down to a short block of
+// address and says yes or no, and whether the top pages a search finds may
+// be read too. What comes back is cut down to a short block of
 // notes, with where each came from, and given to the storyboard step alone,
 // so it costs tokens once.
 //
@@ -16,6 +17,7 @@
 
 const MAX_SEARCHES = 3;
 const MAX_PAGES = 3;
+const FOLLOW_EACH = 2;
 const PAGE_CHARS = 2200;
 const NOTES_CHARS = 6000;
 
@@ -76,6 +78,67 @@ export function notesFrom({ found = [], read = [] }) {
   return clip(parts.join('\n\n'), NOTES_CHARS);
 }
 
+// Looks up what the person allowed: each search, then each page, then, when
+// they allowed it (`follow`), the top pages the searches found, so the notes
+// hold what those pages say and not only a line about each. Returns the
+// notes for the storyboard, what came back, and how many answered.
+export async function lookUpWeb({ web, searches = [], pages = [], follow = false, note = () => {} }) {
+  const found = [];
+  for (const q of searches) {
+    const r = await web.search(q);
+    found.push({ ...r, query: q });
+    if (!r.ok) note(`The search "${q}" did not work: ${r.reason || 'no answer'}`);
+  }
+  const read = [];
+  const top = follow ? topPages(found, pages) : [];
+  for (const url of [...pages, ...top]) {
+    const r = await web.fetch(url);
+    read.push({ ok: r.ok, url, text: r.ok ? pageText(r.text, r.contentType) : '' });
+    if (!r.ok) note(`${url} could not be read: ${r.reason || 'no answer'}`);
+  }
+  const n = found.filter((f) => f.ok && f.results?.length).length + read.filter((p) => p.ok && p.text).length;
+  return { notes: notesFrom({ found, read }), found, read, n };
+}
+
+// The pages worth reading from what the searches found: the first two of
+// each search, three in all, none read twice.
+export function topPages(found, already = []) {
+  const out = [];
+  for (const f of found) {
+    for (const r of (f.ok ? f.results || [] : []).slice(0, FOLLOW_EACH)) {
+      const u = String(r.url || '');
+      if (/^https?:\/\//i.test(u) && !already.includes(u) && !out.includes(u)) out.push(u);
+    }
+  }
+  return out.slice(0, MAX_PAGES);
+}
+
+// What a look-up found, in a few plain lines for the conversation: the titles
+// that came back for each search and the pages read. A search that found
+// nothing on the free encyclopedia says how to reach the whole web.
+export function lookUpSummary({ found = [], read = [] }) {
+  const lines = [];
+  for (const f of found) {
+    if (!f.ok) lines.push(`"${f.query}": the search did not work (${f.reason || 'no answer'}).`);
+    else if (!f.results?.length) lines.push(`"${f.query}": nothing found. Send its web address and I will read the page, or add a search service key in Settings, under Keys.`);
+    else lines.push(`"${f.query}": ${f.results.slice(0, 3).map((r) => r.title).join('; ')}.`);
+  }
+  for (const p of read) lines.push(p.ok && p.text ? `Read ${p.url}.` : `${p.url} could not be read.`);
+  return lines.join('\n');
+}
+
+// Look-ups kept with a film, newest last: what was asked and the notes that
+// came back, for the conversation and the storyboard to draw on.
+export function normalizeLookups(list) {
+  return (Array.isArray(list) ? list : []).filter((x) => x && typeof x.notes === 'string' && x.notes.trim())
+    .slice(-6).map((x) => ({ asked: String(x.asked || '').slice(0, 400), notes: x.notes.slice(0, NOTES_CHARS + 200), at: Number.isFinite(x.at) ? x.at : 0 }));
+}
+
+// The kept notes as one block, newest first, cut to what one request carries.
+export function lookupNotes(list) {
+  return clip(normalizeLookups(list).reverse().map((x) => x.notes).join('\n\n'), NOTES_CHARS);
+}
+
 // Runs the step. Returns { notes, asked, allowed } where notes is '' when
 // nothing was looked up.
 export async function research({ askJson, permit, web, brief, note = () => {} }) {
@@ -90,20 +153,7 @@ export async function research({ askJson, permit, web, brief, note = () => {} })
   if (!searches.length && !pages.length) return { notes: '', asked: false, allowed: false };
   const ok = await permit({ searches, pages });
   if (!ok || (!ok.searches?.length && !ok.pages?.length)) { note('Nothing was looked up on the web.'); return { notes: '', asked: true, allowed: false }; }
-  const found = [];
-  for (const q of ok.searches || []) {
-    const r = await web.search(q);
-    found.push({ ...r, query: q });
-    if (!r.ok) note(`The search "${q}" did not work: ${r.reason || 'no answer'}`);
-  }
-  const read = [];
-  for (const url of ok.pages || []) {
-    const r = await web.fetch(url);
-    read.push({ ok: r.ok, url, text: r.ok ? pageText(r.text, r.contentType) : '' });
-    if (!r.ok) note(`${url} could not be read: ${r.reason || 'no answer'}`);
-  }
-  const notes = notesFrom({ found, read });
-  const n = found.filter((f) => f.ok).length + read.filter((p) => p.ok).length;
+  const { notes, n } = await lookUpWeb({ web, searches: ok.searches || [], pages: ok.pages || [], follow: Boolean(ok.follow), note });
   if (notes) note(`Looked up ${n} thing${n === 1 ? '' : 's'} on the web for the storyboard.`);
   return { notes, asked: true, allowed: true };
 }

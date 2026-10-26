@@ -106,13 +106,15 @@ The page reaches the computer only through the commands in
   web view's own database on this computer, the newest 60 runs. Keys are
   never part of a run, and a picture sent to a model is noted by its size,
   not kept. A run leaves the computer only when saved as Markdown.
-- **Looking things up on the web** (`src-tauri/src/commands/web.rs`) happens
+- **Looking things up on the web** (`src-tauri/src/commands/web.rs` and `search.rs`) happens
   only when the person says yes, each time: every search and every address
-  is listed first and can be left out (`src/app/web-permission.js`), and the
-  setting can turn it off. The desktop side builds each search address
-  itself, from a search service the person keeps a key for or else
-  Wikipedia, and reads a page only over http or https, with no name or
-  password in the address. Every host is resolved once, every address it
+  is listed first and can be left out, and reading the top pages a search
+  finds is a choice of its own (`src/app/web-permission.js`); the setting
+  can turn it all off. A look-up asked for in the conversation goes through
+  the same window. The desktop side builds each search address itself, for
+  a search service the person keeps a key for, or else DuckDuckGo's plain
+  results page and, when that finds nothing, Wikipedia; it reads a page only
+  over http or https, with no name or password in the address. Every host is resolved once, every address it
   answers with must be on the public internet, and the connection is made to
   those very addresses; each redirect is checked again. Only text comes back,
   at most a megabyte, and what the storyboard step is given of it is a few
