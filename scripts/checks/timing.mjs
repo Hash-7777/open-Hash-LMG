@@ -6,6 +6,7 @@
 
 import assert from 'node:assert/strict';
 import { section, claim, done } from './lib/check.mjs';
+import { captionPhrases } from '../../src/core/engine/captions.js';
 import { STORYBOARD, measure } from './lib/fixtures.mjs';
 import { compileStoryboard } from '../../src/core/scene/compile.js';
 import { normalizeScene } from '../../src/core/scene/normalize.js';
@@ -119,5 +120,13 @@ await claim('the storyboard prompt names the words a line and in all, and the br
   assert.ok(p.includes(`at most ${b.perLine} words`) && p.includes(`about ${b.total} words in all`) && p.includes('nearly every beat needs a line'));
   assert.ok(/follow that order beat for beat/.test(p));
   assert.ok(/never more than two plain statements in a row/.test(p), 'the storyboard is told to show more than it says');
+});
+section('Captions break where a reader would');
+await claim('a word or two before a stop joins the phrase before it, never left alone', () => {
+  const w = (t) => t.split(' ').map((x, i) => [x, i * 0.3, i * 0.3 + 0.25]);
+  const show = (t) => { const words = w(t); return captionPhrases(words).map((p) => p.map((i) => words[i][0]).join(' ')); };
+  assert.deepEqual(show('Every detail sits quietly in its place.'), ['Every detail sits quietly in its place.']);
+  assert.deepEqual(show('One app, three screens, nothing more.'), ['One app,', 'three screens,', 'nothing more.']);
+  assert.deepEqual(show('A long line of words that runs well past six of them here.'), ['A long line of words that', 'runs well past six of them here.']);
 });
 done();

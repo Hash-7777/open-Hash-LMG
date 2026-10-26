@@ -12,6 +12,7 @@ import { drawRepeated } from './repeat.js';
 import { resolveEase } from './ease.js';
 import { clamp, mix, noise } from './math.js';
 import { layerState } from './motion.js';
+import { captionPhrases } from './captions.js';
 
 // Which scenes are on screen at t, each with its transition state.
 export function activeScenes(doc, t) {
@@ -255,14 +256,7 @@ export function captionAt(doc, t) {
     const local = t - t0;
     const words = clip.words;
     if (local < words[0][1] - 0.05 || local > words[words.length - 1][2] + 0.35) continue;
-    // Phrases of up to six words, broken after punctuation where possible.
-    const phrases = [];
-    let cur = [];
-    words.forEach((w, i) => {
-      cur.push(i);
-      if (cur.length >= 6 || /[.,;:?!]$/.test(w[0])) { phrases.push(cur); cur = []; }
-    });
-    if (cur.length) phrases.push(cur);
+    const phrases = captionPhrases(words);
     let current = -1;
     words.forEach((w, i) => { if (local >= w[1] - 0.02) current = i; });
     const phrase = phrases.find((p) => p.includes(Math.max(0, current))) || phrases[0];
