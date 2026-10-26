@@ -152,6 +152,16 @@ await claim('a part answered with scenes in place of ids is merged by place', ()
   assert.equal(out[1].layers[0].type, 'text');
 });
 
+section('The finished film keeps to the length asked for');
+await claim('a design that holds every scene too long comes back near the length asked for, saying so', async () => {
+  // A scripted designer that gives every scene four tenths more time, each arrival later too.
+  const slow = (messages) => ({ scenes: partScenes(messages).map((S) => ({ ...S, duration: S.duration * 1.4, layers: S.layers.map((L) => ({ ...L, at: (L.at || 0) * 1.4, until: L.until >= S.duration - 0.011 ? S.duration * 1.4 : L.until * 1.4, out: L.out?.at !== undefined && L.out?.at !== null ? { ...L.out, at: S.duration * 1.4 - (S.duration - L.out.at) } : L.out })) })) });
+  const { d, log } = director({ storyboard: STORYBOARD, 'plan part': slow });
+  const out = await d.make({ ...opts, tier: 'plan', rounds: 0 });
+  assert.ok(out.scene.duration <= opts.seconds * 1.1, `runs ${out.scene.duration.toFixed(1)} s for ${opts.seconds}`);
+  assert.ok(log.some((e) => e.status === 'note' && /Brought the film back to the 30 s asked for/.test(e.detail)));
+});
+
 section('Words on screen and the voice change together');
 await claim('a part shows each scene with the line the voice says over it', async () => {
   const draft = compileStoryboard(STORYBOARD, { style: 'studio', targetDuration: 30, narration: true }).scene;

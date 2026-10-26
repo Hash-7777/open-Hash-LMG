@@ -40,6 +40,8 @@ brief
                          what rules can repair, they repair; the rest goes back once
   -> brief check         what the brief asked to see is measured on the drawn film
   -> review (optional)   a model that can see reads a contact sheet and asks for changes
+  -> length              the film is drawn back to the length asked for, every line
+                         still readable and every spoken line said (src/core/scene/fit-length.js)
   -> music               the model composes the score as code with the music kit; it
                          runs locked down and only places notes, which the app plays
   -> narration           each line spoken in the chosen voice and timed word by word,

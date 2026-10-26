@@ -26,7 +26,8 @@ rules when it lays a storyboard out, so a guided film starts out passing them.
 
 | Rule | In the code | Source | Weight |
 |---|---|---|---|
-| A line holds for 0.8 s plus 2.5 words a second, never under 1.2 s; one or two words for 0.9 s. | `readingTime` in `format.js`; `read-time`, fixed by holding the scene longer; the compiler times every beat by it. | Subtitle and broadcast reading-speed practice. | Strong |
+| A line holds for 0.8 s plus 2.5 words a second, never under 1.2 s; one or two words for 0.9 s. | `readingTime` in `format.js`; `read-time`, fixed by holding the scene longer when the scene's end is what cuts the line short (a line that leaves part way through goes back to the model); the compiler times every beat by it. | Subtitle and broadcast reading-speed practice. | Strong |
+| A film keeps to the length asked for. | `fitLength` in `src/core/scene/fit-length.js`, once the film is otherwise final: each scene's timing drawn closer together, arrivals sooner, every move at its own speed; the reading and narration checks then give back what a scene needs. A change that names a length is fitted to it. | The person chose the length for where the film will play. | Fair |
 | At most about seven words on screen at once. | `long-text` above sixteen words. | Multimedia learning: short text beside the picture (Mayer). | Strong |
 | Text is large enough to read on a phone. | `small-text`: at least 26, or 34 in a vertical frame, on the 1080 scale; fixed by enlarging. | Platform readability guidance. | Fair |
 | Text stands out from what is behind it. | `contrast`: 4.5 to 1, or 3 to 1 for large text; fixed by choosing the palette colour with the most contrast. | WCAG 2 contrast minimums. | Strong |

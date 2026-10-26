@@ -6,6 +6,13 @@ newest first, grouped by what it does for the person making a film.
 ## Unreleased
 
 ### Making films
+- Films keep to the length asked for. Once a film is otherwise final, each
+  scene's timing is drawn closer together: lines arrive sooner and scenes end
+  sooner, every move at its own speed, and the checks give back any time a
+  line needs to be read or said. A scene is held longer only when its end is
+  what cuts a line short. A change that names a length ("to exactly 45
+  seconds") is fitted to it. A film whose words truly need more keeps that
+  time and says so.
 - Words and voice stay together: a model redesigning or fixing scenes sees
   the line the voice says over each one, and a scene whose words it changes
   gets a new line to match, spoken again. A line the brief asks to see goes

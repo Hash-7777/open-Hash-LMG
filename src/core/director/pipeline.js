@@ -28,6 +28,7 @@ import { compileStoryboard } from '../scene/compile.js';
 import { chooseDirection, describeDirection } from '../scene/direction.js';
 import { normalizeScene } from '../scene/normalize.js';
 import { lintScene, autofix, sampleTimes, motionTimes, beatTimes } from '../scene/lint.js';
+import { fitLength, lengthAsked } from '../scene/fit-length.js';
 import { extractJson, extractCode } from '../util/json.js';
 import { checkCode, asModule } from './code-check.js';
 import { INTENT_SCHEMA, intentPrompt, normalizeIntent, intentTimes, verifyIntent, intentFailures } from './intent.js';
@@ -119,6 +120,16 @@ export function createDirector(given) {
       issues = lintScene(scene, { ...(await measured(scene)), targetDuration: opts.seconds });
     }
     return { scene, issues };
+  }
+
+  // Back to the length asked for once a film is otherwise final, then checked
+  // again, since arrivals have moved (fit-length.js).
+  async function fitted(scene, opts) {
+    if (!opts.seconds) return scene;
+    const fit = fitLength(scene, opts.seconds);
+    if (fit.note) note('check', fit.note);
+    if (!fit.cut) return scene;
+    return (await step('check', 'Fitting it to the length asked for', () => checkScene(fit.scene, opts))).scene;
   }
 
   // A rewritten plan with what the model may not change put back (scene-io.js).
@@ -343,6 +354,7 @@ export function createDirector(given) {
       }
     }
 
+    if (!code) scene = await fitted(scene, opts);
     // The model composes the music for the film as it now stands.
     if (opts.compose !== false) scene = await composeStep(music, brief, scene, direction.mood);
     // Code that never ran falls back to the scene plan, and the film says so.
@@ -353,6 +365,8 @@ export function createDirector(given) {
   async function edit(project, instruction, opts = {}) {
     const text = String(instruction || '').trim();
     if (!text) throw new Error('Say what to change.');
+    // The length to fit the changed film to: one the change names, or the film's.
+    const fitTo = { ...opts, seconds: lengthAsked(text, opts.seconds) };
     const route = project.code ? 'code' : project.tier === 'guided' && !project.edited ? 'guided' : 'plan';
     if (route === 'guided') {
       const sb = await step('edit', 'Rewriting the storyboard', async () => {
@@ -369,6 +383,7 @@ export function createDirector(given) {
       });
       scene = normalizeScene(restore(scene, project.scene)).scene;
       ({ scene } = await step('check', 'Checking stills and timing', () => checkScene(scene, opts)));
+      scene = await fitted(scene, fitTo);
       return { ...project, storyboard: sb, scene: await rescore(music, project.scene, scene, project.brief, moodOf(project)) };
     }
     if (route === 'code') {
@@ -391,6 +406,7 @@ export function createDirector(given) {
       return next;
     });
     ({ scene } = await step('check', 'Checking stills and timing', () => checkScene(scene, opts)));
+    scene = await fitted(scene, fitTo);
     return { ...project, scene: await rescore(music, project.scene, scene, project.brief, moodOf(project)) };
   }
 
