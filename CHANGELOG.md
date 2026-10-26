@@ -124,6 +124,9 @@ newest first, grouped by what it does for the person making a film.
   new film.
 
 ### Sound and voice
+- Voice settings say what each voice service asks of a film: OpenAI's
+  usage policies ask that listeners are told the voice is AI-generated, and
+  Chatterbox marks every line it speaks with an inaudible watermark.
 - The model composes each film's music as code once the film is final: a
   chord progression, a bass line, drums that suit the mood and a melody of
   its own, placed on the film's beats and reveals with the music kit and
@@ -217,6 +220,13 @@ newest first, grouped by what it does for the person making a film.
   and are unloaded once a film is made.
 
 ### The editor
+- Settings, redesigned: the sections sit in three groups (making films,
+  where models run, the app), each page opens with its title and what it is
+  for, and its settings are grouped in cards. Looking things up has a page
+  of its own, saying where searches go.
+- About shows the app's mark, its maker, how long it has been in the making,
+  the version and licence, links to the source, problem reports, security
+  and the licence, and the maker's other apps.
 - Fewer panels at once: the inspector opens only when there is something to
   edit, a scene or layer selected, or the film's own settings from the Film
   button beside the title. It has a close button, Escape closes it too, and

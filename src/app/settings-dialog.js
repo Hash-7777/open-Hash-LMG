@@ -1,6 +1,8 @@
-// Settings: which model makes the film, the model servers on this computer,
-// the keys for cloud services, and how the editor looks. A rail of sections
-// on the left; every change is saved as it is made.
+// Settings: which model makes the film and how, looking things up, the voice,
+// the model servers on this computer, the keys for cloud services, how the
+// editor looks, the run history and About. A rail of sections in three
+// groups on the left; each page opens with what it is for, its settings in
+// cards. Every change is saved as it is made.
 //
 // "This computer" walks through running a model locally and checks each step
 // for real: a step reads done only because Ollama answered at the configured
@@ -14,13 +16,30 @@ import { PROVIDERS, LOCAL_IDS, CLOUD_IDS } from '../core/providers/catalog.js';
 import { modelProfile, parseModelList, defaultModel } from '../core/providers/models.js';
 import { listModels } from '../core/providers/client.js';
 import { KEEP_CHOICES, probeLocal, sizeText } from '../core/providers/local.js';
-import { appVersion, openExternal, fetchFor, RELAYED, isApp } from '../platform/index.js';
+import { openExternal, fetchFor, RELAYED, isApp } from '../platform/index.js';
 import { createHistoryPane } from './history-pane.js';
 import { createVoicePane } from './voice-pane.js';
+import { aboutPane } from './about-pane.js';
 
 const SIZE_WORDS = { small: 'small', medium: 'mid-size', large: 'large', frontier: 'frontier' };
 const TIER_WORDS = { guided: 'Guided', plan: 'Plan', code: 'Code' };
-const SECTIONS = [['model', 'Model', 'chip'], ['local', 'This computer', 'monitor'], ['keys', 'Cloud keys', 'key'], ['voice', 'Voice', 'voice'], ['look', 'Appearance', 'contrast'], ['history', 'Run history', 'history'], ['about', 'About', 'info']];
+const GROUPS = [
+  ['Making films', [['model', 'Model', 'chip'], ['web', 'Looking things up', 'search'], ['voice', 'Voice', 'voice']]],
+  ['Where models run', [['local', 'This computer', 'monitor'], ['keys', 'Cloud keys', 'key']]],
+  ['The app', [['look', 'Appearance', 'contrast'], ['history', 'Run history', 'history'], ['about', 'About', 'info']]],
+];
+const SECTIONS = GROUPS.flatMap(([, list]) => list);
+// What each page is for, under its title.
+const PURPOSE = {
+  model: 'The model that writes your films, and how much of the work it is given.',
+  web: 'Facts the model does not know, looked up on the web with your yes.',
+  voice: 'The voice that speaks the narration.',
+  local: 'Running a model on this computer, step by step.',
+  keys: 'Your keys for cloud models and web search, kept on this computer.',
+  look: 'How the editor looks.',
+  history: 'Every film made and change asked for, with each question to the model.',
+  about: null,
+};
 // Models worth starting with on Ollama, smallest first.
 const STARTERS = [
   ['qwen2.5:3b', 'Small and quick, about 2 GB'],
@@ -60,17 +79,23 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
   const probes = {};
 
   function paintRail() {
-    clear(rail).append(...SECTIONS.map(([k, label, icon]) => {
-      const b = h('button', { type: 'button', class: k === current ? 'on' : '', 'aria-current': k === current ? 'page' : null }, h('span', { class: 'rail-icon', html: ICONS[icon] }), h('span', { text: label }));
-      b.addEventListener('click', () => { current = k; paint(); if (k === 'local') probeAll(); });
-      return b;
-    }));
+    clear(rail).append(...GROUPS.flatMap(([group, list]) => [
+      h('div', { class: 'rail-group', text: group }),
+      ...list.map(([k, label, icon]) => {
+        const b = h('button', { type: 'button', class: k === current ? 'on' : '', 'aria-current': k === current ? 'page' : null }, h('span', { class: 'rail-icon', html: ICONS[icon] }), h('span', { text: label }));
+        b.addEventListener('click', () => { current = k; paint(); if (k === 'local') probeAll(); });
+        return b;
+      }),
+    ]));
   }
 
   function paint() {
     paintRail();
     const s = settings.get();
-    clear(pane).append(...({ model: modelPane, local: localPane, keys: keysPane, look: lookPane, history: () => historyPane(), voice: () => voicePane(), about: aboutPane }[current])(s));
+    const [, title] = SECTIONS.find(([k]) => k === current);
+    const head = PURPOSE[current] === null ? [] : [h('header', { class: 'pane-head' }, h('h2', { class: 'pane-title', text: title }), h('p', { class: 'pane-purpose', text: PURPOSE[current] }))];
+    clear(pane).append(...head, ...({ model: modelPane, web: webPane, local: localPane, keys: keysPane, look: lookPane, history: () => historyPane(), voice: () => voicePane(), about: aboutPane }[current])(s));
+    pane.scrollTop = 0;
   }
 
   // ---- model ------------------------------------------------------------------
@@ -96,7 +121,7 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
       ? h('div', { class: 'field-hint' }, settings.hasKey(id) ? `Your ${p.label} key is saved. ` : `Add your ${p.label} key under Cloud keys first. Get one at `, settings.hasKey(id) ? null : webLink(p.keyUrl), settings.hasKey(id) ? null : ' ', textButton('Cloud keys', () => { current = 'keys'; paint(); }))
       : h('div', { class: 'field-hint' }, 'Runs on this computer. Set it up under This computer. ', textButton('This computer', () => { current = 'local'; paint(); probeAll(); }));
 
-    return [section('Model',
+    return [section('Who makes the film',
       field('Service', service),
       keyLine,
       field('Model', h('div', { class: 'row' }, modelInput, textButton(loading ? 'Looking' : 'Refresh', () => refresh())), about),
@@ -105,14 +130,23 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
         const b = h('button', { type: 'button', class: m.id === s.model.model ? 'on' : '' }, h('span', { class: 'model-id', text: m.id }), h('span', { class: 'model-meta', text: describeModel(m) }));
         b.addEventListener('click', () => { remember(m.id); paint(); });
         return h('li', {}, b);
-      })) : null,
+      })) : null),
+    section('How each film is made',
       field('Storyboards to choose from', segmented(String(s.model.drafts), [['1', 'One'], ['2', 'Two'], ['3', 'Three']], (v) => { settings.update({ model: { drafts: Number(v) } }); paint(); }),
         'Guided way of working. The model writes this many storyboards and the app keeps the cleanest; each takes about as long as one.'),
       field('Brief', toggle(s.model.verify, (v) => settings.update({ model: { verify: v } }), 'Check the finished film against what the brief asks to see, and fix what is missing once')),
       field('Music', toggle(s.model.compose, (v) => settings.update({ model: { compose: v } }), 'Let the model compose the music for each film, written as code and played by the app\u2019s instruments')),
-      field('Review', toggle(s.model.review, (v) => settings.update({ model: { review: v } }), 'Let a model that can see review stills and ask for changes once')),
-      field('Web', segmented(s.model.research, [['ask', 'Ask before looking things up'], ['never', 'Never look things up']], (v) => { settings.update({ model: { research: v } }); paint(); }),
-        isApp ? 'Before the storyboard, the model may want to look up facts it does not know, or read a page named in the brief. You see each search and each page and say yes or no first. A search key under Cloud keys gives better results; without one, Wikipedia is searched.' : 'Looking things up on the web needs the desktop app.'))];
+      field('Review', toggle(s.model.review, (v) => settings.update({ model: { review: v } }), 'Let a model that can see review stills and ask for changes once')))];
+  }
+
+  // ---- looking things up ------------------------------------------------------------
+  function webPane(s) {
+    return [section('Asking first',
+      field('When the model wants to', segmented(s.model.research, [['ask', 'Ask me first'], ['never', 'Never look things up']], (v) => { settings.update({ model: { research: v } }); paint(); }),
+        isApp ? 'Before the storyboard, or when you ask in the conversation, the model may want to look up facts it does not know or read a page you named. You see each search and each page and say yes or no first, and choose whether the top pages a search finds are read too.' : 'Looking things up on the web needs the desktop app.')),
+    section('Where searches go',
+      h('p', { class: 'insp-note', text: 'With a Tavily key under Cloud keys, searches go to Tavily. Without one, they go to DuckDuckGo\u2019s results from the whole web, and to Wikipedia when that finds nothing. Pages are read straight from their own sites, only from public addresses.' }),
+      h('div', { class: 'button-row' }, textButton('Cloud keys', () => { current = 'keys'; paint(); })))];
   }
 
   function describeModel(m) {
@@ -247,19 +281,10 @@ export function openSettingsDialog({ settings, section: start = 'model' }) {
       h('div', { class: 'key-list' }, ...rows))];
   }
 
-  // ---- appearance and about ------------------------------------------------------------
+  // ---- appearance ------------------------------------------------------------
   function lookPane(s) {
     return [section('Appearance',
       field('Theme', segmented(s.appearance.theme, [['system', 'Match the system'], ['dark', 'Dark'], ['light', 'Light']], (v) => { settings.update({ appearance: { theme: v } }); paint(); })))];
-  }
-
-  function aboutPane() {
-    const version = h('span', { text: '' });
-    appVersion().then((v) => { if (v) version.textContent = ` ${v}`; });
-    return [section('About',
-      h('p', { class: 'insp-note' }, h('strong', { text: 'Hash LMG' }), version, ', Hash Local Motion Graphics.'),
-      h('p', { class: 'insp-note', text: 'Motion graphics from a sentence, made with a model on your own computer or a cloud model on your own key. There is no account and no server of ours: requests go from your computer to the service you chose.' }),
-      h('p', { class: 'insp-note', text: 'Free software under the GNU General Public License, version 3 or later.' }))];
   }
 
   paint();

@@ -19,12 +19,19 @@ const files = [
   join(root, 'README.md'), join(root, 'src-tauri', 'tauri.conf.json'), join(root, 'package.json'),
 ].filter((f) => existsSync(f) && /\.(m?js|css|html|md|json|rs|svg)$/.test(f) && !f.endsWith('barred-names.mjs'));
 
+// The one file kept apart, with its reason: the About tab names the maker's
+// own other apps, by his choice, as each of his apps' About does.
+const KEPT = new Map([['src/app/about-pane.js', 'the About tab names the maker\u2019s own other apps']]);
+
 section('No other app, platform, product or skill is named');
 for (const f of files) {
+  if (KEPT.has(relative(root, f))) continue;
   const lines = readFileSync(f, 'utf8').split('\n');
   const hit = lines.findIndex((l) => nameIn(l));
   ok(relative(root, f), hit < 0, hit < 0 ? '' : `line ${hit + 1}: ${nameIn(lines[hit])}`);
 }
+section('The one file kept apart');
+for (const [f, why] of KEPT) ok(`${f}: ${why}; it exists and names only the maker's apps`, existsSync(join(root, f)) && readFileSync(join(root, f), 'utf8').split('\n').every((l) => !nameIn(l) || /^\s*\{ name: 'Hash|^\/\/|^  \{ name:/.test(l)));
 section('The rule works');
 // Names are spelled in pieces here, so this file names nothing either.
 const piece = (...p) => p.join('');

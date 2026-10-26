@@ -63,7 +63,8 @@ export function createVoicePane({ settings, repaint, command }) {
         : speed);
       if (v.engine === 'chatterbox') parts.push(field('Runs on', segmented(v.device, [['auto', 'Automatic'], ['cpu', 'Processor'], ['gpu', 'Graphics chip']], (x) => set({ device: x })), 'The processor is slower and leaves the graphics chip free.'));
       if (v.engine === 'server') parts.push(field('Port', numberInput(v.serverPort, (x) => set({ serverPort: Math.round(x) }), { min: 1, max: 65535, digits: 0 })));
-      if (v.engine === 'openai') parts.push(h('p', { class: 'insp-note', text: 'Uses your OpenAI key from Cloud keys. Each line is sent to OpenAI to be spoken.' }));
+      if (v.engine === 'openai') parts.push(h('p', { class: 'insp-note', text: 'Uses your OpenAI key from Cloud keys. Each line is sent to OpenAI to be spoken. OpenAI\u2019s usage policies ask that the people who hear the film are told the voice is AI-generated, for example in its description or end card.' }));
+      if (v.engine === 'chatterbox') parts.push(h('p', { class: 'insp-note', text: 'Chatterbox marks every line it speaks with an inaudible watermark of its own. It stays in the film.' }));
       parts.push(h('div', { class: 'button-row' }, textButton('Hear a sample', hear)));
     }
     return [section('Voice', ...parts)];
