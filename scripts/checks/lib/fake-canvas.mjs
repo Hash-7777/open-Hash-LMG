@@ -23,6 +23,7 @@ export function fakeContext(width = 1920, height = 1080) {
     scale(x, y) { m = mul(m, [x, 0, 0, y, 0, 0]); },
     rotate(a) { const c = Math.cos(a), s = Math.sin(a); m = mul(m, [c, s, -s, c, 0, 0]); },
     setTransform(a, b, c, d, e, f) { m = [a, b, c, d, e, f]; },
+    transform(a, b, c, d, e, f) { m = mul(m, [a, b, c, d, e, f]); },
     getTransform() { return { a: m[0], b: m[1], c: m[2], d: m[3], e: m[4], f: m[5] }; },
     measureText(s) { return { width: String(s).length * sizeOf() * 0.55 }; },
     fillText(s, x, y) {
@@ -40,7 +41,9 @@ export function fakeContext(width = 1920, height = 1080) {
     arc() {}, arcTo() {}, ellipse(x, y, rx, ry) { if (rx < 0 || ry < 0) throw new Error('negative ellipse radius'); },
     rect() {}, quadraticCurveTo() {}, bezierCurveTo() {},
     fill() { calls.push(['fill']); }, stroke() { calls.push(['stroke']); }, clip() {},
-    drawImage() { calls.push(['drawImage']); },
+    // A picture drawn: the opacity and the transform it was drawn under, and
+    // its own arguments, so the checks can say where it landed.
+    drawImage(...args) { calls.push(['drawImage', state.globalAlpha, [...m], args.slice(1)]); },
     createLinearGradient() { return { addColorStop() {} }; },
     createRadialGradient() { return { addColorStop() {} }; },
     createPattern() { return null; },

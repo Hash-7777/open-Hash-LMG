@@ -74,7 +74,8 @@ src/
                          and when they look, editing helpers,
                          templates and examples
     engine/              easing, keyframes, paths, the drawing kit, entrances and exits,
-                         the carry transition, repeated layers, the odometer, caption phrases, the renderer
+                         the carry transition, repeated layers, the odometer, caption phrases, the renderer,
+                         and the 3D stage: planes in a room filmed by one camera moving in depth
     director/            the conversation, the person's brand files, the prompts and the rule every one ends with,
                          the pipeline, the drawing step, the composing step,
                          the brief check, the code check, the scene helpers, the run record
@@ -131,11 +132,22 @@ the H.264 stream into samples and writes MP4 and MOV itself
 (`src/core/export/webm.js`). Sound goes into MP4 and MOV as AAC where the
 web view or the system can encode it, otherwise as MP3.
 
+The 3D stage (`src/core/engine/stage3d.js`) draws flat planes standing in a
+room with plain 2D canvas calls, the kind the worker draws with. Each plane's
+corners, and a grid inside it, are taken through the plane's pose and the
+camera and divided by depth; its picture is laid on as small affine
+triangles. The grid grows with the turn until no point is more than half a
+pixel off its true projection (up to sixteen cells a side), and a plane
+facing the camera is one picture with no grid at all.
+Planes are drawn far to near, a plane turned away is dropped, a fading plane
+fades as one picture, and a plane's soft shadow is cast from its projected
+outline. The camera's zoom is a dolly through depth, never a 2D scale.
+
 ## Checks
 
 `npm run check` runs every script in `scripts/checks/`: the scene format and
 its field guard, every composition in every look and frame shape, the film
-checks, the director with a scripted model, the brief check, timing and
+checks, the 3D stage's projection and drawing, the director with a scripted model, the brief check, timing and
 narration, the person's media, drawings, music, model requests and replies,
 the rule every model question ends with, settings, the store and editing,
 sound and file writing (MP4, MOV, WebM, ZIP), the worker's walls, the content policy and the bridge to the Rust side, the run
