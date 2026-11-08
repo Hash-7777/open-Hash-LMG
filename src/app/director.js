@@ -32,6 +32,7 @@ import { createChatPanel } from './chat-panel.js';
 import { CHAT_SCHEMA, chatSystem, chatMessages, filmState, normalizeChatReply, STILL_TO_COME, ASKS_FOR_NARRATION } from '../core/director/chat.js';
 import { mediaList } from '../core/scene/media.js';
 import { extractJson } from '../core/util/json.js';
+import { runProductFilm, PRODUCT_CHANGE } from './product-run.js';
 
 
 // The share of the bar each step takes, by way of working: the model writing
@@ -54,7 +55,7 @@ const TIER_HELP = {
   code: 'The model writes its own animation code, run with no network or storage.',
 };
 
-export function createDirectorPanel({ store, settings, openSettings, progress, onAttach, onDetach }) {
+export function createDirectorPanel({ store, settings, openSettings, progress, onAttach, onDetach, openProduct = () => {} }) {
   const lists = createModelLists(settings);
   const picker = createModelPicker({ settings, lists, openSettings });
   // The main button lives in the top bar; the panel hands it over.
@@ -99,6 +100,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
   // One turn: a short system text, the film's state, the last few messages.
   async function converse(history) {
     if (!ready()) throw Object.assign(new Error('Choose a model first.'), { stopped: true });
+    if (store.get().project.scene.stage) return { reply: PRODUCT_CHANGE, questions: [], action: 'answer', brief: '', film: {}, change: '', lookup: [] };
     const s = settings.get();
     const m = s.model;
     const project = store.get().project;
@@ -166,30 +168,31 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
     const session = createModelSession(settings, fetchFor(m.provider));
     let first = true;
     const prep = async ({ scene, code }) => { await host.setScene(scene); await host.setCode(code || null); };
+    const askModel = async ({ system, messages, json, schema, purpose, part, temperature }) => {
+      // The first question to a model on this computer waits while it loads.
+      progress.say(first && session.local ? 'Loading the model' : 'Waiting for the model');
+      first = false;
+      const typical = TYPICAL[purpose] || 4000;
+      const extra = await session.options(purpose, { system, messages });
+      const req = record ? record.ask({ purpose, system, messages, options: { ...extra, ...(temperature !== undefined ? { temperature } : {}) } }) : null;
+      try {
+        const text = await ask({
+          provider: m.provider, model: m.model, key: settings.key(m.provider), keyHeld: settings.keyHeld(), base: settings.base(m.provider),
+          device: s.local.device, system, messages, json, schema, ...extra, ...(temperature !== undefined ? { temperature } : {}),
+        }, {
+          fetch: fetchFor(m.provider), signal,
+          onThinking: (chunk) => { req?.thinking(chunk); progress.say('The model is thinking'); },
+          onText: (_, all) => { progress.writing(all); progress.within(part ? (part.index + Math.min(1, all.length / typical)) / part.of : all.length / typical,
+            part ? (part.from ? `The model is writing the ${ANSWER_WORDS[purpose] || 'answer'} for scenes ${part.from} to ${part.to}` : `The model is writing storyboard ${part.index + 1} of ${part.of}`) : `The model is writing the ${ANSWER_WORDS[purpose] || 'answer'}`); },
+          onStats: (st) => session.onStats(st),
+          onUsage: (u) => { req?.usage(u); logUsage({ provider: m.provider, model: m.model, usage: u }); },
+        });
+        req?.done(text);
+        return text;
+      } catch (err) { req?.fail(err); throw err; }
+    };
     const director = createDirector({
-      ask: async ({ system, messages, json, schema, purpose, part, temperature }) => {
-        // The first question to a model on this computer waits while it loads.
-        progress.say(first && session.local ? 'Loading the model' : 'Waiting for the model');
-        first = false;
-        const typical = TYPICAL[purpose] || 4000;
-        const extra = await session.options(purpose, { system, messages });
-        const req = record ? record.ask({ purpose, system, messages, options: { ...extra, ...(temperature !== undefined ? { temperature } : {}) } }) : null;
-        try {
-          const text = await ask({
-            provider: m.provider, model: m.model, key: settings.key(m.provider), keyHeld: settings.keyHeld(), base: settings.base(m.provider),
-            device: s.local.device, system, messages, json, schema, ...extra, ...(temperature !== undefined ? { temperature } : {}),
-          }, {
-            fetch: fetchFor(m.provider), signal,
-            onThinking: (chunk) => { req?.thinking(chunk); progress.say('The model is thinking'); },
-            onText: (_, all) => { progress.writing(all); progress.within(part ? (part.index + Math.min(1, all.length / typical)) / part.of : all.length / typical,
-              part ? (part.from ? `The model is writing the ${ANSWER_WORDS[purpose] || 'answer'} for scenes ${part.from} to ${part.to}` : `The model is writing storyboard ${part.index + 1} of ${part.of}`) : `The model is writing the ${ANSWER_WORDS[purpose] || 'answer'}`); },
-            onStats: (st) => session.onStats(st),
-            onUsage: (u) => { req?.usage(u); logUsage({ provider: m.provider, model: m.model, usage: u }); },
-          });
-          req?.done(text);
-          return text;
-        } catch (err) { req?.fail(err); throw err; }
-      },
+      ask: askModel,
       measure: async (target, times) => { await prep(target); return host.measure(times); },
       trial: async ({ scene, code }) => { await host.setScene(scene); return host.trial(code, sampleTimes(scene).slice(0, 4)); },
       sheet: async (target, times) => { await prep(target); return contactSheet(host, target.scene, times); },
@@ -205,7 +208,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
       host.dispose();
       if (await session.release()) note('The model was unloaded to free the graphics chip.');
     };
-    return { director, session, done };
+    return { director, session, done, askModel };
   }
 
   // The model and the way of working, as the steps panel names them.
@@ -246,6 +249,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
   // the top bar's button, the film's own brief.
   async function make(given, { useMedia = true } = {}) {
     if (running) { running.abort(); return; }
+    if (given === undefined && store.get().project.product) { openProduct(); return; }
     const text = String(given ?? store.get().project.brief ?? '').trim();
     if (!text) { toast('Tell the director about the film first.'); chat.focus(); return; }
     if (!ready()) return;
@@ -331,6 +335,7 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
     if (!ready()) return;
     if (!store.get().project.scene.scenes.length) { make(); return; }
     const project = store.get().project;
+    if (project.scene.stage) { chat.say(PRODUCT_CHANGE); return; }
     const s = settings.get();
     running = new AbortController();
     paintButtons();
@@ -356,9 +361,38 @@ export function createDirectorPanel({ store, settings, openSettings, progress, o
     }
   }
 
+  // A product film, from its form (product-run.js): the facts, the model's
+  // storyboard, the voice, then the planner lays it out on the stage.
+  async function makeProduct(form, icon) {
+    if (running || !ready()) return;
+    running = new AbortController();
+    paintButtons();
+    resetNotes();
+    progress.start([['story', 6], ['voice', 3], ['layout', 1]].map(([id, weight]) => ({ id, weight })), 'Starting', whoText());
+    record = await beginRecord('make', { brief: `A product film for ${form.name}: ${form.line}`, tier: 'guided' });
+    const { done, askModel } = makeDirector(running.signal);
+    try {
+      const out = await runProductFilm({ form, icon, askModel, settings, progress, note, signal: running.signal });
+      store.patch({ brief: form.line, storyboard: null, code: null, scene: out.scene, product: { ...form, icon: icon ? 'product-icon' : null, board: out.board }, edited: false });
+      store.select(null);
+      store.setTime(0);
+      progress.finish(out.problems.length ? 'Made, with a few things to look at' : 'Made');
+      chat.say(`The product film is ready: ${Math.round(out.scene.duration)} seconds. Play it; to change it, open its form again from New film.`, 'made');
+      endRecord('done', { result: { scenes: out.scene.scenes.length, duration: out.scene.duration, issues: out.problems } });
+    } catch (err) {
+      endRecord(err.stopped ? 'stopped' : 'failed', { error: err.stopped ? null : err });
+      if (!err.stopped) { toast(err.message || String(err), 'error'); note(err.message || String(err)); }
+      progress.finish(err.stopped ? 'Stopped' : 'Could not finish', false);
+    } finally {
+      running = null;
+      paintButtons();
+      await done();
+    }
+  }
+
   // The top bar's button sends what is typed in the conversation, or makes
   // the film from its brief.
   makeBtn.addEventListener('click', () => { if (!running && chat.hasDraft()) chat.send(); else make(); });
   paintButtons();
-  return { el, makeBtn, busy: () => Boolean(running), say: (text) => chat.say(text), attach: (list) => chat.attach(list) };
+  return { el, makeBtn, makeProduct, busy: () => Boolean(running), say: (text) => chat.say(text), attach: (list) => chat.attach(list) };
 }

@@ -14,6 +14,7 @@ import { normalizeScene } from '../core/scene/normalize.js';
 import { normalizeChat } from '../core/director/chat.js';
 import { normalizeDocs } from '../core/director/brand.js';
 import { normalizeLookups } from '../core/research/research.js';
+import { normalizeProductForm } from '../core/scene/product-board.js';
 
 export const PROJECT_FORMAT = 'lmg.project/1';
 const TIERS = ['guided', 'plan', 'code'];
@@ -35,6 +36,8 @@ export function normalizeProject(input, newId) {
     // What the director looked up on the web for this film, with the person's yes.
     lookups: normalizeLookups(p.lookups),
     storyboard: isObj(p.storyboard) ? p.storyboard : null,
+    // A product film's form: what it is made from, to make it again.
+    product: normalizeProductForm(p.product),
     scene,
     code: typeof p.code === 'string' && p.code.trim() ? p.code : null,
     tier: TIERS.includes(p.tier) ? p.tier : 'guided',

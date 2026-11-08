@@ -37,6 +37,7 @@ made by a model on your laptop or any cloud model on your own key. No account, n
 | **Small models make real films** | A small model cannot lay out a film, but it can write a good storyboard, so that is all it is asked for. Layout, timing, motion and sound are done by the app. Films have been made with a three-billion-parameter model on a laptop. |
 | **No two films look alike** | The look, the accent colour, the tempo and key of the music, the transitions and every composition are directed from the brief. Make the same brief again and it comes out as a new film. |
 | **It checks its own work** | Frames are rendered and measured: words off the frame, too small, too faint, too fast to read, words crossing words mid-move. What rules can fix, they fix, and the film is held to what the brief asked to see. |
+| **Launch films for products** | New film, then Product film: give the name, one line on what it does, the icon and its facts. The film tells how it works in 3D diagrams that light as each word is said, in the icon's own colours, under a calm score made for narration, and claims nothing the facts do not hold. |
 | **It looks things up, with your yes** | Ask the director to look something up, or let it ask: it searches the whole web with no key and reads the pages it finds, and you see every search and every page first. |
 | **Nothing leaves without you** | No account and no server of ours. With a local model every part of a film is made on your computer; a cloud model is asked only when you choose one, on your own key. |
 
@@ -168,7 +169,7 @@ For a model on your computer, install [Ollama](https://ollama.com) and pull any 
 | The storyboard compiler in every look, film checks and automatic fixes | Voices through a Chatterbox install | |
 | The editor: preview, timeline, inspector, the director's conversation, settings, the jog and keys | Motion blur; processor or graphics-chip choice for Ollama | |
 | Score and mastering; narration through a Kokoro install or a local speech server, with word-timed captions | WebM export from the app (its encoders and its file were checked outside it) | |
-| MP4, MOV, GIF and MP3 export by the app's own encoders, in the macOS app | | |
+| MP4, MOV, GIF and MP3 export by the app's own encoders, in the macOS app | Product films from the New film menu, with a real model and in the macOS app (made in a browser with a scripted model) | Product films with screen recordings of the product |
 
 "Works today" means run: in the macOS app with real models, in Node with a stand-in canvas and a scripted model, and for the editor in a headless browser. The app builds from source on every system and is compiled on Linux on every push; it has been run on macOS only.
 
@@ -200,7 +201,7 @@ src/
     export/        the MP4, MOV, WebM and ZIP writers
   render/          the locked-down render worker, its host, footage frames, video export
   platform/        the desktop app or a browser: projects, files, settings and keys
-  app/             the editor window: its state, panels, dialogs and the jog
+  app/             the editor window: its state, panels, dialogs, the jog and the product film form
 src-tauri/         the desktop side: films, exports, sound, encoders, media, voices, keys, the relay, web search and reading, the window's walls
 scripts/checks/    the check suite: every script under it runs on npm run check
 ```

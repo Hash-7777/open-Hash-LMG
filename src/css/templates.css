@@ -34,3 +34,16 @@
 .tpl-name { font-weight: 600; font-size: var(--text-m); }
 .tpl-blurb { color: var(--ink-2); font-size: var(--text-s); line-height: 1.4; }
 .tpl-meta { color: var(--muted); font-size: var(--text-xs); }
+
+/* The New film menu opens under its button. */
+.new-menu-wrap { position: relative; display: inline-flex; }
+/* Placed under its button, ahead of the chat's add menu it shares a look with. */
+.new-menu-wrap .new-menu { top: calc(100% + 6px); bottom: auto; min-width: 300px; }
+
+/* The product film form. */
+.product-form { display: flex; flex-direction: column; gap: 12px; }
+.product-form .button-row { justify-content: flex-end; }
+.product-icon-row, .product-file-row { display: flex; align-items: center; gap: 10px; }
+.product-icon { width: 56px; height: 56px; border: 1px solid var(--line); border-radius: var(--r-l); display: grid; place-items: center; overflow: hidden; background: var(--panel-2); }
+.product-icon img { width: 100%; height: 100%; object-fit: contain; }
+.product-icon-empty, .product-file-name { font-size: var(--text-xs); color: var(--muted); }

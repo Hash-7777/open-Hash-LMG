@@ -8,6 +8,7 @@
 // The open film is saved a moment after every change, and when the window is
 // hidden or closed.
 
+import { openProductDialog } from './product-dialog.js';
 import { h, clear, iconButton, toast, debounce } from './dom.js';
 import { ICONS } from './icons.js';
 import { createStore, normalizeProject } from './store.js';
@@ -104,7 +105,7 @@ async function boot() {
   const progress = createProgress();
   // The chat's attach button imports through the Media panel, made below.
   let mediaPanel = null;
-  const director = createDirectorPanel({ store, settings, openSettings, progress, onAttach: (opts) => mediaPanel.importFiles(opts), onDetach: (key) => mediaPanel.remove(key) });
+  const director = createDirectorPanel({ store, settings, openSettings, progress, onAttach: (opts) => mediaPanel.importFiles(opts), onDetach: (key) => mediaPanel.remove(key), openProduct: () => openProduct() });
 
   const titleInput = h('input', { class: 'film-title', type: 'text', maxlength: '120', 'aria-label': 'Film title', spellcheck: 'false' });
   titleInput.value = store.get().project.scene.title;
@@ -128,6 +129,30 @@ async function boot() {
     storage.setItem(LAST_KEY, store.get().project.id);
   };
   const openTemplates = () => openTemplatesDialog({ onUse: fromTemplate });
+  // A product film is made from its form; the open film is kept unless it is
+  // empty or is the product film being made again.
+  const openProduct = () => {
+    const p = store.get().project;
+    openProductDialog({
+      given: p.product, icon: p.product?.icon ? p.scene.assets[p.product.icon] : null, voiceReady: settings.get().voice.engine !== 'none',
+      onMake: (form, picture) => { if (!p.product && p.scene.scenes.length) startFresh(); director.makeProduct(form, picture); },
+    });
+  };
+  // New film: an empty one, or a product film from its form.
+  const newBtn = iconButton(ICONS.plus, 'New film', () => toggleNew());
+  newBtn.setAttribute('aria-haspopup', 'menu');
+  const newFilmMenu = h('span', { class: 'new-menu-wrap' }, newBtn);
+  let newMenu = null;
+  const closeNew = () => { newMenu?.remove(); newMenu = null; window.removeEventListener('pointerdown', outsideNew, true); };
+  const outsideNew = (e) => { if (newMenu && !newFilmMenu.contains(e.target)) closeNew(); };
+  function toggleNew() {
+    if (newMenu) { closeNew(); return; }
+    newMenu = h('div', { class: 'attach-menu new-menu', role: 'menu' },
+      h('button', { type: 'button', role: 'menuitem', text: 'Empty film', onclick: () => { closeNew(); startFresh(); } }),
+      h('button', { type: 'button', role: 'menuitem', text: 'Product film: a launch film from its name, icon and facts', onclick: () => { closeNew(); openProduct(); } }));
+    newFilmMenu.append(newMenu);
+    window.addEventListener('pointerdown', outsideNew, true);
+  }
   const openFilm = async (id) => {
     save.flush();
     try {
@@ -139,7 +164,7 @@ async function boot() {
   // The bar drags the window in the desktop app, wherever it has no control.
   const topbar = h('header', { class: 'topbar', 'data-tauri-drag-region': true },
     h('div', { class: 'brand', 'data-tauri-drag-region': true }, h('span', { class: 'brand-name', text: 'Hash LMG', 'data-tauri-drag-region': true })),
-    iconButton(ICONS.plus, 'New film', () => startFresh()),
+    newFilmMenu,
     iconButton(ICONS.open, 'Films', () => openProjectsDialog({ currentId: store.get().project.id, onOpen: openFilm, onNew: startFresh, onTemplates: openTemplates })),
     iconButton(ICONS.templates, 'Start from a template', openTemplates),
     iconButton(ICONS.film, 'Film settings: format, frame rate, tempo, look and sound', () => inspector.toggleFilm(), 'film-settings-btn'),

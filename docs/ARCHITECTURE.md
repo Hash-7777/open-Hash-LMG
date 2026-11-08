@@ -98,7 +98,7 @@ src/
   platform/              the desktop app or a browser: films, files, media (media.js), voices, the
                          relay, settings and keys, the run history, the window
   app/                   the editor: its state, panels, dialogs, the director's
-                         conversation and its model picker
+                         conversation and its model picker, the product film form and its run
 src-tauri/src/commands/  films, exports, sound, encoders, media, voices, keys, the relay,
                          the usage log, web search and page reading
 scripts/checks/          the check suite: every script runs on npm run check
@@ -169,6 +169,15 @@ chip with depth, a ring of one film in each look, the made film lifted off
 its screen as three layers (`layers.js`) that part in depth, and the end
 card. The renderer hands any film with a stage to it, so the preview, the
 checks and every export draw it the same way.
+
+In the editor, a product film starts from New film, then Product film
+(`src/app/product-dialog.js`): the name, one line on what it does, the
+icon, and the facts, typed or read from a file. The form is kept with the
+project (`project.product`). `src/app/product-run.js` turns it into facts,
+asks the model for the storyboard through the director's own model
+question, speaks each line in the chosen voice (or times it as if spoken),
+reads the accents from the icon and hands everything to the planner. A
+message to the director about a product film points back to its form.
 
 The planner (`src/core/scene/product-film.js`) builds such a film from a
 storyboard of words, the spoken lines and the recordings' marks. The lines

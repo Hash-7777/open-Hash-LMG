@@ -5,6 +5,17 @@ person making a film.
 
 ## Unreleased
 
+### Making films
+- Product films: New film now offers Product film, a short form for the
+  product's name, one line on what it does, its icon, and its facts, typed
+  one per line or read from a text or JSON file. A model writes only the
+  words; every number, format and name it uses must be in the facts. The
+  film opens on the name with its icon, tells how the product works in 3D
+  diagrams that light as each word is said, gives its figures and closes on
+  an end card, in the two colours of the icon, narrated in the chosen voice
+  or timed as if spoken. The form is kept with the film, so it can be
+  changed and made again. Screen recordings of the product come later.
+
 ### Sound and voice
 - A new score, Release: one calm, bright piece for a film narrated from
   start to end, built from pure tones, with a motif of the film's own that

@@ -17,6 +17,17 @@ const fresh = () => createStore(normalizeProject({ scene: EXAMPLE_LAUNCH }, newI
 section('Projects');
 await claim('a new project opens empty, as an untitled film', () => { const p = normalizeProject({}, newId); assert.equal(p.scene.scenes.length, 0); assert.equal(p.scene.title, 'Untitled film'); assert.equal(p.scene.sound.score, 'none'); assert.match(p.id, /^film-test-/); });
 await claim('a saved project reads back as itself', () => { const p = normalizeProject({}, newId); assert.deepEqual(normalizeProject(JSON.parse(JSON.stringify(p)), newId), p); });
+await claim('a product film keeps the form it was made from, as itself, read back twice', () => {
+  const product = { name: 'Orbi Desk', line: 'A lamp that sets its own light.', facts: 'Three modes\nNo account', file: { name: 'facts.json', facts: { modes: 3 }, lines: [] }, icon: 'product-icon', board: { name: 'Orbi Desk', lines: { open: 'Good light.' } } };
+  const p = normalizeProject({ product }, newId);
+  assert.equal(p.product.name, 'Orbi Desk');
+  assert.equal(p.product.icon, 'product-icon');
+  assert.deepEqual(p.product.file.facts, { modes: 3 });
+  assert.equal(p.product.board.lines.open, 'Good light.');
+  const again = normalizeProject(JSON.parse(JSON.stringify(p)), newId);
+  assert.deepEqual(again, p);
+  assert.equal(normalizeProject({}, newId).product, null);
+});
 await claim('a damaged id is replaced, never used as a file name', () => assert.match(normalizeProject({ id: '../x' }, newId).id, /^film-test-/));
 
 section('Edits and history');

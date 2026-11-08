@@ -137,3 +137,55 @@ export function spokenLines(board, facts = {}) {
   board.figures.forEach((f, i) => { const v = f.say || `${f.value} ${f.cap}.`; out[`figure-${i}`] = { text: v, say: sayAs(v, facts.sayAs) }; });
   return out;
 }
+
+// ---- the form a product film is made from --------------------------------------
+
+// What the person gave: the name, one line on what it does, key facts one per
+// line, an optional facts file (a JSON object, or text read line by line),
+// the icon's asset id, and the storyboard the last making wrote. Kept with the
+// project, so the film can be made again from it.
+export function normalizeProductForm(input) {
+  if (!isObj(input)) return null;
+  const file = isObj(input.file) ? { name: text(input.file.name, 120), facts: isObj(input.file.facts) ? input.file.facts : null, lines: list(input.file.lines, 200).map((l) => text(l, 200)).filter(Boolean) } : null;
+  return {
+    name: text(input.name, 40),
+    line: text(input.line, 160),
+    facts: typeof input.facts === 'string' ? input.facts.slice(0, 4000) : '',
+    file,
+    icon: typeof input.icon === 'string' && /^[a-z0-9-]{1,64}$/.test(input.icon) ? input.icon : null,
+    board: isObj(input.board) ? normalizeBoard(input.board) : null,
+  };
+}
+
+// A facts file's text: a JSON object as it is, any other text line by line.
+export function readFactsFile(name, body) {
+  const s = String(body || '');
+  try { const v = JSON.parse(s); if (isObj(v)) return { name, facts: v, lines: [] }; } catch { /* not JSON: read as lines */ }
+  return { name, facts: null, lines: s.split(/\r?\n/).map((l) => l.replace(/^[-*•]\s*/, '').trim()).filter(Boolean).slice(0, 200) };
+}
+
+// The facts the film may claim, from the form.
+export function formFacts(form) {
+  const lines = String(form.facts || '').split(/\r?\n/).map((l) => l.replace(/^[-*•]\s*/, '').trim()).filter(Boolean);
+  return normalizeFacts({ ...(form.file?.facts || {}), name: form.name, does: form.line, facts: [...lines, ...(form.file?.lines || [])], allowNames: form.file?.facts?.allowNames || [] });
+}
+
+// The board made ready to speak: the product's own name, the name line said
+// as the name, what its capitals stand for and its tagline (so the words on
+// screen are the words said), and a plain line for any part the model gave
+// none, so every part has something to time it.
+export function fillLines(board, form) {
+  const b = structuredClone(board);
+  b.name = form.name || b.name;
+  if (!b.tagline) b.tagline = form.line;
+  const stop = (s) => (s && !/[.!?]$/.test(s) ? `${s}.` : s);
+  b.lines.name = [b.name, b.expansion, b.tagline].filter(Boolean).map(stop).join(' ');
+  const L = b.lines;
+  if (!L.open) L.open = stop(form.line);
+  if (b.steps.length && !L.steps) L.steps = b.steps.map((s) => stop(s.name)).join(' ');
+  if (b.split && !L.split) L.split = `${stop(`${b.split.left.title}: ${b.split.left.items.map((i) => i.label.toLowerCase()).join(', ')}`)} ${stop(`${b.split.right.title}: ${b.split.right.items.map((i) => i.label.toLowerCase()).join(', ')}`)}`;
+  if (b.hub && !L.hub) L.hub = stop(`${b.hub.title}: ${b.hub.tiles.map((x) => x.name).join(', ')}`);
+  if (b.yours.length && !L.yours) L.yours = b.yours.map((y) => stop(y.cap)).join(' ');
+  if (!L.end) L.end = stop(b.endLine ? `${b.name}. ${b.endLine}` : b.name);
+  return b;
+}
