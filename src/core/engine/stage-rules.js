@@ -51,13 +51,16 @@ export function orphanPieces(drawn) {
 
 // Words a nearer plane covers: each plane that carries words, against every
 // plane drawn after it (nearer the camera), by how far they overlap on the
-// frame. A see-through layer counts too: its edge would still cross the words.
+// frame, while both are clearly there (a part fading out under the next one
+// fading in is a crossfade). A see-through layer counts too: its edge would
+// still cross the words.
+const SEEN = 0.6;
 export function coveredWords(drawn) {
   const out = [];
   drawn.forEach((A, i) => {
-    if (A.plane?.kind !== 'words') return;
+    if (A.plane?.kind !== 'words' || A.pose.o < SEEN) return;
     for (const B of drawn.slice(i + 1)) {
-      if (B.plane?.kind === 'words') continue;
+      if (B.plane?.kind === 'words' || B.pose.o < SEEN) continue;
       if (quadOverlap(A.corners, B.corners) > 1) out.push([A.id, B.id]);
     }
   });

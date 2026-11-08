@@ -15,6 +15,22 @@ person making a film.
   an end card, in the two colours of the icon, narrated in the chosen voice
   or timed as if spoken. The form is kept with the film, so it can be
   changed and made again. Screen recordings of the product come later.
+- No two product films are the same: each is made in a room of its own
+  (white studio, night studio or warm paper), with its diagrams in their own
+  order and each staged one of a few ways, its own opening frame, camera
+  and tune. Making it again gives a new one.
+- Words always fit their cards: long names and lines grow smaller and run
+  to a second line instead of running off the edge, and nothing is cut in
+  the middle of a word.
+- What models write is read as they write it: items, captions, drawings
+  and spoken lines under other field names are no longer lost, so every
+  card is filled. A facts file written as a web page, such as a README,
+  gives its sentences, not its tags, badges and links. Versions, numbers
+  spelled out and thousands are read as the facts mean them.
+- A product film's accents come from its icon in the desktop app too, and an
+  icon of one colour gives a lighter tint of it as the second accent.
+- The end card no longer repeats the product's name in its line, and the
+  icon has risen before the name card arrives under it.
 - Type: the tight letter spacing of a look is kept for large headlines and
   eases off at smaller sizes, so letters never crowd.
 - Words on a button or a band are checked against the button, not the page

@@ -20,6 +20,8 @@
 //   film    the film the product made (shown lifted off its screen); looks: [{ name, doc }]
 // Returns { doc, parts: [{ key, t0, t1 }], problems: [] }.
 
+import { normalizeDirection, sequence, cameraKey } from './product-direction.js';
+
 export const BPM = 100;
 export const CAMERA_GAP = 0.6;
 export const SCREEN = { w: 1500, h: 937.5 };
@@ -71,15 +73,19 @@ export function cueTimes(ws, cues, t0, t1) {
 export function planProductFilm(input) {
   const { board, lines = {}, takes = {}, panels = {}, film = null, looks = [], icon = null } = input;
   const bpm = input.bpm || BPM, beat = 60 / bpm;
+  // The film's direction: canonical unless one is given (product-direction.js).
+  const dir = normalizeDirection(input.direction);
   const onBeat = (t) => r3(Math.round(t / beat) * beat);
   const problems = [];
   const cam = [], parts = [], voice = [], sections = [], hits = [], cues = [], display = [], recordings = [], pieces = [], icons = [];
   const key = (t, [x, y], zoom = 1, ry = 0, rx = 0, ease = 'inOutCubic') => {
-    if (cam.length && t - cam[cam.length - 1][0] < CAMERA_GAP - 1e-9) { problems.push(`camera keys at ${cam[cam.length - 1][0].toFixed(2)} and ${t.toFixed(2)} s are too close`); return; }
-    cam.push([r3(t), Math.round(x * 100) / 100, Math.round(y * 100) / 100, zoom, ry, rx, ease]);
+    // A key too close to the one before waits for the gap: two keys closer than
+    // that read as a jump. A part in another order can bring its first key early.
+    if (cam.length && t - cam[cam.length - 1][0] < CAMERA_GAP - 1e-9) t = cam[cam.length - 1][0] + CAMERA_GAP;
+    cam.push(cameraKey(dir, [r3(t), Math.round(x * 100) / 100, Math.round(y * 100) / 100, zoom, ry, rx, ease]));
   };
   const say = (k, t) => { const L = lines[k]; if (!L) { problems.push(`no line for ${k}`); return t; } voice.push({ key: k, t: r3(t), length: L.length }); return t + L.length; };
-  const part = (kind, t0, t1, extra = {}) => { parts.push({ kind, t0: r3(t0), t1: r3(t1), ...extra }); };
+  const part = (kind, t0, t1, extra = {}) => { parts.push({ kind, t0: r3(t0), t1: r3(t1), ...(dir.variants[kind] ? { variant: dir.variants[kind] } : {}), ...extra }); };
   const mark = (take, label) => takes[take]?.marks?.find((m) => m.label === label)?.t ?? null;
   const has = (take, ...labels) => takes[take] && labels.every((l) => mark(take, l) !== null);
   const clicks = (take) => (takes[take]?.marks || []).filter((m) => m.x !== null && m.x !== undefined && !/^typed/.test(m.label)).map((m) => ({ t: m.t, x: m.x, y: m.y, click: Boolean(m.click) }));
@@ -106,7 +112,8 @@ export function planProductFilm(input) {
   part('name', tName, tNameEnd, { fi: 0.4, fo: 0.6, name: board.name, expansion: wf.slice(nameWords, nameWords + expWords), tagline: wf.slice(nameWords + expWords) });
   sections.push([tName, 'move']); hits.push(tName);
   icons.push([0, { o: 0, x: 960, y: 540, z: 0, ry: -75, rx: 0, s: 1 }], [3.2, { o: 0, x: 960, y: 540, z: 0, ry: -75, rx: 0, s: 1 }], [4.0, { o: 1, x: 960, y: 540, z: 0, ry: -24, rx: 0, s: 1 }],
-    [5.0, { o: 1, x: 960, y: 540, z: 0, ry: 0, rx: 0, s: 1 }], [tName + 0.1, { o: 1, x: 960, y: 540, z: 0, ry: 0, rx: 0, s: 1 }], [tName + 1.2, { o: 1, x: 960, y: 330, z: 0, ry: 0, rx: 0, s: 0.62 }],
+    // The icon has risen above the name before the name card comes up under it.
+    [5.0, { o: 1, x: 960, y: 540, z: 0, ry: 0, rx: 0, s: 1 }], [Math.max(5.05, tName - 1.0), { o: 1, x: 960, y: 540, z: 0, ry: 0, rx: 0, s: 1 }], [tName + 0.1, { o: 1, x: 960, y: 330, z: 0, ry: 0, rx: 0, s: 0.62 }],
     [tNameEnd - 0.2, { o: 1, x: 960, y: 330, z: 0, ry: 0, rx: 0, s: 0.62 }], [tNameEnd + 0.7, { o: 0, x: 960, y: 300, z: -400, ry: 0, rx: -30, s: 0.62 }]);
   display.push([0, IN]);
   let t = tNameEnd;
@@ -153,155 +160,178 @@ export function planProductFilm(input) {
     t = tMade;
   }
 
+  // The parts after the name, each a step of its own, run in the order the
+  // film's direction gives (recordings keep their places).
+  const S = {};
+  let away = AWAY;
   // ---- 5. how a film is made: the steps
-  if (board.steps?.length) {
-    const tP = onBeat(t + 0.9);
-    if (made) display.push([tP + 0.5, AWAY]);
-    key(tP, [960, 540]);
-    const t0 = tP + 0.7, end = say('steps', t0);
-    const ws = wordTimes(lines.steps || { text: '', length: 0 }, t0);
-    const at = cueTimes(ws, board.steps.map((s) => s.cue || s.name), t0, end);
-    const tEnd = end + 1.0;
-    key(tEnd - 0.6, [960, 520], 1.05, -3, -2, 'inOutSine');
-    part('steps', tP, tEnd, { fi: 0.4, fo: 0.7, items: board.steps.map((s) => [s.name, s.sub, s.icon || '']), at });
-    sections.push([tP, 'move']); hits.push(tP);
-    t = tEnd;
-  }
+  S.steps = () => {
+    if (board.steps?.length) {
+      const tP = onBeat(t + 0.9);
+      if (made) display.push([tP + 0.5, AWAY]);
+      key(tP, [960, 540]);
+      const t0 = tP + 0.7, end = say('steps', t0);
+      const ws = wordTimes(lines.steps || { text: '', length: 0 }, t0);
+      const at = cueTimes(ws, board.steps.map((s) => s.cue || s.name), t0, end);
+      const tEnd = end + 1.0;
+      key(tEnd - 0.6, [960, 520], 1.05, -3, -2, 'inOutSine');
+      part('steps', tP, tEnd, { fi: 0.4, fo: 0.7, items: board.steps.map((s) => [s.name, s.sub, s.icon || '']), at });
+      sections.push([tP, 'move']); hits.push(tP);
+      t = tEnd;
+    }
+  };
 
   // ---- 6. the film it made, lifted off its screen
-  if (made && film && panels.preview) {
-    const tBack = onBeat(t + 0.3);
-    const rtBack = made.rtMade + 1.2;
-    const map = [[tBack - 0.8, rtBack - 0.8], [tBack + 40, rtBack + 40]];
-    display.push([tBack - 0.8, AWAY], [tBack + 0.6, REST]);
-    key(tBack + 0.1, [960, 540], 1, -2, 0);
-    const tPlay = tBack + ((mark('make', 'play') ?? rtBack + 1) - rtBack);
-    const [px, py] = onScreen(C('preview'));
-    key(tPlay + 0.4, [px, py], 1.5, 0, 0);
-    sections.push([onBeat(tBack), 'move']);
-    const s = (panels.preview[2] * SCREEN.w) / 1600;
-    const tLift = tPlay + 1.6, tLiftEnd = tLift + 8.4;
-    say('film', tLift + 0.6);
-    part('lift', tLift, tLiftEnd, {
-      fi: 0.5, fo: 0.7, ft0: r3(tLift - tPlay + 0.05), film, apart: [tLift + 1.6, tLift + 3.4, tLift + 6.2, tLift + 7.6].map(r3),
-      pose: [[tLift, { x: px, y: py, z: 1, ry: 0, rx: 0, s }], [tLift + 1.6, { x: px, y: py, z: 1, ry: 0, rx: 0, s }], [tLift + 3.4, { x: px, y: py, z: -40, ry: 0, rx: 0, s: s * 1.02 }], [tLift + 7.6, { x: px, y: py, z: 1, ry: 0, rx: 0, s }]].map(([a, b]) => [r3(a), b]),
-    });
-    key(tLift + 1.6, [px, py], 1.5, 0, 0, 'inOutSine');
-    key(tLift + 3.4, [px - 60, py], 1.25, 8, -2);
-    key(tLift + 6.2, [px - 60, py], 1.22, 10, -2, 'inOutSine');
-    key(tLift + 7.6, [px, py], 1.4, 0, 0);
-    display.push([tLift + 0.4, REST], [tLift + 1.2, { ...REST, o: 0 }]);
-    sections.push([onBeat(tLift + 1.6), 'lift']); hits.push(onBeat(tLift + 1.6));
-    recording('make', tBack - 0.8, tLift + 1.2, map, 0.6, 0.1);
-    if (mark('make', 'play') !== null) cues.push([r3(tPlay), 'click']);
-    t = tLiftEnd;
-  }
+  S.lift = () => {
+    if (made && film && panels.preview) {
+      const tBack = onBeat(t + 0.3);
+      const rtBack = made.rtMade + 1.2;
+      const map = [[tBack - 0.8, rtBack - 0.8], [tBack + 40, rtBack + 40]];
+      display.push([tBack - 0.8, AWAY], [tBack + 0.6, REST]);
+      key(tBack + 0.1, [960, 540], 1, -2, 0);
+      const tPlay = tBack + ((mark('make', 'play') ?? rtBack + 1) - rtBack);
+      const [px, py] = onScreen(C('preview'));
+      key(tPlay + 0.4, [px, py], 1.5, 0, 0);
+      sections.push([onBeat(tBack), 'move']);
+      const s = (panels.preview[2] * SCREEN.w) / 1600;
+      const tLift = tPlay + 1.6, tLiftEnd = tLift + 8.4;
+      say('film', tLift + 0.6);
+      part('lift', tLift, tLiftEnd, {
+        fi: 0.5, fo: 0.7, ft0: r3(tLift - tPlay + 0.05), film, apart: [tLift + 1.6, tLift + 3.4, tLift + 6.2, tLift + 7.6].map(r3),
+        pose: [[tLift, { x: px, y: py, z: 1, ry: 0, rx: 0, s }], [tLift + 1.6, { x: px, y: py, z: 1, ry: 0, rx: 0, s }], [tLift + 3.4, { x: px, y: py, z: -40, ry: 0, rx: 0, s: s * 1.02 }], [tLift + 7.6, { x: px, y: py, z: 1, ry: 0, rx: 0, s }]].map(([a, b]) => [r3(a), b]),
+      });
+      key(tLift + 1.6, [px, py], 1.5, 0, 0, 'inOutSine');
+      key(tLift + 3.4, [px - 60, py], 1.25, 8, -2);
+      key(tLift + 6.2, [px - 60, py], 1.22, 10, -2, 'inOutSine');
+      key(tLift + 7.6, [px, py], 1.4, 0, 0);
+      display.push([tLift + 0.4, REST], [tLift + 1.2, { ...REST, o: 0 }]);
+      sections.push([onBeat(tLift + 1.6), 'lift']); hits.push(onBeat(tLift + 1.6));
+      recording('make', tBack - 0.8, tLift + 1.2, map, 0.6, 0.1);
+      if (mark('make', 'play') !== null) cues.push([r3(tPlay), 'click']);
+      t = tLiftEnd;
+    }
+  };
 
   // ---- 7. what each side does
-  if (board.split) {
-    const tS = onBeat(t + 0.2);
-    key(tS, [960, 540]);
-    const t0 = tS + 0.6, end = say('split', t0);
-    const ws = wordTimes(lines.split || { text: '', length: 0 }, t0);
-    const L = board.split.left, R = board.split.right;
-    const all = cueTimes(ws, [...L.items.map((i) => i.cue || i.label), R.cue || R.title, ...R.items.map((i) => i.cue || i.label)], t0, end);
-    const left = L.items.map((i, k) => [i.label, all[k]]), arrow = r3(all[L.items.length] - 0.2), right = R.items.map((i, k) => [i.label, all[L.items.length + 1 + k]]);
-    const tEnd = end + 1.0;
-    key(tEnd - 0.6, [960, 540], 1.05, 3, 0, 'inOutSine');
-    part('split', tS, tEnd, { fi: 0.4, fo: 0.7, left: { title: L.title, icon: L.icon || 'chip', items: left }, right: { title: R.title, icon: R.icon || 'window', items: right }, arrow });
-    sections.push([tS, 'move']);
-    t = tEnd;
-  }
+  S.split = () => {
+    if (board.split) {
+      const tS = onBeat(t + 0.2);
+      key(tS, [960, 540]);
+      const t0 = tS + 0.6, end = say('split', t0);
+      const ws = wordTimes(lines.split || { text: '', length: 0 }, t0);
+      const L = board.split.left, R = board.split.right;
+      const all = cueTimes(ws, [...L.items.map((i) => i.cue || i.label), R.cue || R.title, ...R.items.map((i) => i.cue || i.label)], t0, end);
+      const left = L.items.map((i, k) => [i.label, all[k]]), arrow = r3(all[L.items.length] - 0.2), right = R.items.map((i, k) => [i.label, all[L.items.length + 1 + k]]);
+      const tEnd = end + 1.0;
+      key(tEnd - 0.6, [960, 540], 1.05, 3, 0, 'inOutSine');
+      part('split', tS, tEnd, { fi: 0.4, fo: 0.7, left: { title: L.title, icon: L.icon || 'chip', items: left }, right: { title: R.title, icon: R.icon || 'window', items: right }, arrow });
+      sections.push([tS, 'move']);
+      t = tEnd;
+    }
+  };
 
   // ---- 8. by hand, from the hands recording
-  if (has('hands', 'start', 'end')) {
-    const tH = onBeat(t + 0.3);
-    display.push([tH - 0.6, AWAY], [tH + 0.6, REST]);
-    const off = mark('hands', 'start') + 0.9;
-    const map = [[tH, off], [tH + 40, off + 40]];
-    key(tH + 0.2, onScreen([0.6, 0.55]), 1.12, -4, 0);
-    say('hands', tH + 0.5);
-    const tEnd = tH + (mark('hands', 'end') - off) - 0.4;
-    const rec = recording('hands', tH - 0.6, tEnd, map, 0.8, 0.8);
-    if (mark('hands', 'select') !== null) key(tH + (mark('hands', 'select') - off) + 0.4, onScreen(C('inspector') || [0.88, 0.42]), 1.5, -6, 0);
-    if (mark('hands', 'size') !== null) { const ts = tH + (mark('hands', 'size') - off); piece(rec, ts - 0.4, ts + 2.6, panels.inspector, 0.06); }
-    if (mark('hands', 'jog') !== null) key(tH + (mark('hands', 'jog') - off) - 0.6, onScreen([0.55, 0.36]), 1.35, -3, 0);
-    for (const m of takes.hands.marks) if (m.click) cues.push([r3(tH + m.t - off), 'click']);
-    part('hands', tH, tEnd, { fi: 0, fo: 0 });
-    sections.push([onBeat(tH), 'move']);
-    t = tEnd;
-  }
+  S.hands = () => {
+    if (has('hands', 'start', 'end')) {
+      const tH = onBeat(t + 0.3);
+      display.push([tH - 0.6, AWAY], [tH + 0.6, REST]);
+      const off = mark('hands', 'start') + 0.9;
+      const map = [[tH, off], [tH + 40, off + 40]];
+      key(tH + 0.2, onScreen([0.6, 0.55]), 1.12, -4, 0);
+      say('hands', tH + 0.5);
+      const tEnd = tH + (mark('hands', 'end') - off) - 0.4;
+      const rec = recording('hands', tH - 0.6, tEnd, map, 0.8, 0.8);
+      if (mark('hands', 'select') !== null) key(tH + (mark('hands', 'select') - off) + 0.4, onScreen(C('inspector') || [0.88, 0.42]), 1.5, -6, 0);
+      if (mark('hands', 'size') !== null) { const ts = tH + (mark('hands', 'size') - off); piece(rec, ts - 0.4, ts + 2.6, panels.inspector, 0.06); }
+      if (mark('hands', 'jog') !== null) key(tH + (mark('hands', 'jog') - off) - 0.6, onScreen([0.55, 0.36]), 1.35, -3, 0);
+      for (const m of takes.hands.marks) if (m.click) cues.push([r3(tH + m.t - off), 'click']);
+      part('hands', tH, tEnd, { fi: 0, fo: 0 });
+      sections.push([onBeat(tH), 'move']);
+      t = tEnd;
+    }
+  };
 
   // ---- 9. export, from the export recording
-  let away = AWAY;
-  if (has('export', 'open', 'end')) {
-    const tX = onBeat(t - 0.2);
-    const off = mark('export', 'open') - 0.8;
-    const map = [[tX, off], [tX + 40, off + 40]];
-    const tEnd = tX + (mark('export', 'end') - off) + 0.8;
-    const rec = recording('export', tX - 0.6, tEnd, map, 0.8, 0.8);
-    if (!has('hands', 'start', 'end')) display.push([tX - 0.6, AWAY], [tX + 0.6, REST]);
-    key(tX + 0.4, onScreen([0.5, 0.5]), 1.45, 3, 0);
-    say('export', tX + 0.6);
-    piece(rec, tX + (mark('export', 'open') - off) + 0.9, tEnd - 0.1, panels.export, 0.08);
-    for (const m of takes.export.marks) if (m.click) cues.push([r3(tX + m.t - off), 'click']);
-    part('export', tX, tEnd, { fi: 0, fo: 0 });
-    sections.push([onBeat(tX), 'move']);
-    display.push([tEnd - 0.2, REST], [tEnd + 0.9, FAR]);
-    away = FAR;
-    t = tEnd;
-  } else if (has('hands', 'start', 'end')) display.push([t - 0.2, REST], [t + 0.9, FAR]);
+  S.exporting = () => {
+    if (has('export', 'open', 'end')) {
+      const tX = onBeat(t - 0.2);
+      const off = mark('export', 'open') - 0.8;
+      const map = [[tX, off], [tX + 40, off + 40]];
+      const tEnd = tX + (mark('export', 'end') - off) + 0.8;
+      const rec = recording('export', tX - 0.6, tEnd, map, 0.8, 0.8);
+      if (!has('hands', 'start', 'end')) display.push([tX - 0.6, AWAY], [tX + 0.6, REST]);
+      key(tX + 0.4, onScreen([0.5, 0.5]), 1.45, 3, 0);
+      say('export', tX + 0.6);
+      piece(rec, tX + (mark('export', 'open') - off) + 0.9, tEnd - 0.1, panels.export, 0.08);
+      for (const m of takes.export.marks) if (m.click) cues.push([r3(tX + m.t - off), 'click']);
+      part('export', tX, tEnd, { fi: 0, fo: 0 });
+      sections.push([onBeat(tX), 'move']);
+      display.push([tEnd - 0.2, REST], [tEnd + 0.9, FAR]);
+      away = FAR;
+      t = tEnd;
+    } else if (has('hands', 'start', 'end')) display.push([t - 0.2, REST], [t + 0.9, FAR]);
+  };
 
   // ---- 10. the hub: what is built in
-  if (board.hub?.tiles?.length) {
-    const tN = onBeat(t + 0.3);
-    key(tN, [960, 560]);
-    const t0 = tN + 0.6, end = say('hub', t0);
-    const ws = wordTimes(lines.hub || { text: '', length: 0 }, t0);
-    const at = cueTimes(ws, [...board.hub.tiles.map((x) => x.cue || x.name), board.hub.noteCue || board.hub.note || 'nothing'], t0, end);
-    const tEnd = end + 1.0;
-    key(tEnd - 0.6, [960, 560], 1.05, 2, -2, 'inOutSine');
-    part('hub', tN, tEnd, { fi: 0.4, fo: 0.7, title: board.hub.title, sub: board.hub.sub, tiles: board.hub.tiles.map((x) => [x.name, x.sub]), at: at.slice(0, -1), note: board.hub.note || '', noteAt: at[at.length - 1] });
-    sections.push([tN, 'lift']); hits.push(tN);
-    t = tEnd;
-  }
+  S.hub = () => {
+    if (board.hub?.tiles?.length) {
+      const tN = onBeat(t + 0.3);
+      key(tN, [960, 560]);
+      const t0 = tN + 0.6, end = say('hub', t0);
+      const ws = wordTimes(lines.hub || { text: '', length: 0 }, t0);
+      const at = cueTimes(ws, [...board.hub.tiles.map((x) => x.cue || x.name), board.hub.noteCue || board.hub.note || 'nothing'], t0, end);
+      const tEnd = end + 1.0;
+      key(tEnd - 0.6, [960, 560], 1.05, 2, -2, 'inOutSine');
+      part('hub', tN, tEnd, { fi: 0.4, fo: 0.7, title: board.hub.title, sub: board.hub.sub, tiles: board.hub.tiles.map((x) => [x.name, x.sub]), at: at.slice(0, -1), note: board.hub.note || '', noteAt: at[at.length - 1] });
+      sections.push([tN, 'lift']); hits.push(tN);
+      t = tEnd;
+    }
+  };
 
   // ---- 11. the looks on a ring
-  if (looks.length) {
-    const tL = onBeat(t + 0.6);
-    key(tL - 0.2, [960, 540]);
-    key(tL + 2.5, [960, 520], 1.04, 0, -3, 'inOutSine');
-    const end = say('looks', tL + 0.6);
-    const tEnd = Math.max(end + 1.6, tL + 8.0);
-    part('ring', tL, tEnd, { fi: 0.8, fo: 0.8, at: [960, 500, -260], films: looks });
-    sections.push([tL, 'lift']); hits.push(tL);
-    t = tEnd;
-  }
+  S.looks = () => {
+    if (looks.length) {
+      const tL = onBeat(t + 0.6);
+      key(tL - 0.2, [960, 540]);
+      key(tL + 2.5, [960, 520], 1.04, 0, -3, 'inOutSine');
+      const end = say('looks', tL + 0.6);
+      const tEnd = Math.max(end + 1.6, tL + 8.0);
+      part('ring', tL, tEnd, { fi: 0.8, fo: 0.8, at: [960, 500, -260], films: looks });
+      sections.push([tL, 'lift']); hits.push(tL);
+      t = tEnd;
+    }
+  };
 
   // ---- 12. what stays the person's own
-  if (board.yours?.length) {
-    const tY = onBeat(t + 0.3);
-    key(tY, [960, 540]);
-    const end = say('yours', tY + 0.4);
-    const tEnd = Math.max(end + 0.8, tY + 6.6);
-    key(tEnd - 0.4, [960, 540], 1.05, 3, 0, 'inOutSine');
-    part('drawings', tY, tEnd, { fi: 0.4, fo: 0.7, items: board.yours.map((y, i) => ({ at: r3(tY + 0.3 + i * 1.3), cap: y.cap, icon: y.icon })) });
-    sections.push([tY, 'still']);
-    t = tEnd;
-  }
+  S.yours = () => {
+    if (board.yours?.length) {
+      const tY = onBeat(t + 0.3);
+      key(tY, [960, 540]);
+      const end = say('yours', tY + 0.4);
+      const tEnd = Math.max(end + 0.8, tY + 6.6);
+      key(tEnd - 0.4, [960, 540], 1.05, 3, 0, 'inOutSine');
+      part('drawings', tY, tEnd, { fi: 0.4, fo: 0.7, items: board.yours.map((y, i) => ({ at: r3(tY + 0.3 + i * 1.3), cap: y.cap, icon: y.icon })) });
+      sections.push([tY, 'still']);
+      t = tEnd;
+    }
+  };
 
   // ---- 13. figures, each said on its own
-  if (board.figures?.length) {
-    const tF = onBeat(t + 0.4);
-    key(tF + 0.4, [960, 560]);
-    let tt = tF + 0.7;
-    const items = board.figures.map((f, i) => { const at = r3(tt); tt = say(`figure-${i}`, tt) + 0.75; return { t: at, value: f.value, cap: f.cap }; });
-    const tEnd = tt + 0.6;
-    key(tEnd - 0.6, [960, 560], 1.06, -3, 0, 'inOutSine');
-    part('figures', tF, tEnd, { fi: 0.3, fo: 0.7, items });
-    sections.push([tF, 'move']);
-    t = tEnd;
-  }
+  S.figures = () => {
+    if (board.figures?.length) {
+      const tF = onBeat(t + 0.4);
+      key(tF + 0.4, [960, 560]);
+      let tt = tF + 0.7;
+      const items = board.figures.map((f, i) => { const at = r3(tt); tt = say(`figure-${i}`, tt) + 0.75; return { t: at, value: f.value, cap: f.cap }; });
+      const tEnd = tt + 0.6;
+      key(tEnd - 0.6, [960, 560], 1.06, -3, 0, 'inOutSine');
+      part('figures', tF, tEnd, { fi: 0.3, fo: 0.7, items });
+      sections.push([tF, 'move']);
+      t = tEnd;
+    }
+  };
+
+  for (const k of sequence(dir)) S[k]();
 
   // ---- 14. the end card
   const tE = onBeat(t + 0.3);
@@ -310,12 +340,15 @@ export function planProductFilm(input) {
   const endEnd = say('end', releaseEnd + 0.5);
   const D = r3(endEnd + 4.2);
   key(D - 0.2, [960, 540], 1.03, 0, 0, 'inOutSine');
-  part('end', tE, D, { fi: 0.5, fo: 0.1, name: board.name, line: board.releaseLine || board.endLine || '', footnote: board.footnote || '' });
+  // The card shows the name above its line, so a line that opens with the name drops it.
+  const esc = String(board.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const endLine = String(board.releaseLine || board.endLine || '').replace(new RegExp(`^${esc}[.,:;]?\\s*`, 'i'), '');
+  part('end', tE, D, { fi: 0.5, fo: 0.1, name: board.name, line: endLine.charAt(0).toUpperCase() + endLine.slice(1), footnote: board.footnote || '' });
   icons.push([tE - 0.1, { o: 0, x: 960, y: 410, z: -300, ry: 70, rx: 0, s: 0.7 }], [tE + 1.2, { o: 1, x: 960, y: 410, z: 0, ry: 0, rx: 0, s: 0.7 }], [D, { o: 1, x: 960, y: 410, z: 0, ry: -6, rx: 0, s: 0.7 }]);
   sections.push([tE, 'out']); hits.push(r3(tE + 0.4));
   display.push([D, away]);
 
-  return assemble({ input, bpm, D, cam, parts, voice, sections, hits, cues, display, recordings, pieces, icons, icon, problems });
+  return assemble({ input, bpm, D, dir, cam, parts, voice, sections, hits, cues, display, recordings, pieces, icons, icon, problems });
 }
 
 // Clip time on a map at film time t (as the stage reads it).
@@ -332,7 +365,7 @@ function filmAt(map, rt) {
 
 // The scene document: one scene per part and per extra line within a part, so
 // each spoken line has a scene of its own; the stage; the score; the voice.
-function assemble({ input, bpm, D, cam, parts, voice, sections, hits, cues, display, recordings, pieces, icons, icon, problems }) {
+function assemble({ input, bpm, D, dir, cam, parts, voice, sections, hits, cues, display, recordings, pieces, icons, icon, problems }) {
   const stageParts = [];
   if (icon) stageParts.push({ kind: 'icon', t0: 0, t1: D, asset: icon, keys: icons.map(([a, b]) => [r3(a), b]).sort((x, y) => x[0] - y[0]) });
   if (recordings.length) stageParts.push({ kind: 'display', t0: 0, t1: D, keys: display.map(([a, b]) => [r3(a), b]).sort((x, y) => x[0] - y[0]), recordings, pieces });
@@ -357,10 +390,10 @@ function assemble({ input, bpm, D, cam, parts, voice, sections, hits, cues, disp
     title: input.board.name, aspect: '16:9', fps: 60, bpm, style: 'studio',
     palette: { ...(input.palette || {}) },
     scenes: scenes.map(({ start, ...S }) => S),
-    sound: { score: 'release', key: input.key ?? -5, release: { motif: input.motif || [4, 7, 11, 9], bright: true, sections: sections.sort((a, b) => a[0] - b[0]), hits: [...new Set(hits)].sort((a, b) => a - b), cues: cues.sort((a, b) => a[0] - b[0]), duck: 11, carve: 6 } },
+    sound: { score: 'release', key: input.key ?? -5, release: { motif: input.motif || dir.motif, bright: true, sections: sections.sort((a, b) => a[0] - b[0]), hits: [...new Set(hits)].sort((a, b) => a - b), cues: cues.sort((a, b) => a[0] - b[0]), duck: 11, carve: 6 } },
     voice: { engine: input.voice?.engine || 'none', voice: input.voice?.voice || '', captions: false, lines },
     assets: input.assets || {},
-    stage: { camera: cam, parts: stageParts },
+    stage: { tone: dir.tone, camera: cam, parts: stageParts },
   };
   return { doc, parts: parts.map((p) => ({ key: p.kind, t0: p.t0, t1: p.t1 })), voice, problems };
 }

@@ -18,9 +18,24 @@ export const STUDIO = {
   display: '#17171a', piece: '#1c1c1f',
 };
 
-// The studio's colours with the film's own two accents.
-export function studioColors(palette = {}) {
-  return { ...STUDIO, accent: palette.accent || '#e9423f', accent2: palette.accent2 || '#d9b26a' };
+// The other rooms a product film can stand in: a night studio, and warm paper.
+export const ROOMS = {
+  studio: STUDIO,
+  night: {
+    top: '#17181c', mid: '#111215', floor: '#0b0c0e', veil: '#111215',
+    ink: '#f2f1ee', muted: '#9a9893', card: '#1d1e23', chip: '#2a2b31', chipInk: '#f2f1ee', chipMuted: '#a6a49f',
+    display: '#0e0f12', piece: '#16171a',
+  },
+  paper: {
+    top: '#f6f1e8', mid: '#f0e9dd', floor: '#e6dccb', veil: '#f0e9dd',
+    ink: '#221d17', muted: '#7a7064', card: '#fcf9f3', chip: '#221d17', chipInk: '#f6f1e8', chipMuted: '#c9bfae',
+    display: '#17171a', piece: '#1c1c1f',
+  },
+};
+
+// The room's colours with the film's own two accents.
+export function studioColors(palette = {}, tone = 'studio') {
+  return { ...(ROOMS[tone] || STUDIO), accent: palette.accent || '#e9423f', accent2: palette.accent2 || '#d9b26a' };
 }
 
 // 0 before a, 1 after b, eased between.
@@ -49,12 +64,32 @@ const alpha = (hex, a) => {
 export { alpha as withAlphaHex };
 
 // Words on a plane: size in the plane's pixels, the kit's own type.
+// maxWidth: the room it has; the type grows smaller until it fits, on up to
+// o.lines lines (1 by default), and never below 55% of its size.
 export function words(g, s, x, y, o = {}) {
   if ((o.alpha ?? 1) <= 0 || !s) return null;
+  const size = fitSize(g, String(s), o);
   return kitFor(g).text(String(s), x, y, {
-    size: o.size ?? 40, weight: o.weight ?? 500, color: o.color ?? STUDIO.ink, align: o.align ?? 'center',
+    size, weight: o.weight ?? 500, color: o.color ?? STUDIO.ink, align: o.align ?? 'center',
     tracking: o.tracking ?? 0, opacity: o.alpha ?? 1, font: o.font ?? 'sans',
+    ...(o.maxWidth && (o.lines ?? 1) > 1 ? { maxWidth: o.maxWidth, leading: 1.15 } : {}),
   });
+}
+
+// The largest size, from o.size down, at which s fits o.maxWidth on o.lines lines.
+export function fitSize(g, s, o = {}) {
+  const size = o.size ?? 40;
+  if (!o.maxWidth) return size;
+  const k = kitFor(g), lines = o.lines ?? 1;
+  const at = (sz) => k.measureText(s, { size: sz, weight: o.weight ?? 500, font: o.font ?? 'sans', tracking: o.tracking ?? 0, ...(lines > 1 ? { maxWidth: o.maxWidth } : {}) });
+  let sz = size;
+  for (let n = 0; n < 12; n++) {
+    const L = at(sz);
+    if (L.width <= o.maxWidth + 0.5 && L.lines.length <= lines) break;
+    sz *= 0.94;
+    if (sz < size * 0.55) { sz = size * 0.55; break; }
+  }
+  return sz;
 }
 
 // A card: a rounded face, and a border in the accent as it lights.
@@ -79,9 +114,10 @@ export function rule(g, x, y, w, p, color, h = 2) {
 
 // Digits rolling like a meter, then landing on the number written; anything
 // that is not a digit fades in. f runs 0..1 over the roll.
-export function odometer(g, s, x, y, size, f, color = STUDIO.ink) {
+export function odometer(g, s, x, y, size0, f, color = STUDIO.ink, maxWidth = 0) {
   const k = kitFor(g);
   const chars = [...String(s)];
+  const size = maxWidth ? fitSize(g, String(s), { size: size0, weight: 200, maxWidth }) : size0;
   const font = { size, weight: 200, font: 'sans' };
   const ws = chars.map((c) => k.measureText(c, font).width);
   const total = ws.reduce((a, b) => a + b, 0);
@@ -105,8 +141,9 @@ export function odometer(g, s, x, y, size, f, color = STUDIO.ink) {
 }
 
 // Each word of a line rising as it is said: items [[word, at], ...], centred on x.
-export function spoken(g, items, t, { x, y, size, weight = 400, color = STUDIO.ink, gap = 0.3, mark = null, accent = '#e9423f' }) {
+export function spoken(g, items, t, { x, y, size: size0, weight = 400, color = STUDIO.ink, gap = 0.3, mark = null, accent = '#e9423f', maxWidth = 0 }) {
   const k = kitFor(g);
+  const size = maxWidth ? fitSize(g, items.map(([w]) => w).join(' '), { size: size0, weight, maxWidth }) : size0;
   const font = { size, weight, font: 'sans' };
   const sp = k.measureText(' ', font).width || size * 0.28;
   const ws = items.map(([w]) => k.measureText(w, font).width);

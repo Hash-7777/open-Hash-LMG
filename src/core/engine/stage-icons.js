@@ -33,10 +33,11 @@ export const ICONS = {
 export const ICON_NAMES = Object.keys(ICONS);
 
 // Draws a drawing about (0, 0): its outline p of the way, its accents q.
-export function drawIcon(g, name, p, q, colors = {}) {
+// scale: how much larger the context draws it; lines keep their weight.
+export function drawIcon(g, name, p, q, colors = {}, scale = 1) {
   const I = ICONS[name] || ICONS.frame;
   const ink = colors.ink || STUDIO.ink;
-  for (const [d, w] of I.base) stroke(g, d, p, w, ink);
-  for (const [d, w] of I.accent || []) stroke(g, d, q, w, colors.accent || '#e9423f');
-  for (const [d, w] of I.second || []) stroke(g, d, q, w, colors.accent2 || '#d9b26a');
+  for (const [d, w] of I.base) stroke(g, d, p, w / scale, ink);
+  for (const [d, w] of I.accent || []) stroke(g, d, q, w / scale, colors.accent || '#e9423f');
+  for (const [d, w] of I.second || []) stroke(g, d, q, w / scale, colors.accent2 || '#d9b26a');
 }

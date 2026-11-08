@@ -13,7 +13,7 @@ import { root } from './lib/check.mjs';
 import { fakeContext } from './lib/fake-canvas.mjs';
 import { STORYBOARD } from './lib/fixtures.mjs';
 import { planProductFilm, wordTimes, cueTimes, CAMERA_GAP, BPM } from '../../src/core/scene/product-film.js';
-import { normalizeBoard, claimProblems, dropUnsupported, spokenLines, sayAs, factTokens, normalizeProductForm, readFactsFile, formFacts, fillLines } from '../../src/core/scene/product-board.js';
+import { normalizeBoard, claimProblems, dropUnsupported, spokenLines, sayAs, factTokens, claimsIn, normalizeProductForm, readFactsFile, formFacts, fillLines, plainFact } from '../../src/core/scene/product-board.js';
 import { writeProductBoard } from '../../src/core/director/product-board.js';
 import { appFacts, APP_EXPORTS } from '../../src/core/director/app-facts.js';
 import { normalizeScene } from '../../src/core/scene/normalize.js';
@@ -22,7 +22,8 @@ import { mapProblems } from '../../src/core/engine/recording.js';
 import { createKit } from '../../src/core/engine/kit.js';
 import { renderStage } from '../../src/core/engine/render-stage.js';
 import { renderPlan, activeScenes } from '../../src/core/engine/render-plan.js';
-import { coplanarPairs, orphanPieces } from '../../src/core/engine/stage-rules.js';
+import { coplanarPairs, orphanPieces, coveredWords } from '../../src/core/engine/stage-rules.js';
+import { productDirection, normalizeDirection, CANON, VARIANTS, TONES } from '../../src/core/scene/product-direction.js';
 import { STYLE_NAMES, ASPECTS } from '../../src/core/scene/format.js';
 import { TEMPLATES } from '../../src/core/scene/templates.js';
 import { iconAccents } from '../../src/core/util/accents.js';
@@ -161,5 +162,46 @@ ok('the name line says the product\'s own name, its capitals and its tagline, as
 ok('every part on the board gets a line, from its own words when the model gave none', ['open', 'steps', 'hub', 'yours', 'end'].every((k) => FILLED.lines[k]) && FILLED.lines.steps === 'Plan. Light.' && FILLED.lines.open === 'A lamp that sets its own light.');
 ok('filled lines claim nothing the form does not hold', claimProblems(FILLED, formFacts(FORM)).length === 0, JSON.stringify(claimProblems(FILLED, formFacts(FORM))));
 ok('a filled board plans with nothing missing', (() => { const sp = spokenLines(FILLED, formFacts(FORM)); const L = Object.fromEntries(Object.entries(sp).map(([k, v]) => [k, { ...v, length: 1 + v.text.split(' ').length / 2.6 }])); const p = planProductFilm({ board: FILLED, lines: L }); return p.problems.length === 0 && normalizeScene(p.doc).scene.stage.parts.some((q) => q.kind === 'steps'); })());
+
+section('Every film its own, every one held to the rules');
+{
+  const takes = Array.from({ length: 40 }, (_, k) => productDirection('Orbi Desk', k));
+  const looks = new Set(takes.map((d) => `${d.tone}|${d.order.join()}|${Object.values(d.variants).join()}|${d.camera}`));
+  ok('forty takes of one product give at least thirty different films', looks.size >= 30, String(looks.size));
+  ok('every room, camera and staging turns up among them', TONES.every((x) => takes.some((d) => d.tone === x)) && Object.entries(VARIANTS).every(([k, v]) => v.every((x) => takes.some((d) => d.variants[k] === x))));
+  ok('the same product and take give the same direction', JSON.stringify(productDirection('Orbi Desk', 7)) === JSON.stringify(productDirection('Orbi Desk', 7)));
+  ok('figures always land late, just before the end card', takes.every((d) => d.order.indexOf('figures') >= d.order.length - 2));
+  ok('an unknown direction is the canonical one', JSON.stringify(normalizeDirection({ tone: 'neon', order: ['steps'] })) === JSON.stringify(normalizeDirection(CANON)));
+  const bad = [];
+  for (const [k, dirn] of takes.entries()) {
+    const withTakes = k % 4 === 0;
+    const plan = planProductFilm({ board: BOARD, lines: LINES, icon: 'mark', assets: ASSETS, direction: dirn, ...(withTakes ? { takes: TAKES, panels: PANELS, film: FILM, looks: LOOKS } : {}) });
+    if (plan.problems.length) { bad.push(`take ${k}: ${plan.problems[0]}`); continue; }
+    const doc = normalizeScene(plan.doc).scene;
+    if (doc.stage.tone !== dirn.tone || doc.stage.parts.filter((p) => VARIANTS[p.kind]).some((p) => p.variant !== dirn.variants[p.kind])) bad.push(`take ${k}: the format lost its direction`);
+    const order = doc.stage.parts.filter((p) => ['steps', 'split', 'hub', 'drawings', 'figures'].includes(p.kind)).sort((a, b) => a.t0 - b.t0).map((p) => (p.kind === 'drawings' ? 'yours' : p.kind));
+    if (order.join() !== dirn.order.join()) bad.push(`take ${k}: parts came in ${order.join()}`);
+    const k2 = createKit(fakeContext(1920, 1080), { width: 1920, height: 1080, palette: doc.palette, assets: { mark: icon }, makeCanvas: fakeCanvas });
+    for (let t = 0; t <= doc.duration; t += 0.25) {
+      const drawn = renderStage(k2, doc, t, { renderPlan, activeScenes });
+      const f = coplanarPairs(drawn), o = orphanPieces(drawn), w = coveredWords(drawn);
+      if (f.length) { bad.push(`take ${k} (${dirn.variants.steps}, ${dirn.variants.hub}) at ${t.toFixed(2)}: ${f[0][0]} and ${f[0][1]} flicker`); break; }
+      if (o.length || w.length) { bad.push(`take ${k} at ${t.toFixed(2)}: ${o[0] || w[0].join(' under ')}`); break; }
+    }
+  }
+  ok('forty directions, with and without recordings: each plans, keeps its order and staging, and draws with no flicker and no covered word', bad.length === 0, bad.slice(0, 3).join('; '));
+}
+
+section('What models write, and what files carry, are read as meant');
+{
+  const b = normalizeBoard({ split: { left: { title: 'Cloud', items: [{ name: 'Keys', cue: 'keys' }] }, right: { name: 'Local', items: ['Ollama'] } }, yours: [{ caption: 'Your keys stay yours', drawing: 'lock' }], figures: [{ value: '21', caption: 'cloud providers', line: 'Twenty-one providers.' }], hub: { title: 'Built in', tiles: [{ label: 'Knowledge base', caption: 'searched here' }] }, steps: [{ title: 'Choose', caption: 'Pick from twenty-one cloud providers, or a local model on your own machine, as you like' }] });
+  ok('items, captions, drawings and lines under other names are kept', b.split.left.items[0].label === 'Keys' && b.split.right.title === 'Local' && b.split.right.items[0].label === 'Ollama' && b.yours[0].cap === 'Your keys stay yours' && b.yours[0].icon === 'lock' && b.figures[0].cap === 'cloud providers' && b.figures[0].say === 'Twenty-one providers.' && b.hub.tiles[0].name === 'Knowledge base');
+  const long = 'Pick from twenty-one cloud providers, or a local model on your own machine, as you like';
+  ok('long words for the screen end at a whole word', b.steps[0].sub.length <= 60 && long.startsWith(b.steps[0].sub) && long[b.steps[0].sub.length] === ' ');
+  ok('a page\'s markup leaves only its words', plainFact('<a href="https://orbi.example"><img alt="Version 2.1.0" src="https://badge.example/v2"></a>') === 'Version 2.1.0' && plainFact('| **Quiet** | Dims [by itself](https://orbi.example/doc) at night. |') === 'Quiet \u00b7 Dims by itself at night.' && plainFact('<br>') === '' && plainFact('## Install &middot; ok') === 'Install \u00b7 ok');
+  ok('a facts file written as a web page gives plain lines', JSON.stringify(readFactsFile('README.md', '<div align="center">\n# Orbi Desk\n<img alt="Version 2.1.0" src="x.png">\n\n- Three light modes\n</div>').lines) === '["Orbi Desk","Version 2.1.0","Three light modes"]');
+  const t = factTokens({ facts: ['Twenty-one cloud providers', 'Version 2.1.0', 'v2.1.0 is out', '1,800 frames'] });
+  ok('versions, spelled numbers and thousands are read as the facts mean them', ['21', '2.1.0', '1800'].every((x) => t.has(x)) && JSON.stringify(claimsIn('Version 2.1.0 has twenty-one modes and 1,800 frames')) === '["2.1.0","1800","21"]');
+}
 
 done();

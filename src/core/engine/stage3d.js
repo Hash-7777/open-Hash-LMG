@@ -298,8 +298,10 @@ export function createStage({ makeCanvas }) {
       if (!pr.corners || !pr.facing) return;
       list.push({ P, pose, order, ...pr });
     });
-    // Far to near; planes at one depth keep the order they were given in.
-    list.sort((a, b) => a.depth - b.depth || a.order - b.order);
+    // Far to near; planes at one depth keep the order they were given in. A
+    // plane marked behind (lines that run between others) is drawn first, so a
+    // turned camera cannot bring its centre in front of what it joins.
+    list.sort((a, b) => (b.P.behind ? 1 : 0) - (a.P.behind ? 1 : 0) || a.depth - b.depth || a.order - b.order);
     for (const it of list) {
       const { P, pose } = it;
       const at = (w, h) => (fx, fy) => projectPoint(pose, w, h, fx * w, fy * h, rig, view);

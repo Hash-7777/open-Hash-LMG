@@ -21,6 +21,18 @@ import { ICON_NAMES } from '../engine/stage-icons.js';
 
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 const text = (v, max) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
+// Words for the screen: never cut mid-word; a long one ends at its last whole word.
+const words = (v, max) => {
+  const s = typeof v === 'string' || typeof v === 'number' ? String(v).replace(/\s+/g, ' ').trim() : '';
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max + 1).replace(/\s+\S*$/, '');
+  return (cut || s.slice(0, max)).replace(/[,;:\s]+$/, '');
+};
+// Models name the same field in several ways; the first one given is read.
+const pick = (o, ...keys) => { for (const k of keys) if (typeof o[k] === 'string' || typeof o[k] === 'number') return o[k]; return ''; };
+// An item's words under any name: the known ones first, else its first words that are not a cue.
+const label = (o, ...keys) => pick(o, ...keys) || Object.entries(o).find(([k, v]) => typeof v === 'string' && !/^(cue|icon|drawing|picture|say|line)$/.test(k))?.[1] || '';
+const iconOf = (o) => { const v = pick(o, 'icon', 'drawing', 'picture', 'symbol'); return ICON_NAMES.includes(v) ? v : ''; };
 const list = (v, max) => (Array.isArray(v) ? v.slice(0, max) : []);
 
 export const LINE_KEYS = ['open', 'name', 'brief', 'make', 'steps', 'film', 'split', 'hands', 'export', 'hub', 'looks', 'yours', 'release', 'end'];
@@ -28,16 +40,18 @@ const LIMIT = { line: 220, steps: 6, items: 6, tiles: 8, yours: 3, figures: 4 };
 
 export function normalizeBoard(input) {
   const b = isObj(input) ? input : {};
-  const side = (s) => (isObj(s) ? { title: text(s.title, 30), icon: ICON_NAMES.includes(s.icon) ? s.icon : '', items: list(s.items, LIMIT.items).filter(isObj).map((i) => ({ label: text(i.label, 24), cue: text(i.cue, 24) })).filter((i) => i.label) } : null);
+  const item = (i) => ({ label: words(label(i, 'label', 'name', 'item', 'title', 'text', 'word'), 24), cue: text(String(pick(i, 'cue', 'word', 'say')), 24) });
+  const side = (v) => (isObj(v) ? { title: words(pick(v, 'title', 'name', 'label'), 30), icon: iconOf(v), items: list(v.items, LIMIT.items).map((i) => (typeof i === 'string' ? { label: i } : i)).filter(isObj).map(item).filter((i) => i.label) } : null);
   const linesIn = isObj(b.lines) ? b.lines : {};
+  const hubIn = isObj(b.hub) ? b.hub : null;
   const board = {
-    name: text(b.name, 40), expansion: text(b.expansion, 80), tagline: text(b.tagline, 90),
-    steps: list(b.steps, LIMIT.steps).filter(isObj).map((s) => ({ name: text(s.name, 20), sub: text(s.sub, 40), cue: text(s.cue, 24) })).filter((s) => s.name),
+    name: text(b.name, 40), expansion: words(b.expansion, 80), tagline: words(b.tagline, 90),
+    steps: list(b.steps, LIMIT.steps).filter(isObj).map((v) => ({ name: words(label(v, 'name', 'title', 'label', 'step'), 20), sub: words(pick(v, 'sub', 'caption', 'text', 'detail'), 60), cue: text(String(pick(v, 'cue', 'word')), 24) })).filter((v) => v.name),
     split: side(b.split?.left) && side(b.split?.right) ? { left: side(b.split.left), right: side(b.split.right) } : null,
-    hub: isObj(b.hub) ? { title: text(b.hub.title, 24), sub: text(b.hub.sub, 40), tiles: list(b.hub.tiles, LIMIT.tiles).filter(isObj).map((x) => ({ name: text(x.name, 12), sub: text(x.sub, 30), cue: text(x.cue, 24) })).filter((x) => x.name), note: text(b.hub.note, 60) } : null,
-    yours: list(b.yours, LIMIT.yours).filter(isObj).map((y) => ({ cap: text(y.cap, 40), icon: ICON_NAMES.includes(y.icon) ? y.icon : 'frame' })).filter((y) => y.cap),
-    figures: list(b.figures, LIMIT.figures).filter(isObj).map((f) => ({ value: text(String(f.value ?? ''), 6), cap: text(f.cap, 30), say: text(f.say, 60) })).filter((f) => f.value && f.cap),
-    releaseLine: text(b.releaseLine, 90), endLine: text(b.endLine, 90),
+    hub: hubIn ? { title: words(pick(hubIn, 'title', 'name'), 24), sub: words(pick(hubIn, 'sub', 'caption', 'text'), 40), tiles: list(hubIn.tiles, LIMIT.tiles).filter(isObj).map((x) => ({ name: words(label(x, 'name', 'label', 'title', 'tile'), 18), sub: words(pick(x, 'sub', 'caption', 'text'), 40), cue: text(String(pick(x, 'cue', 'word')), 24) })).filter((x) => x.name), note: words(pick(hubIn, 'note', 'footnote'), 60) } : null,
+    yours: list(b.yours, LIMIT.yours).filter(isObj).map((v) => ({ cap: words(label(v, 'cap', 'caption', 'text', 'label', 'title'), 40), icon: iconOf(v) || 'frame' })).filter((v) => v.cap),
+    figures: list(b.figures, LIMIT.figures).filter(isObj).map((f) => ({ value: text(String(pick(f, 'value', 'figure', 'number')), 6), cap: words(pick(f, 'cap', 'caption', 'label', 'text'), 30), say: text(String(pick(f, 'say', 'line', 'spoken')), 90) })).filter((f) => f.value && f.cap),
+    releaseLine: words(b.releaseLine, 90), endLine: words(b.endLine, 90),
     lines: Object.fromEntries(LINE_KEYS.map((k) => [k, text(linesIn[k], LIMIT.line)]).filter(([, v]) => v)),
   };
   if (board.hub && !board.hub.tiles.length) board.hub = null;
@@ -53,7 +67,21 @@ export function normalizeFacts(input) {
   return { ...f, name: text(f.name, 40), allowNames: list(f.allowNames, 10).map((n) => text(n, 30)).filter(Boolean) };
 }
 
-const WORD_NUMBERS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+const WORD_NUMBERS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+// Numbers written in digits: a version is one number ("3.3.0"), and a
+// thousands mark is not a decimal ("1,800" is 1800).
+const numbersIn = (s) => (String(s).match(/\b\d+(?:[.,]\d+)*\b/g) || []).map((m) => (/^\d{1,3}(,\d{3})+$/.test(m) ? m.replace(/,/g, '') : m));
+
+// Numbers written as words, as digits: "twenty-one" is 21, "seven" is 7.
+function wordNumbers(s) {
+  const out = [];
+  for (const m of String(s).toLowerCase().matchAll(/\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[- ](one|two|three|four|five|six|seven|eight|nine))?\b|\b([a-z]+)\b/g)) {
+    if (m[1]) out.push(String(TENS[m[1]] + (m[2] ? WORD_NUMBERS.indexOf(m[2]) : 0)));
+    else { const i = WORD_NUMBERS.indexOf(m[3]); if (i >= 2) out.push(String(i)); }
+  }
+  return out;
+}
 const FORMAT_WORDS = /\b(MP4|MOV|WebM|GIF|MP3|WAV|AAC|PNG|ZIP|H\.?26[45]|HEVC|AV1|VP9|Vorbis|Opus|ProRes|[0-9]+K|[0-9]{3,4}p)\b/gi;
 
 // Everything the facts support, as lower-case tokens: every word and number
@@ -65,7 +93,11 @@ export function factTokens(facts) {
     if (Array.isArray(v)) { out.add(String(v.length)); v.forEach(walk); }
     else if (isObj(v)) Object.values(v).forEach(walk);
     else if (typeof v === 'number') out.add(String(v));
-    else if (typeof v === 'string') for (const w of v.toLowerCase().match(/[\p{L}\p{N}.+]+/gu) || []) { out.add(w.replace(/\.$/, '')); }
+    else if (typeof v === 'string') {
+      for (const w of v.toLowerCase().match(/[\p{L}\p{N}.+]+/gu) || []) { const t = w.replace(/\.+$/, ''); out.add(t); if (/^v\d/.test(t)) out.add(t.slice(1)); }
+      for (const n of wordNumbers(v)) out.add(n);
+      for (const n of numbersIn(v)) out.add(n);
+    }
   };
   walk(facts);
   return out;
@@ -79,8 +111,9 @@ export function claimsIn(s) {
   for (const m of formats) out.push(m.toLowerCase());
   // Numbers outside the format names ("264" in H.264 is the codec, not a count).
   const rest = String(s || '').replace(FORMAT_WORDS, ' ');
-  for (const m of rest.match(/\b\d+(?:[.,]\d+)?\b/g) || []) out.push(m.replace(',', ''));
-  for (const w of rest.toLowerCase().match(/\b[a-z]+\b/g) || []) { const i = WORD_NUMBERS.indexOf(w); if (i >= 2) out.push(String(i)); }
+  // A version is one claim ("3.3.0"), a thousands mark is not a decimal ("1,800").
+  out.push(...numbersIn(rest));
+  out.push(...wordNumbers(rest));
   return [...new Set(out)];
 }
 
@@ -161,13 +194,46 @@ export function normalizeProductForm(input) {
 export function readFactsFile(name, body) {
   const s = String(body || '');
   try { const v = JSON.parse(s); if (isObj(v)) return { name, facts: v, lines: [] }; } catch { /* not JSON: read as lines */ }
-  return { name, facts: null, lines: s.split(/\r?\n/).map((l) => l.replace(/^[-*•]\s*/, '').trim()).filter(Boolean).slice(0, 200) };
+  return { name, facts: null, lines: factLines(s).slice(0, 200) };
+}
+
+// A line of facts as plain words. A file written for a web page (a README,
+// say) carries tags, badges, links, tables and marks: a picture keeps only
+// what it says in words, a link only its words, and a line left with no words
+// at all is no fact.
+export function plainFact(line) {
+  const ENT = { amp: '&', middot: '\u00b7', nbsp: ' ', quot: '"', apos: "'", lt: '<', gt: '>', mdash: '\u2014', ndash: '\u2013' };
+  let s = String(line)
+    .replace(/<img\b[^>]*\balt\s*=\s*"([^"]*)"[^>]*>/gi, ' $1 ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, ' $1 ')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/&(\w+);/g, (m, k) => ENT[k.toLowerCase()] ?? ' ')
+    .replace(/^\s*(#{1,6}|>|[-*\u2022+]|\d+[.)])\s+/, '')
+    .replace(/\*\*|__|`+|~~/g, '')
+    .replace(/(^|\s)[*_](\S)/g, '$1$2').replace(/(\S)[*_](?=\s|$|[.,;:])/g, '$1')
+    .replace(/\s*\|\s*/g, ' \u00b7 ')
+    .replace(/%[0-9a-f]{2}/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s\u00b7:;,.-]+|[\s\u00b7:;,-]+$/g, '');
+  return (s.match(/\p{L}/gu) || []).length >= 3 ? s : '';
+}
+
+// The plain lines of a text, once each.
+export function factLines(body) {
+  const seen = new Set();
+  return String(body || '').split(/\r?\n/).map(plainFact).filter((l) => l && !seen.has(l.toLowerCase()) && seen.add(l.toLowerCase()));
 }
 
 // The facts the film may claim, from the form.
 export function formFacts(form) {
-  const lines = String(form.facts || '').split(/\r?\n/).map((l) => l.replace(/^[-*•]\s*/, '').trim()).filter(Boolean);
-  return normalizeFacts({ ...(form.file?.facts || {}), name: form.name, does: form.line, facts: [...lines, ...(form.file?.lines || [])], allowNames: form.file?.facts?.allowNames || [] });
+  // A long file keeps its first lines: the model is shown a few thousand characters at most.
+  const all = [...factLines(form.facts), ...(form.file?.lines || []).map(plainFact).filter(Boolean)];
+  const kept = [];
+  let room = 5000;
+  for (const l of all) { if (l.length > room) break; kept.push(l); room -= l.length + 4; }
+  return normalizeFacts({ ...(form.file?.facts || {}), name: form.name, does: form.line, facts: kept, allowNames: form.file?.facts?.allowNames || [] });
 }
 
 // The board made ready to speak: the product's own name, the name line said

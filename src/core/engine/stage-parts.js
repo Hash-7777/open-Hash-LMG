@@ -44,7 +44,9 @@ export function open(part, t, a, env) {
   const draw = ramp(t, t0 + 0.2, t0 + 2.0);
   const shrink = ramp(t, t0 + 3.0, t0 + 4.1);
   const side = M.size * (1 - 2 * M.inset);
-  const w = mix(1040, side, shrink), h = mix(585, side, shrink), r = mix(6, M.size * M.radius, shrink);
+  // The frame it draws: wide like a film, tall like a phone, or square.
+  const [fw, fh] = { tall: [380, 676], square: [600, 600] }[part.variant] || [1040, 585];
+  const w = mix(fw, side, shrink), h = mix(fh, side, shrink), r = mix(part.variant === 'tall' ? 34 : 6, M.size * M.radius, shrink);
   const x = 600 - w / 2, y = 340 - h / 2;
   const fade = 1 - ramp(t, t0 + 3.9, t0 + 4.3, 'inOutSine');
   const ph = ramp(t, t0 + 1.4, t0 + 3.0), phA = Math.min(ramp(t, t0 + 1.3, t0 + 1.6, 'inOutSine'), 1 - ramp(t, t0 + 3.2, t0 + 3.6, 'inOutSine'));
@@ -74,10 +76,10 @@ export function name(part, t, a, env) {
   // It rests two gaps in front of the icon's stacked copies, which pass over
   // its top edge while the icon moves up.
   return [plane('name', 1400, 360, 2, { x: 960, y: 660, z: 2 * MIN_GAP - 120 * (1 - f), rx: 55 * (1 - f), o: a * f }, (g) => {
-    words(g, part.name, 700, 90, { size: 112, weight: 600, color: C.ink, tracking: -2 / 112 });
+    words(g, part.name, 700, 90, { size: 112, weight: 600, color: C.ink, tracking: -2 / 112, maxWidth: 1320 });
     if (hl > 0) kitFor(g).rect(700 - 60 * hl, 170, 120 * hl, 2, { fill: C.accent, radius: 0 });
-    spoken(g, exp, t, { x: 700, y: 232, size: 40, weight: 500, color: C.ink, gap: 0.35, mark: marks, accent: C.accent });
-    spoken(g, tag, t, { x: 700, y: 312, size: 32, weight: 400, color: C.muted });
+    spoken(g, exp, t, { x: 700, y: 232, size: 40, weight: 500, color: C.ink, gap: 0.35, mark: marks, accent: C.accent, maxWidth: 1320 });
+    spoken(g, tag, t, { x: 700, y: 312, size: 32, weight: 400, color: C.muted, maxWidth: 1320 });
   }, { kind: 'words', radius: 0, text: [part.name, ...exp.map(([w]) => w), ...tag.map(([w]) => w)] })];
 }
 
@@ -87,12 +89,12 @@ export function end(part, t, a, env) {
   const f = ramp(t, t0 + 0.4, t0 + 1.4, 'outCubic');
   const l = ramp(t, t0 + 1.2, t0 + 2.0, 'outCubic');
   const out = [plane('end', 1400, 220, 2, { x: 960, y: 680, z: -100 * (1 - f), rx: 50 * (1 - f), o: a * f }, (g) => {
-    words(g, part.name, 700, 70, { size: 92, weight: 600, color: C.ink, tracking: -1.5 / 92 });
-    words(g, part.line, 700, 165, { size: 32, weight: 400, color: C.muted, alpha: l });
+    words(g, part.name, 700, 70, { size: 92, weight: 600, color: C.ink, tracking: -1.5 / 92, maxWidth: 1320 });
+    words(g, part.line, 700, 168, { size: 32, weight: 400, color: C.muted, alpha: l, maxWidth: 1240, lines: 2 });
   }, { kind: 'words', radius: 0, text: [part.name, part.line] })];
   if (part.footnote) {
     out.push(plane('end-foot', 1400, 40, 2, { x: 960, y: 1000, o: a * ramp(t, t0 + 1.8, t0 + 2.6, 'outCubic') }, (g) => {
-      words(g, part.footnote, 700, 20, { size: 19, weight: 400, color: C.muted, alpha: 0.9 });
+      words(g, part.footnote, 700, 20, { size: 19, weight: 400, color: C.muted, alpha: 0.9, maxWidth: 1320 });
     }, { kind: 'words', radius: 0, text: [part.footnote] }));
   }
   return out;
@@ -147,7 +149,7 @@ export function ring(part, t, a, env) {
   const front = ((Math.round(rot / step) % n) + n) % n;
   const fr = ((rot / step) % 1 + 1) % 1, rest = 1 - Math.min(fr, 1 - fr) * 2;
   out.push(plane('look-name', 600, 80, 2, { x: cx, y: cy + 330, z: cz + 60, o: a * clamp(rest * 1.8 - 0.6) }, (g) => {
-    words(g, films[front].name, 300, 40, { size: 34, weight: 500, color: env.C.ink });
+    words(g, films[front].name, 300, 40, { size: 34, weight: 500, color: env.C.ink, maxWidth: 560 });
   }, { kind: 'words', radius: 0, text: [films[front].name] }));
   return out;
 }
@@ -183,11 +185,11 @@ export function thumb(part, t, a, env) {
   const { C } = env, size = Math.min(156, 1250 / Math.max(4, part.name.length));
   const [l1, l2] = part.tagline || [];
   return [plane('thumb', THUMB.w, THUMB.h, 2, { x: part.x ?? 610, y: part.y ?? 600, o: a }, (g) => {
-    words(g, String(part.expansion || '').toUpperCase(), 0, 40, { size: 30, weight: 600, color: C.accent, align: 'left', tracking: 5 / 30 });
+    words(g, String(part.expansion || '').toUpperCase(), 0, 40, { size: 30, weight: 600, color: C.accent, align: 'left', tracking: 5 / 30, maxWidth: 740 });
     words(g, part.name, -6, 150, { size, weight: 700, color: C.ink, align: 'left', tracking: -4 / 156 });
     kitFor(g).rect(0, 262, 110, 4, { fill: C.accent, radius: 0 });
-    words(g, l1, 0, 330, { size: 64, weight: 500, color: C.ink, align: 'left' });
-    words(g, l2, 0, 410, { size: 64, weight: 500, color: C.muted, align: 'left' });
+    words(g, l1, 0, 330, { size: 64, weight: 500, color: C.ink, align: 'left', maxWidth: 740 });
+    words(g, l2, 0, 410, { size: 64, weight: 500, color: C.muted, align: 'left', maxWidth: 740 });
   }, { kind: 'words', radius: 0, text: [part.expansion, part.name, l1, l2].filter(Boolean) })];
 }
 

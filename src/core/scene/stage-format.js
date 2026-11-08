@@ -9,6 +9,7 @@
 
 import { EASE_NAMES } from '../engine/ease.js';
 import { ICON_NAMES } from '../engine/stage-icons.js';
+import { TONES, VARIANTS } from './product-direction.js';
 import { normalizeRelease } from '../audio/release.js';
 
 export const STAGE_PART_KINDS = ['open', 'name', 'icon', 'display', 'steps', 'split', 'hub', 'drawings', 'figures', 'ring', 'lift', 'end', 'thumb'];
@@ -99,10 +100,12 @@ export function normalizeStage(input, X) {
     .map((p) => {
       const t0 = num(p.t0, 0, 0, D);
       const base = { kind: p.kind, t0, t1: num(p.t1, t0, t0, D), fi: num(p.fi, 0.6, 0, 5), fo: num(p.fo, 0.6, 0, 5) };
+      // How a diagram stands (product-direction.js); its first way when none is named.
+      if (VARIANTS[p.kind]) base.variant = VARIANTS[p.kind].includes(p.variant) ? p.variant : VARIANTS[p.kind][0];
       return { ...base, ...KINDS[p.kind](p, D, X) };
     })
     .filter((p) => !(p.kind === 'lift' && !p.film) && !(p.kind === 'icon' && !p.asset) && !(p.kind === 'display' && !p.recordings.length));
-  return { camera, parts };
+  return { tone: TONES.includes(input.tone) ? input.tone : TONES[0], camera, parts };
 }
 
 // What a product film adds to a normalised film: its stage, and its score's

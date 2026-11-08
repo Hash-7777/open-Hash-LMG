@@ -34,7 +34,7 @@ function envFor(kit, doc, R) {
   });
   E = {
     doc,
-    C: studioColors(doc.palette),
+    C: studioColors(doc.palette, doc.stage?.tone),
     assets: kit.assets || {},
     stage: createStage({ makeCanvas: make }),
     film(film, t, w, h, key) {

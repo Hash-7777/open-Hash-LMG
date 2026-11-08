@@ -188,6 +188,15 @@ question, speaks each line in the chosen voice (or times it as if spoken),
 reads the accents from the icon and hands everything to the planner. A
 message to the director about a product film points back to its form.
 
+Every product film has a direction of its own (`product-direction.js`),
+chosen again each time it is made: the room (a white studio, a night studio
+or warm paper), the order of its diagrams, how each stands (steps on an arc,
+up a ladder or in a row; the two sides facing or opening like a book; what
+is built in fanned under its chip or in orbit around it; drawings turning in
+or rising; figures tipping up or dropping down), the frame it opens on, the
+camera's manner and the score's motif. Every direction is held to the same
+rules: no flicker, no covered word, every moment on its word.
+
 The planner (`src/core/scene/product-film.js`) builds such a film from a
 storyboard of words, the spoken lines and the recordings' marks. The lines
 drive the timeline: each part lasts as long as its line needs, each part

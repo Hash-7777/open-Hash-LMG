@@ -6,11 +6,13 @@
 import { formFacts, fillLines, spokenLines } from '../core/scene/product-board.js';
 import { writeProductBoard } from '../core/director/product-board.js';
 import { planProductFilm } from '../core/scene/product-film.js';
+import { productDirection } from '../core/scene/product-direction.js';
+import { parseColor, toCss, mixColor } from '../core/util/color.js';
 import { normalizeScene } from '../core/scene/normalize.js';
 import { estimateSpeech, wordCount } from '../core/scene/format.js';
 import { iconAccents } from '../core/util/accents.js';
 import { clipId } from '../core/providers/speech.js';
-import { decodeWav, toMono48k, bytesToBase64 } from '../core/audio/wav.js';
+import { decodeWav, toMono48k, bytesToBase64, base64ToBytes } from '../core/audio/wav.js';
 import { timeWords } from '../core/audio/words.js';
 import { extractJson } from '../core/util/json.js';
 import { guarded } from '../core/director/guard.js';
@@ -27,13 +29,20 @@ const keyFor = (name) => KEYS[[...String(name)].reduce((a, c) => (a * 31 + c.cha
 async function accentsOf(asset) {
   if (!asset?.data) return {};
   try {
-    const bmp = await createImageBitmap(await (await fetch(asset.data)).blob());
+    // Decoded from its own bytes: the desktop app's content policy lets the
+    // page fetch no data addresses.
+    const [head, b64] = String(asset.data).split(',');
+    const type = (head.match(/^data:([^;]+)/) || [])[1] || 'image/png';
+    const bmp = await createImageBitmap(new Blob([base64ToBytes(b64)], { type }));
     const c = new OffscreenCanvas(Math.min(256, bmp.width), Math.min(256, bmp.height));
     const g = c.getContext('2d');
     g.drawImage(bmp, 0, 0, c.width, c.height);
     bmp.close?.();
     const a = iconAccents(g.getImageData(0, 0, c.width, c.height).data);
-    return { ...(a.accent ? { accent: a.accent } : {}), ...(a.accent2 ? { accent2: a.accent2 } : {}) };
+    // An icon of one colour gives its second accent as a lighter tint of it,
+    // never a colour the product does not have.
+    const second = a.accent2 || (a.accent ? toCss(mixColor(parseColor(a.accent), [255, 255, 255, 1], 0.42)) : null);
+    return { ...(a.accent ? { accent: a.accent } : {}), ...(second ? { accent2: second } : {}) };
   } catch { return {}; }
 }
 
@@ -77,6 +86,8 @@ export async function runProductFilm({ form, icon, askModel, settings, progress,
   const plan = planProductFilm({
     board, lines, icon: iconKey, assets: { ...(icon ? { [iconKey]: icon } : {}), ...assets },
     palette: await accentsOf(icon), key: keyFor(form.name), voice: speak ? { engine: v.engine, voice: v.voice } : null,
+    // A new direction each time it is made: the same product, a new film.
+    direction: productDirection(form.name, Math.floor(Math.random() * 1e6)),
   });
   for (const p of plan.problems) note(p);
   const { scene } = normalizeScene(plan.doc);
