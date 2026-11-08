@@ -11,7 +11,7 @@ import { EASE_NAMES } from '../engine/ease.js';
 import { ICON_NAMES } from '../engine/stage-icons.js';
 import { normalizeRelease } from '../audio/release.js';
 
-export const STAGE_PART_KINDS = ['open', 'name', 'icon', 'display', 'steps', 'split', 'hub', 'drawings', 'figures', 'ring', 'lift', 'end'];
+export const STAGE_PART_KINDS = ['open', 'name', 'icon', 'display', 'steps', 'split', 'hub', 'drawings', 'figures', 'ring', 'lift', 'end', 'thumb'];
 const LIMIT = { parts: 200, keys: 400, items: 9, films: 9 };
 
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -59,6 +59,7 @@ const KINDS = {
     at: Array.isArray(p.at) ? [0, 1, 2].map((i) => num(p.at[i], [960, 500, -260][i], -6000, 6000)) : [960, 500, -260],
     films: list(p.films, LIMIT.films).filter((f) => isObj(f) && isObj(f.doc)).map((f) => ({ name: text(f.name, 30), doc: X.film(f.doc) })),
   }),
+  thumb: (p) => ({ x: num(p.x, 610, -2000, 4000), y: num(p.y, 600, -2000, 4000), name: text(p.name, 40), expansion: text(p.expansion, 60), tagline: list(p.tagline, 2).map((l) => text(l, 40)) }),
   display: (p, D, X) => {
     const mark = (m) => ({ t: num(m.t, 0, 0, 36000), x: typeof m.x === 'number' ? num(m.x, 0, 0, 1) : null, y: typeof m.y === 'number' ? num(m.y, 0, 0, 1) : null, click: Boolean(m.click) });
     const recordings = list(p.recordings, 12).filter((r) => isObj(r) && X.assets[slug(r.asset)]?.kind === 'video').map((r) => {

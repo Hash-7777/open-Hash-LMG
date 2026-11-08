@@ -50,7 +50,8 @@ const once = normalizeScene(DOC).scene;
 const twice = normalizeScene(once).scene;
 ok('a stage is kept on the film', !!once.stage && once.stage.parts.length === PARTS.length);
 ok('normalising a stage film again changes nothing', JSON.stringify(once) === JSON.stringify(twice));
-ok('every kind the format names is in this film', STAGE_PART_KINDS.every((k) => PARTS.some((p) => p.kind === k)));
+// The thumbnail's part has a film of its own, held in scripts/checks/publish.mjs.
+ok('every kind the format names is in this film', STAGE_PART_KINDS.filter((k) => k !== 'thumb').every((k) => PARTS.some((p) => p.kind === k)));
 for (const P of PARTS) {
   const got = once.stage.parts.find((p) => p.kind === P.kind);
   const lost = Object.keys(P).filter((k) => !(k in got));

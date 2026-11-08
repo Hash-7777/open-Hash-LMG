@@ -187,7 +187,7 @@ src/
   css/             the editor's colours, type and layout, dark and light
   core/            pure modules, no page access: the checks run them in Node
     scene/         format, normaliser, film checks, storyboard, direction, layouts, compiler, examples,
-                   the stage, storyboard and planner of a product film
+                   the stage, storyboard, planner and publish kit of a product film
     engine/        easing, keyframes, paths, the drawing kit, motion, caption phrases, the renderer,
                    the 3D stage and the diagrams, recordings and parts of a product film
     director/      the conversation, prompts and the rule every one ends with, the plan-check-revise

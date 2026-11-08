@@ -174,4 +174,21 @@ export function lift(part, t, a, env) {
   }, { shadow: i === 0 ? 1 + 0.4 * apart : 0, radius: 10, kind: 'film' }));
 }
 
-export const PARTS = { open, name, end, icon, ring, lift };
+// ---- the thumbnail's words: what the capitals stand for in the accent, the
+// name large, a rule, and the tagline over two lines, the second muted; the
+// name is sized to its length so it never runs past its plane.
+// part: { x, y, name, expansion, tagline: [first, second] }
+export const THUMB = { w: 760, h: 460 };
+export function thumb(part, t, a, env) {
+  const { C } = env, size = Math.min(156, 1250 / Math.max(4, part.name.length));
+  const [l1, l2] = part.tagline || [];
+  return [plane('thumb', THUMB.w, THUMB.h, 2, { x: part.x ?? 610, y: part.y ?? 600, o: a }, (g) => {
+    words(g, String(part.expansion || '').toUpperCase(), 0, 40, { size: 30, weight: 600, color: C.accent, align: 'left', tracking: 5 / 30 });
+    words(g, part.name, -6, 150, { size, weight: 700, color: C.ink, align: 'left', tracking: -4 / 156 });
+    kitFor(g).rect(0, 262, 110, 4, { fill: C.accent, radius: 0 });
+    words(g, l1, 0, 330, { size: 64, weight: 500, color: C.ink, align: 'left' });
+    words(g, l2, 0, 410, { size: 64, weight: 500, color: C.muted, align: 'left' });
+  }, { kind: 'words', radius: 0, text: [part.expansion, part.name, l1, l2].filter(Boolean) })];
+}
+
+export const PARTS = { open, name, end, icon, ring, lift, thumb };

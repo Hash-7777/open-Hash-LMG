@@ -71,8 +71,8 @@ src/
                          the person's own media and the compositions that show it,
                          the compiler, narration laid over the film as one script,
                          the film checks (timing, place, and what each frame shows)
-                         and when they look, the stage, storyboard and planner of a product
-                         film, editing helpers,
+                         and when they look, the stage, storyboard, planner and publish kit
+                         of a product film, editing helpers,
                          templates and examples
     engine/              easing, keyframes, paths, the drawing kit, entrances and exits,
                          the carry transition, repeated layers, the odometer, caption phrases, the renderer,
@@ -183,13 +183,17 @@ product's facts, and every number, format and codec it puts on screen or in
 the voice must be in them: unsupported claims go back once, then are left
 out. A film about the app itself takes its facts from the code that makes
 them true (`app-facts.js`), and a film's two accents are read from the
-product's icon (`src/core/util/accents.js`).
+product's icon (`src/core/util/accents.js`). What goes out with it
+(`publish-kit.js`) is built from the same words: chapters on the parts'
+starts, the first at 0:00 and none shorter than ten seconds; a description
+and tags from the storyboard and facts alone; and a thumbnail that is a
+one-frame stage film of its own, checked so no plane covers its words.
 
 ## Checks
 
 `npm run check` runs every script in `scripts/checks/`: the scene format and
 its field guard, every composition in every look and frame shape, the film
-checks, the 3D stage's projection and drawing, a film on the stage and its diagrams, recordings on the stage, the product-film planner, its storyboard and claim check, the release score and its mix, the director with a scripted model, the brief check, timing and
+checks, the 3D stage's projection and drawing, a film on the stage and its diagrams, recordings on the stage, the product-film planner, its storyboard and claim check, chapters, description and thumbnail, the release score and its mix, the director with a scripted model, the brief check, timing and
 narration, the person's media, drawings, music, model requests and replies,
 the rule every model question ends with, settings, the store and editing,
 sound and file writing (MP4, MOV, WebM, ZIP), the worker's walls, the content policy and the bridge to the Rust side, the run

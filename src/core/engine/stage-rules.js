@@ -48,3 +48,18 @@ export function orphanPieces(drawn) {
   const ids = new Set(drawn.map((d) => d.id));
   return drawn.filter((d) => d.plane?.parent && !ids.has(d.plane.parent)).map((d) => d.id);
 }
+
+// Words a nearer plane covers: each plane that carries words, against every
+// plane drawn after it (nearer the camera), by how far they overlap on the
+// frame. A see-through layer counts too: its edge would still cross the words.
+export function coveredWords(drawn) {
+  const out = [];
+  drawn.forEach((A, i) => {
+    if (A.plane?.kind !== 'words') return;
+    for (const B of drawn.slice(i + 1)) {
+      if (B.plane?.kind === 'words') continue;
+      if (quadOverlap(A.corners, B.corners) > 1) out.push([A.id, B.id]);
+    }
+  });
+  return out;
+}
