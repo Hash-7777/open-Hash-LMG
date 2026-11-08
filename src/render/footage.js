@@ -8,6 +8,7 @@
 // worker as a picture, named for the layer that shows it.
 
 import { media } from '../platform/index.js';
+import { stageClipsAt } from '../core/engine/recording.js';
 
 const SEEK_TIMEOUT_MS = 4000;
 const DRIFT = 0.2; // seconds a playing clip may wander before it is pulled back
@@ -29,6 +30,8 @@ export function clipsAt(scene, t) {
       out.push({ key: `video:${L.id}`, asset: L.asset, time: Math.min(end, Math.max(0, L.from + (local - L.at) * L.rate)), rate: L.rate });
     }
   }
+  // A product film's recordings on its stage.
+  if (scene.stage) out.push(...stageClipsAt(scene, t));
   return out;
 }
 

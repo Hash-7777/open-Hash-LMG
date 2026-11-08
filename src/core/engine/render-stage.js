@@ -6,18 +6,20 @@
 //   parts:  [{ kind, t0, t1, fi, fo, ...what the kind needs }, ...],
 // }
 // A part is on screen from t0 to t1 plus its fade out (fo), faded in over fi.
-// An icon part is keyed over the whole film instead (its own pose keys).
+// An icon or a display is keyed over the whole film instead (its own pose keys).
 //
 // Like the flat renderer, every frame is a pure function of t: the canvases
 // kept here are reused between frames and painted again on each one.
 
 import { createStage, viewFor, cameraAt } from './stage3d.js';
 import { DIAGRAMS } from './diagrams.js';
-import { PARTS } from './stage-parts.js';
+import { PARTS as NAMED } from './stage-parts.js';
+import { display } from './stage-display.js';
 import { studioColors, ramp, win } from './stage-paint.js';
 import { createKit } from './kit.js';
 import { layersOf, drawFilmLayer } from './layers.js';
 
+const PARTS = { ...NAMED, display };
 export const STAGE_KINDS = [...Object.keys(DIAGRAMS), ...Object.keys(PARTS)];
 
 // The services a part uses to draw a film inside the film, kept per kit.
@@ -81,16 +83,17 @@ function envFor(kit, doc, R) {
 export function stageFrame(doc, t, env) {
   const S = doc.stage;
   const planes = [];
-  for (const part of S.parts || []) {
+  (S.parts || []).forEach((part, index) => {
     const build = DIAGRAMS[part.kind] || PARTS[part.kind];
-    if (!build) continue;
-    if (part.kind === 'icon') { planes.push(...build(part, t, 1, env)); continue; }
+    if (!build) return;
+    // The icon and the display are keyed over the whole film by their own poses.
+    if (part.kind === 'icon' || part.kind === 'display') { planes.push(...build(part, t, 1, env, index)); return; }
     const fi = part.fi ?? 0.6, fo = part.fo ?? 0.6;
-    if (t < part.t0 - 0.01 || t > part.t1 + fo + 0.01) continue;
+    if (t < part.t0 - 0.01 || t > part.t1 + fo + 0.01) return;
     const a = win(t, part.t0, part.t1 + fo, fi, fo);
-    if (a <= 0.001) continue;
-    planes.push(...build(part, t, a, DIAGRAMS[part.kind] ? env.C : env));
-  }
+    if (a <= 0.001) return;
+    planes.push(...build(part, t, a, DIAGRAMS[part.kind] ? env.C : env, index));
+  });
   return { camera: cameraAt(S.camera, t), planes };
 }
 

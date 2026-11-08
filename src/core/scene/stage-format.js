@@ -11,7 +11,7 @@ import { EASE_NAMES } from '../engine/ease.js';
 import { ICON_NAMES } from '../engine/stage-icons.js';
 import { normalizeRelease } from '../audio/release.js';
 
-export const STAGE_PART_KINDS = ['open', 'name', 'icon', 'steps', 'split', 'hub', 'drawings', 'figures', 'ring', 'lift', 'end'];
+export const STAGE_PART_KINDS = ['open', 'name', 'icon', 'display', 'steps', 'split', 'hub', 'drawings', 'figures', 'ring', 'lift', 'end'];
 const LIMIT = { parts: 200, keys: 400, items: 9, films: 9 };
 
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -59,6 +59,24 @@ const KINDS = {
     at: Array.isArray(p.at) ? [0, 1, 2].map((i) => num(p.at[i], [960, 500, -260][i], -6000, 6000)) : [960, 500, -260],
     films: list(p.films, LIMIT.films).filter((f) => isObj(f) && isObj(f.doc)).map((f) => ({ name: text(f.name, 30), doc: X.film(f.doc) })),
   }),
+  display: (p, D, X) => {
+    const mark = (m) => ({ t: num(m.t, 0, 0, 36000), x: typeof m.x === 'number' ? num(m.x, 0, 0, 1) : null, y: typeof m.y === 'number' ? num(m.y, 0, 0, 1) : null, click: Boolean(m.click) });
+    const recordings = list(p.recordings, 12).filter((r) => isObj(r) && X.assets[slug(r.asset)]?.kind === 'video').map((r) => {
+      const t0 = num(r.t0, 0, 0, D);
+      return {
+        asset: slug(r.asset), t0, t1: num(r.t1, t0, t0, D), fi: num(r.fi, 0.6, 0, 5), fo: num(r.fo, 0.6, 0, 5),
+        map: list(r.map, 40).filter((k) => Array.isArray(k) && k.length >= 2).map(([a, b]) => [num(a, 0, -60, D + 60), num(b, 0, -60, 36000)]).sort((x, y) => x[0] - y[0]),
+        points: list(r.points, 400).filter(isObj).map(mark).sort((x, y) => x.t - y.t),
+      };
+    });
+    const pieces = list(p.pieces, 20).filter(isObj).map((q) => {
+      const t0 = num(q.t0, 0, 0, D);
+      const c = Array.isArray(q.crop) ? q.crop : [];
+      const fx = num(c[0], 0, 0, 1), fy = num(c[1], 0, 0, 1);
+      return { rec: Math.round(num(q.rec, 0, 0, 11)), t0, t1: num(q.t1, t0, t0, D), crop: [fx, fy, num(c[2], 1 - fx, 0.01, 1 - fx), num(c[3], 1 - fy, 0.01, 1 - fy)], grow: num(q.grow, 0.08, 0, 0.5) };
+    }).filter((q) => q.rec < recordings.length);
+    return { keys: poseKeys(p.keys, D, ['o', 'x', 'y', 'z', 'ry', 'rx']), recordings, pieces };
+  },
   lift: (p, D, X) => ({
     ft0: num(p.ft0, 0, 0, 3600),
     apart: Array.isArray(p.apart) ? [0, 1, 2, 3].map((i) => num(p.apart[i], 0, 0, D)) : [0, 0, 0, 0],
@@ -82,7 +100,7 @@ export function normalizeStage(input, X) {
       const base = { kind: p.kind, t0, t1: num(p.t1, t0, t0, D), fi: num(p.fi, 0.6, 0, 5), fo: num(p.fo, 0.6, 0, 5) };
       return { ...base, ...KINDS[p.kind](p, D, X) };
     })
-    .filter((p) => !(p.kind === 'lift' && !p.film) && !(p.kind === 'icon' && !p.asset));
+    .filter((p) => !(p.kind === 'lift' && !p.film) && !(p.kind === 'icon' && !p.asset) && !(p.kind === 'display' && !p.recordings.length));
   return { camera, parts };
 }
 

@@ -154,7 +154,14 @@ kit (`diagrams.js`) has steps on an arc with a line drawing under them, two
 cards turned toward each other, a chip with curves run to a row of tiles in
 the tiles' own depth, line drawings that draw themselves, and figures on
 tiles that stand up before their digits roll; every moment in one is bound
-to the time its word is said. The named parts (`stage-parts.js`) are the
+to the time its word is said. The display (`stage-display.js`) is the product
+itself: a recording on a screen that flies in and out of depth, the pointer
+gliding between the recording's marks with a ring on each click, and pieces
+of the same frame lifting off the screen toward the camera, never shown
+without their screen. A recording's map takes film time to clip time, at
+the recording's speed or faster, never slower, and holds its last frame
+while it fades (`recording.js`); the render host fetches exactly those
+frames from the clip, as it does for footage. The named parts (`stage-parts.js`) are the
 cold open, the name with its capitals spelled out, the product's icon as a
 chip with depth, a ring of one film in each look, the made film lifted off
 its screen as three layers (`layers.js`) that part in depth, and the end
@@ -165,7 +172,7 @@ checks and every export draw it the same way.
 
 `npm run check` runs every script in `scripts/checks/`: the scene format and
 its field guard, every composition in every look and frame shape, the film
-checks, the 3D stage's projection and drawing, a film on the stage and its diagrams, the release score and its mix, the director with a scripted model, the brief check, timing and
+checks, the 3D stage's projection and drawing, a film on the stage and its diagrams, recordings on the stage, the release score and its mix, the director with a scripted model, the brief check, timing and
 narration, the person's media, drawings, music, model requests and replies,
 the rule every model question ends with, settings, the store and editing,
 sound and file writing (MP4, MOV, WebM, ZIP), the worker's walls, the content policy and the bridge to the Rust side, the run

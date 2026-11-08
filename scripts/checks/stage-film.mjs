@@ -14,7 +14,7 @@ import { renderPlan } from '../../src/core/engine/render-plan.js';
 import { renderStage, stageFrame } from '../../src/core/engine/render-stage.js';
 import { activeScenes } from '../../src/core/engine/render-plan.js';
 import { createStage, viewFor, cameraRig, projectPoint, fullPose } from '../../src/core/engine/stage3d.js';
-import { coplanarPairs } from '../../src/core/engine/stage-rules.js';
+import { coplanarPairs, orphanPieces } from '../../src/core/engine/stage-rules.js';
 import { HUB, hubTileX, FIGURE } from '../../src/core/engine/diagrams.js';
 import { initialsMarks, ICON_DEPTH } from '../../src/core/engine/stage-parts.js';
 import { studioColors } from '../../src/core/engine/stage-paint.js';
@@ -34,6 +34,7 @@ const PARTS = [
   { kind: 'steps', t0: 9.6, t1: 15, fi: 0.4, fo: 0.7, items: [['Plan', 'one line', 'brief'], ['Sketch', 'boards', 'storyboard'], ['Shape', 'every frame', 'design'], ['Check', 'measured', 'check'], ['Ship', 'out', 'film']], at: [10.6, 11.2, 11.8, 12.4, 13.0] },
   { kind: 'split', t0: 15.6, t1: 20, fi: 0.4, fo: 0.7, left: { title: 'The hand', icon: 'chip', items: [['Words', 16.4], ['Pictures', 16.9]] }, right: { title: 'The tool', icon: 'window', items: [['Layout', 17.6], ['Timing', 18.0], ['Sound', 18.4]] }, arrow: 17.2 },
   { kind: 'hub', t0: 20.4, t1: 26, fi: 0.4, fo: 0.7, title: 'Inside', sub: 'made from source', tiles: [['A1', 'first'], ['B2', 'second'], ['C3', 'third'], ['D4', 'fourth']], at: [21.4, 22.0, 22.6, 23.2], note: 'Nothing else to add.', noteAt: 24 },
+  { kind: 'display', t0: 0, t1: 46, keys: [[24.4, { o: 0, x: 960, y: 560, z: -900, ry: 26, rx: 6 }], [25.6, { o: 1, x: 960, y: 540, z: 0, ry: -4, rx: 1.5 }], [26.8, { o: 1, x: 960, y: 540, z: 0, ry: -4, rx: 1.5 }], [27.6, { o: 0, x: 960, y: 600, z: -1500, ry: -24, rx: 4 }]], recordings: [{ asset: 'take', t0: 24.6, t1: 27, fi: 0.6, fo: 0.6, map: [[24.6, 1], [26, 3.8], [27, 4.8], [27.7, 4.8]], points: [{ t: 1.5, x: 0.2, y: 0.9, click: false }, { t: 3, x: 0.25, y: 0.97, click: true }, { t: 3.5, x: null, y: null, click: false }] }], pieces: [{ rec: 0, t0: 25.2, t1: 26.9, crop: [0.4, 0.05, 0.27, 0.44], grow: 0.08 }] },
   { kind: 'lift', t0: 26.4, t1: 30, fi: 0.5, fo: 0.7, ft0: 1, apart: [27, 28, 29, 29.6], pose: [[26.4, { x: 960, y: 540, z: 1, ry: 0, rx: 0, s: 0.6 }], [28, { x: 960, y: 540, z: -40, ry: 0, rx: 0, s: 0.62 }]], film: made },
   { kind: 'ring', t0: 30.4, t1: 33.4, fi: 0.8, fo: 0.8, at: [960, 500, -260], films: ['studio', 'paper', 'mono', 'vivid', 'tech'].map(look) },
   { kind: 'drawings', t0: 34, t1: 36.6, fi: 0.4, fo: 0.7, items: [{ at: 34.3, cap: 'On your desk', icon: 'computer' }, { at: 34.9, cap: 'No cloud', icon: 'no-server' }, { at: 35.5, cap: 'Locked', icon: 'lock' }] },
@@ -41,7 +42,7 @@ const PARTS = [
   { kind: 'end', t0: 41.4, t1: 46, fi: 0.5, fo: 0.1, name: 'Orbi SQ', line: 'Free, and yours.', footnote: 'An invented product, drawn for a check.' },
 ];
 const CAMERA = [[0, 960, 540, 1, 0, 0, 'inOutCubic'], [4.8, 960, 540, 1.03, -1.5, 0.5, 'inOutSine'], [9.6, 960, 540, 1, 0, 0, 'inOutCubic'], [26.4, 960, 540, 1.2, 4, -2, 'inOutCubic'], [46, 960, 540, 1.03, 0, 0, 'inOutSine']];
-const ASSETS = { mark: { kind: 'image', name: 'Invented mark', data: 'data:image/png;base64,iVBORw0KGgo=', width: 320, height: 320 } };
+const ASSETS = { mark: { kind: 'image', name: 'Invented mark', data: 'data:image/png;base64,iVBORw0KGgo=', width: 320, height: 320 }, take: { kind: 'video', name: 'Invented take', media: '0123456789abcdef01234567', duration: 30, width: 1920, height: 1200, audio: false } };
 const DOC = { title: 'Orbi SQ', aspect: '16:9', palette: { accent: '#3f7be9', accent2: '#d9b26a' }, assets: ASSETS, scenes: [{ id: 'whole', duration: 46, layers: [] }], stage: { camera: CAMERA, parts: PARTS } };
 
 section('The stage keeps every field of every part (the stage field guard)');
@@ -86,6 +87,10 @@ await claim('the film opens out of the studio\'s colour and closes back into it'
   assert.ok(veil(once.duration) > veil(20));
 });
 ok('the checks see every plane that carries words', (() => { const boxes = []; renderStage(kit, once, 12.5, R, { collect: boxes }); return boxes.some((b) => /Plan/.test(b.text)) && boxes.every((b) => b.kind === 'plane'); })());
+
+section('A lifted piece never outlives its screen');
+ok('no piece is drawn in any frame without its screen', frames.every((f) => orphanPieces(f.drawn).length === 0));
+ok('the screen and its piece are both drawn while the piece is up', frames.some((f) => f.drawn.some((d) => d.id.startsWith('piece-')) && f.drawn.some((d) => d.id.startsWith('display-'))));
 
 section('Nothing flickers');
 const flicker = frames.flatMap((f) => coplanarPairs(f.drawn).map((p) => `${f.t.toFixed(1)}: ${p[0]} and ${p[1]}`));

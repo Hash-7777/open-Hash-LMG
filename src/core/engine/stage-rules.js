@@ -41,3 +41,10 @@ export function quadOverlap(P, Q) {
   }
   return depth;
 }
+
+// Pieces drawn without their screen: a lifted part of the product must never
+// hang in the air after its screen has gone.
+export function orphanPieces(drawn) {
+  const ids = new Set(drawn.map((d) => d.id));
+  return drawn.filter((d) => d.plane?.parent && !ids.has(d.plane.parent)).map((d) => d.id);
+}
