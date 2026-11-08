@@ -71,7 +71,8 @@ src/
                          the person's own media and the compositions that show it,
                          the compiler, narration laid over the film as one script,
                          the film checks (timing, place, and what each frame shows)
-                         and when they look, the stage of a product film, editing helpers,
+                         and when they look, the stage, storyboard and planner of a product
+                         film, editing helpers,
                          templates and examples
     engine/              easing, keyframes, paths, the drawing kit, entrances and exits,
                          the carry transition, repeated layers, the odometer, caption phrases, the renderer,
@@ -80,7 +81,8 @@ src/
                          layers, and the renderer of a film that stands on the stage
     director/            the conversation, the person's brand files, the prompts and the rule every one ends with,
                          the pipeline, the drawing step, the composing step,
-                         the brief check, the code check, the scene helpers, the run record
+                         the brief check, the code check, the scene helpers, the run record,
+                         a product film's storyboard and the app's own facts
     research/            what to look up, a page read as text, the notes
     providers/           the model services, request and stream shapes, local model
                          sessions, model profiles, speech requests
@@ -90,7 +92,7 @@ src/
                          word timing, WAV
     export/              the MP4 and MOV writer, the WebM writer, the ZIP writer, H.264 sample shaping and MP3 frames,
                          export sizes
-    util/                colour and JSON helpers
+    util/                colour and JSON helpers, a product's accents read from its icon
   render/                the locked-down render worker and its host, footage frames,
                          encoder sinks, export
   platform/              the desktop app or a browser: films, files, media (media.js), voices, the
@@ -168,11 +170,26 @@ its screen as three layers (`layers.js`) that part in depth, and the end
 card. The renderer hands any film with a stage to it, so the preview, the
 checks and every export draw it the same way.
 
+The planner (`src/core/scene/product-film.js`) builds such a film from a
+storyboard of words, the spoken lines and the recordings' marks. The lines
+drive the timeline: each part lasts as long as its line needs, each part
+starts on the beat, every diagram moment is placed on the word that names
+it, the making plays faster than it was recorded and never slower, and two
+camera keys are never closer than 0.6 s. It writes the release score's
+sections, hits and the sounds on the recordings' clicks and typing, and one
+scene per spoken line. The storyboard (`product-board.js`) holds only words;
+a model writes it (`src/core/director/product-board.js`) against the
+product's facts, and every number, format and codec it puts on screen or in
+the voice must be in them: unsupported claims go back once, then are left
+out. A film about the app itself takes its facts from the code that makes
+them true (`app-facts.js`), and a film's two accents are read from the
+product's icon (`src/core/util/accents.js`).
+
 ## Checks
 
 `npm run check` runs every script in `scripts/checks/`: the scene format and
 its field guard, every composition in every look and frame shape, the film
-checks, the 3D stage's projection and drawing, a film on the stage and its diagrams, recordings on the stage, the release score and its mix, the director with a scripted model, the brief check, timing and
+checks, the 3D stage's projection and drawing, a film on the stage and its diagrams, recordings on the stage, the product-film planner, its storyboard and claim check, the release score and its mix, the director with a scripted model, the brief check, timing and
 narration, the person's media, drawings, music, model requests and replies,
 the rule every model question ends with, settings, the store and editing,
 sound and file writing (MP4, MOV, WebM, ZIP), the worker's walls, the content policy and the bridge to the Rust side, the run

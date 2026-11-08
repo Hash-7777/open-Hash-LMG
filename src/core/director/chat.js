@@ -20,7 +20,7 @@ import { docsForChat } from './brand.js';
 import { lookupNotes } from '../research/research.js';
 
 const LENGTHS = [15, 30, 45, 60, 90, 120];
-const MAX_QUESTIONS = 2;
+export const MAX_QUESTIONS = 2;
 const MAX_LOOKUPS = 3;
 const KEEP_TURNS = 12;
 

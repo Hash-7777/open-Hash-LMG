@@ -71,7 +71,9 @@ export function name(part, t, a, env) {
   const hl = ramp(t, t0 + 0.5, t0 + 1.4);
   const exp = part.expansion || [], tag = part.tagline || [];
   const marks = initialsMarks(part.name, exp.map(([w]) => w));
-  return [plane('name', 1400, 360, 2, { x: 960, y: 660, z: -120 * (1 - f), rx: 55 * (1 - f), o: a * f }, (g) => {
+  // It rests two gaps in front of the icon's stacked copies, which pass over
+  // its top edge while the icon moves up.
+  return [plane('name', 1400, 360, 2, { x: 960, y: 660, z: 2 * MIN_GAP - 120 * (1 - f), rx: 55 * (1 - f), o: a * f }, (g) => {
     words(g, part.name, 700, 90, { size: 112, weight: 600, color: C.ink, tracking: -2 / 112 });
     if (hl > 0) kitFor(g).rect(700 - 60 * hl, 170, 120 * hl, 2, { fill: C.accent, radius: 0 });
     spoken(g, exp, t, { x: 700, y: 232, size: 40, weight: 500, color: C.ink, gap: 0.35, mark: marks, accent: C.accent });
