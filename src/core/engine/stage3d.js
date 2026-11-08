@@ -317,7 +317,7 @@ export function createStage({ makeCanvas }) {
       }
       ctx.restore();
     }
-    return list.map(({ P, pose, corners, depth, grid }) => ({ id: P.id, pose, w: P.w, h: P.h, corners, depth, grid, kind: P.kind, text: P.text }));
+    return list.map(({ P, pose, corners, depth, grid }) => ({ id: P.id, pose, w: P.w, h: P.h, corners, depth, grid, plane: P }));
   }
 
   function fadeLay(ctx, pic, at, corners, o, view) {
@@ -352,27 +352,6 @@ export function roundRectPath(g, x, y, w, h, r) {
   g.lineTo(x, y + rr);
   g.arcTo(x, y, x + rr, y, rr);
   g.closePath();
-}
-
-// ---- rules the checks hold a stage to ----------------------------------------------
-
-// Pairs of drawn planes that face the same way, overlap on the frame and stand
-// closer than MIN_GAP along their facing: those flicker.
-export function coplanarPairs(drawn) {
-  const out = [];
-  const box = (c) => { const xs = c.map((p) => p[0]), ys = c.map((p) => p[1]); return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]; };
-  const same = (a, b) => ['rx', 'ry', 'rz'].every((k) => Math.abs((a[k] || 0) - (b[k] || 0)) < 0.5);
-  for (let i = 0; i < drawn.length; i++) for (let j = i + 1; j < drawn.length; j++) {
-    const A = drawn[i], B = drawn[j];
-    if (!same(A.pose, B.pose)) continue;
-    const a = box(A.corners), b = box(B.corners);
-    if (a[2] <= b[0] || b[2] <= a[0] || a[3] <= b[1] || b[3] <= a[1]) continue;
-    // Distance between the two centres along the shared facing.
-    const n = planeNormal(A.pose);
-    const d = (B.pose.x - A.pose.x) * n[0] + (B.pose.y - A.pose.y) * n[1] + (B.pose.z - A.pose.z) * n[2];
-    if (Math.abs(d) < MIN_GAP) out.push([A.id, B.id, Math.abs(d)]);
-  }
-  return out;
 }
 
 // The way a plane faces, in the world, as a unit vector (0, 0, 1 for a plane

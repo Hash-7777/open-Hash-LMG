@@ -13,6 +13,7 @@ import { resolveEase } from './ease.js';
 import { clamp, mix, noise } from './math.js';
 import { layerState } from './motion.js';
 import { captionPhrases } from './captions.js';
+import { renderStage } from './render-stage.js';
 
 // Which scenes are on screen at t, each with its transition state.
 export function activeScenes(doc, t) {
@@ -289,6 +290,7 @@ function drawCaptions(kit, doc, t) {
 
 // Draws the whole frame. opts.collect: an array to receive drawn boxes.
 export function renderPlan(kit, doc, t, opts = {}) {
+  if (doc.stage) { renderStage(kit, doc, t, { renderPlan, activeScenes }, opts); return; }
   const { W, H } = kit;
   const ctx = kit.ctx;
   if (opts.collect) kit.collectInto(opts.collect);

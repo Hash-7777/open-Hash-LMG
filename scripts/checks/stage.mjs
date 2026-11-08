@@ -9,8 +9,9 @@ import assert from 'node:assert/strict';
 import { fakeContext } from './lib/fake-canvas.mjs';
 import {
   createStage, viewFor, cameraRig, projectPlane, projectPoint, cameraAt, keysAt, gridFor,
-  affineFrom, coplanarPairs, planeNormal, fullPose, PERSPECTIVE,
+  affineFrom, planeNormal, fullPose, PERSPECTIVE,
 } from '../../src/core/engine/stage3d.js';
+import { coplanarPairs } from '../../src/core/engine/stage-rules.js';
 
 // ---- an independent projection: the 4 by 4 matrices a page would compose for
 // the same planes (a plane's transform about its centre inside a world element

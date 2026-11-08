@@ -186,8 +186,10 @@ src/
   index.html       the editor window
   css/             the editor's colours, type and layout, dark and light
   core/            pure modules, no page access: the checks run them in Node
-    scene/         format, normaliser, film checks, storyboard, direction, layouts, compiler, examples
-    engine/        easing, keyframes, paths, the drawing kit, motion, caption phrases, the renderer, the 3D stage
+    scene/         format, normaliser, film checks, storyboard, direction, layouts, compiler, examples,
+                   the stage of a product film
+    engine/        easing, keyframes, paths, the drawing kit, motion, caption phrases, the renderer,
+                   the 3D stage and the diagrams and parts of a product film
     director/      the conversation, prompts and the rule every one ends with, the plan-check-revise
                    loop, drawings, music, the brief check, the code check, the run record
     research/      what to look up, pages read as text, the notes

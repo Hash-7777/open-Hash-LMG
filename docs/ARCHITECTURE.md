@@ -71,11 +71,13 @@ src/
                          the person's own media and the compositions that show it,
                          the compiler, narration laid over the film as one script,
                          the film checks (timing, place, and what each frame shows)
-                         and when they look, editing helpers,
+                         and when they look, the stage of a product film, editing helpers,
                          templates and examples
     engine/              easing, keyframes, paths, the drawing kit, entrances and exits,
                          the carry transition, repeated layers, the odometer, caption phrases, the renderer,
-                         and the 3D stage: planes in a room filmed by one camera moving in depth
+                         and the 3D stage: planes in a room filmed by one camera moving in depth, the
+                         diagrams and named parts a product film is built from, a film split into its
+                         layers, and the renderer of a film that stands on the stage
     director/            the conversation, the person's brand files, the prompts and the rule every one ends with,
                          the pipeline, the drawing step, the composing step,
                          the brief check, the code check, the scene helpers, the run record
@@ -143,11 +145,26 @@ Planes are drawn far to near, a plane turned away is dropped, a fading plane
 fades as one picture, and a plane's soft shadow is cast from its projected
 outline. The camera's zoom is a dolly through depth, never a 2D scale.
 
+A product film stands on that stage. Its document keeps scenes, one per part
+of the film, for the timeline and the narration, and a `stage`
+(`src/core/scene/stage-format.js`): camera keys, and parts that each build
+their planes at any moment (`src/core/engine/render-stage.js`). The diagram
+kit (`diagrams.js`) has steps on an arc with a line drawing under them, two
+cards turned toward each other, a chip with curves run to a row of tiles in
+the tiles' own depth, line drawings that draw themselves, and figures on
+tiles that stand up before their digits roll; every moment in one is bound
+to the time its word is said. The named parts (`stage-parts.js`) are the
+cold open, the name with its capitals spelled out, the product's icon as a
+chip with depth, a ring of one film in each look, the made film lifted off
+its screen as three layers (`layers.js`) that part in depth, and the end
+card. The renderer hands any film with a stage to it, so the preview, the
+checks and every export draw it the same way.
+
 ## Checks
 
 `npm run check` runs every script in `scripts/checks/`: the scene format and
 its field guard, every composition in every look and frame shape, the film
-checks, the 3D stage's projection and drawing, the director with a scripted model, the brief check, timing and
+checks, the 3D stage's projection and drawing, a film on the stage and its diagrams, the director with a scripted model, the brief check, timing and
 narration, the person's media, drawings, music, model requests and replies,
 the rule every model question ends with, settings, the store and editing,
 sound and file writing (MP4, MOV, WebM, ZIP), the worker's walls, the content policy and the bridge to the Rust side, the run

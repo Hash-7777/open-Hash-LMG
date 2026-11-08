@@ -15,6 +15,7 @@
 // the lists below and into the field guard in scripts/checks/scene-normalize.mjs
 // in the same commit. Running it twice gives the same scene twice.
 
+import { normalizeStage } from './stage-format.js';
 import { cleanNotes } from '../audio/music-kit.js';
 import { normAssets } from './assets.js';
 import { isObj, num, affix, str, slug } from './values.js';
@@ -543,7 +544,8 @@ export function normalizeScene(input, opts = {}) {
     voice,
     assets,
   };
-  return { scene, notes: notes.list };
+  const stage = normalizeStage(doc.stage, { duration, assets, film: (f) => normalizeScene({ ...f, stage: undefined }).scene });
+  return { scene: stage ? { ...scene, stage } : scene, notes: notes.list };
 }
 
 // Where a scene sits in time, for the renderer and the timeline.

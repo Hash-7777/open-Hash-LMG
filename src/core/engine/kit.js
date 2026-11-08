@@ -643,6 +643,8 @@ export function createKit(ctx, options = {}) {
 
   const kit = {
     ctx, W, H, u, fps: options.fps || 60, bpm: options.bpm || 120, palette,
+    // what a stage uses to draw films inside the film
+    assets, makeCanvas,
     // time and numbers
     ease, resolveEase, clamp, mix, tween, keys, spring, progress, smoothstep, lerp: lerpValue, noise, noise2,
     rand, beat: (n) => n * beatLength(options.bpm || 120), beatLength: beatLength(options.bpm || 120),
