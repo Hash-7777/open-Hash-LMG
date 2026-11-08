@@ -39,6 +39,7 @@ function readableSpan(doc, si, L) {
 }
 
 // The moments the checks look at, and the first-frame preroll, live in samples.js.
+import { checkComposition, applyCompositionFix, COMPOSITION_FIXES } from './composition-checks.js';
 export { PREROLL, sampleTimes, motionTimes, beatTimes } from './samples.js';
 import { frameShift, preroll } from './samples.js';
 
@@ -136,12 +137,13 @@ export function lintScene(doc, opts = {}) {
           // A longer scene helps only a line that stays to its end; one that
           // leaves part way through goes back to the model.
           const toEnd = L.until >= S.duration - 0.011;
-          add('warn', 'read-time', `"${L.text.slice(0, 40)}" is readable for ${Math.max(0, span.length).toFixed(1)} s; ${words} words need about ${need2.toFixed(1)} s.${toEnd ? '' : ' It leaves before its scene ends: give it longer before the next line takes its place.'}`, { scene: S.id, layer: L.id }, toEnd ? { kind: 'extend-scene', scene: S.id, by: +(need2 - span.length).toFixed(2) } : null);
+          add('warn', 'read-time', `"${L.text.slice(0, 40)}" is readable for ${Math.max(0, span.length).toFixed(1)} s; ${words} words need about ${need2.toFixed(1)} s.${toEnd ? '' : ' It leaves before its scene ends: give it longer before the next line takes its place.'}`, { scene: S.id, layer: L.id }, { kind: toEnd ? 'extend-scene' : 'hold-line', scene: S.id, layer: L.id, by: +(need2 - span.length + (toEnd ? 0 : 0.05)).toFixed(2) });
         }
         if (words > 16) add('info', 'long-text', `"${L.text.slice(0, 40)}..." has ${words} words. Motion graphics read best at seven words or fewer on screen at once; split it across scenes.`, { scene: S.id, layer: L.id });
       }
     }
     checkMedia(doc, S, si, add);
+    checkComposition(doc, S, si, add);
   });
 
   // Narration is one script over the film (narration-timing.js): each line
@@ -298,6 +300,9 @@ export function autofix(doc, issues) {
       if (!hit) continue;
       hit.L.size = f.to;
       applied.push(`Made "${(hit.L.text || '').slice(0, 30)}" large enough to read on a phone.`);
+    } else if (COMPOSITION_FIXES.includes(f.kind)) {
+      const said = applyCompositionFix(d, f);
+      if (said) applied.push(said);
     } else if (f.kind === 'raise-contrast') {
       const hit = findLayer(d, f.layer);
       if (!hit) continue;

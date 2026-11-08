@@ -70,7 +70,7 @@ src/
                          the pictures and the compositions built around them,
                          the person's own media and the compositions that show it,
                          the compiler, narration laid over the film as one script,
-                         the film checks (timing, place, and what each frame shows)
+                         the film checks (timing, place, what each frame shows, and how a scene is put together)
                          and when they look, the stage, storyboard, planner and publish kit
                          of a product film, editing helpers,
                          templates and examples
@@ -220,7 +220,7 @@ one-frame stage film of its own, checked so no plane covers its words.
 
 `npm run check` runs every script in `scripts/checks/`: the scene format and
 its field guard, every composition in every look and frame shape, the film
-checks, the 3D stage's projection and drawing, a film on the stage and its diagrams, recordings on the stage, the product-film planner, its storyboard and claim check, chapters, description and thumbnail, the release score and its mix, the director with a scripted model, the brief check, timing and
+checks, the 3D stage's projection and drawing, a film on the stage and its diagrams, recordings on the stage, the product-film planner, its storyboard and claim check, chapters, description and thumbnail, the release score and its mix, rings kept off words and boxes never left empty, the director with a scripted model, the brief check, timing and
 narration, the person's media, drawings, music, model requests and replies,
 the rule every model question ends with, settings, the store and editing,
 sound and file writing (MP4, MOV, WebM, ZIP), the worker's walls, the content policy and the bridge to the Rust side, the run

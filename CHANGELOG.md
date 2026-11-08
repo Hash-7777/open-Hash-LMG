@@ -3,6 +3,19 @@
 What has changed in Hash LMG, newest first, grouped by what it does for the
 person making a film.
 
+## Unreleased
+
+### Making films
+- A line that leaves part way through its scene stays long enough to be
+  read: what comes after it in the scene waits, and the scene grows by as
+  much. Fitting a film to its length gives that time back too, instead of
+  taking it away again.
+- A large decorative ring no longer runs through the words: it grows or
+  shrinks until its outline passes clear of them, and is left out if it
+  cannot.
+- A box or bubble keeps what is in it until it leaves itself, so it never
+  stays on screen empty.
+
 ## 1.2.0, 9 November 2026: product films
 
 For macOS on Apple Silicon.

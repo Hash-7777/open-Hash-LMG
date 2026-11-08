@@ -16,7 +16,7 @@
 import { readingTime, wordCount, estimateSpeech } from './format.js';
 import { entranceSpan } from '../engine/motion.js';
 import { normalizeScene } from './normalize.js';
-import { resizeScene } from './edit.js';
+import { resizeScene, holdLine } from './edit.js';
 import { lintScene } from './lint.js';
 import { placeNarration } from './narration-timing.js';
 
@@ -74,18 +74,20 @@ export function shortest(doc, si) {
 // The checks' verdict on a film's timing: for each scene, the time it should
 // get back so its words can be read and its line said. Only lines that stay
 // to the end of their scene are helped by a longer scene.
+// A line that leaves part way through its scene is held instead (holds).
 function giveBack(scene) {
-  const back = new Map();
+  const back = new Map(), holds = [];
   for (const is of lintScene(scene, {})) {
     if (is.code !== 'read-time' || !is.fix?.by) continue;
     const S = scene.scenes.find((x) => x.id === is.scene);
     const L = S && allLayers(S.layers).find((x) => x.id === is.layer);
-    if (!L || L.until < S.duration - 0.011) continue;
+    if (!L) continue;
+    if (L.until < S.duration - 0.011) { holds.push(is.fix); continue; }
     back.set(is.scene, Math.max(back.get(is.scene) || 0, is.fix.by + 0.1));
   }
   const copy = JSON.parse(JSON.stringify(scene));
   for (const g of placeNarration(copy, lengthFor(copy)).grown) back.set(g.scene, Math.max(back.get(g.scene) || 0, g.by + 0.05));
-  return back;
+  return { back, holds };
 }
 
 // Returns { scene, cut, note }: the fitted film, the seconds taken out, and a
@@ -108,9 +110,10 @@ export function fitLength(doc, target) {
   });
   let scene = normalizeScene(d).scene;
   for (let round = 0; round < 3; round++) {
-    const back = giveBack(scene);
-    if (!back.size) break;
+    const { back, holds } = giveBack(scene);
+    if (!back.size && !holds.length) break;
     const e = JSON.parse(JSON.stringify(scene));
+    for (const h of holds) { const S = e.scenes.find((x) => x.id === h.scene), L = S && allLayers(S.layers).find((x) => x.id === h.layer); if (L) holdLine(e, S, L, h.by); }
     for (const [id, by] of back) {
       const i = e.scenes.findIndex((x) => x.id === id);
       if (i >= 0) resizeScene(e.scenes[i], Math.min(lengths[i], +(e.scenes[i].duration + by).toFixed(3)));

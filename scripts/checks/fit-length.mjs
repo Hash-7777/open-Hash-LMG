@@ -9,7 +9,7 @@ import { section, claim, done } from './lib/check.mjs';
 import { STORYBOARD } from './lib/fixtures.mjs';
 import { compileStoryboard } from '../../src/core/scene/compile.js';
 import { normalizeScene } from '../../src/core/scene/normalize.js';
-import { lintScene } from '../../src/core/scene/lint.js';
+import { lintScene, autofix } from '../../src/core/scene/lint.js';
 import { placeNarration } from '../../src/core/scene/narration-timing.js';
 import { fitLength, tighten, lengthAsked, FIT_TOLERANCE } from '../../src/core/scene/fit-length.js';
 
@@ -74,13 +74,18 @@ await claim('arrivals come sooner and the scene ends sooner; each move keeps its
 });
 
 section('Holding a scene longer only where it helps');
-await claim('a line that leaves part way through its scene is sent back, not fixed by a longer scene', () => {
+await claim('a line that leaves part way through its scene is held longer, what follows it moving later', () => {
   const doc = normalizeScene({ format: 'lmg.scene/1', aspect: '16:9', scenes: [{ id: 's', duration: 5, layers: [
     { id: 'early', type: 'text', text: 'Six words that leave too soon', at: 0.2, until: 1.6 },
     { id: 'late', type: 'text', text: 'Then this one stays', y: 0.7, at: 1.8 },
   ] }] }).scene;
   const hit = lintScene(doc, {}).find((i) => i.code === 'read-time' && i.layer === 'early');
-  assert.ok(hit && hit.fix === null && /leaves before its scene ends/.test(hit.message));
+  assert.ok(hit && hit.fix?.kind === 'hold-line' && /leaves before its scene ends/.test(hit.message));
+  const held = autofix(doc, [hit]).scene;
+  const [early, late] = held.scenes[0].layers;
+  assert.ok(early.until > 1.6 && late.at > 1.8 && Math.abs((late.at - 1.8) - (early.until - 1.6)) < 0.01, 'the next line waits as long as this one is held');
+  assert.ok(Math.abs(held.scenes[0].duration - (5 + early.until - 1.6)) < 0.01 && late.until === held.scenes[0].duration, 'the scene grows by as much, the last line still to its end');
+  assert.ok(!lintScene(held, {}).some((i) => i.code === 'read-time' && i.layer === 'early'), 'and the line is now readable');
   const short = normalizeScene({ format: 'lmg.scene/1', aspect: '16:9', scenes: [{ id: 's', duration: 1.5, layers: [{ id: 'all', type: 'text', text: 'Six words that need more time' }] }] }).scene;
   assert.equal(lintScene(short, {}).find((i) => i.code === 'read-time')?.fix?.kind, 'extend-scene');
 });

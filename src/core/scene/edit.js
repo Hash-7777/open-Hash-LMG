@@ -28,6 +28,25 @@ export function resizeScene(S, duration) {
   return S;
 }
 
+// Gives a line that leaves part way through its scene `by` seconds more:
+// what comes after it in the scene comes that much later, what runs to the
+// end still runs to the end, and the scene grows by as much. The line said
+// over the scene after that moment moves with it.
+export function holdLine(doc, S, L, by) {
+  const cut = (L.until ?? S.duration) - 0.25, old = S.duration;
+  const later = (v) => (Number.isFinite(v) && v >= cut ? +(v + by).toFixed(3) : v);
+  each(S.layers, (M) => {
+    const toEnd = (M.until ?? old) >= old - EPS;
+    if (M !== L) { M.at = later(M.at ?? 0); if (M.in && typeof M.in === 'object') M.in.at = later(M.in.at); }
+    M.until = toEnd ? +(old + by).toFixed(3) : M === L ? +(M.until + by).toFixed(3) : later(M.until);
+    if (M.out && typeof M.out === 'object' && Number.isFinite(M.out.at)) M.out.at = toEnd || M === L ? +(M.out.at + by).toFixed(3) : later(M.out.at);
+    for (const rows of Object.values(M.keys || {})) for (const row of rows) row[0] = later(row[0]);
+  });
+  for (const line of doc.voice?.lines || []) if (line.scene === S.id) line.at = later(line.at);
+  S.duration = +(old + by).toFixed(3);
+  return S;
+}
+
 // Staggers the entrances of a scene's layers: each layer that enters starts
 // `step` seconds after the one before, in the order chosen, from where the
 // earliest of them starts now. Layers with no entrance keep their time.
