@@ -3,7 +3,9 @@
 What has changed in Hash LMG, newest first, grouped by what it does for the
 person making a film.
 
-## Unreleased
+## 1.2.0, 9 November 2026: product films
+
+For macOS on Apple Silicon.
 
 ### Making films
 - Product films: New film now offers Product film, a short form for the
