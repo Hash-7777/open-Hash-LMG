@@ -3,7 +3,9 @@
 What has changed in Hash LMG, newest first, grouped by what it does for the
 person making a film.
 
-## Unreleased
+## 1.3.0, 9 November 2026: every frame whole
+
+For macOS on Apple Silicon.
 
 ### Making films
 - A line that leaves part way through its scene stays long enough to be

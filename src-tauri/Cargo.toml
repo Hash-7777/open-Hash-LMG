@@ -1,6 +1,6 @@
 [package]
 name = "hash-lmg"
-version = "1.2.0"
+version = "1.3.0"
 description = "Hash LMG: local motion graphics, made with local and cloud models"
 authors = ["Hash LMG"]
 license = "GPL-3.0-or-later"

@@ -20,7 +20,7 @@ made by a model on your laptop or any cloud model on your own key. No account, n
 <img alt="GPL v3" src="https://img.shields.io/badge/GPL%20v3-2d333b?style=flat-square">
 <img alt="macOS Apple Silicon" src="https://img.shields.io/badge/macOS%20Apple%20Silicon-2d333b?style=flat-square&logo=apple&logoColor=c9d1d9">
 <img alt="Built with Tauri v2" src="https://img.shields.io/badge/Tauri%20v2-2d333b?style=flat-square&logo=tauri&logoColor=c9d1d9">
-<img alt="Version 1.2.0" src="https://img.shields.io/badge/v1.2.0-2d333b?style=flat-square">
+<img alt="Version 1.3.0" src="https://img.shields.io/badge/v1.3.0-2d333b?style=flat-square">
 <img alt="Ollama, LM Studio, llama.cpp" src="https://img.shields.io/badge/Ollama%20%C2%B7%20LM%20Studio%20%C2%B7%20llama.cpp-2d333b?style=flat-square">
 <img alt="MP4, MOV, WebM, GIF" src="https://img.shields.io/badge/MP4%20%C2%B7%20MOV%20%C2%B7%20WebM%20%C2%B7%20GIF-2d333b?style=flat-square">
 
@@ -41,7 +41,7 @@ made by a model on your laptop or any cloud model on your own key. No account, n
 | **It looks things up, with your yes** | Ask the director to look something up, or let it ask: it searches the whole web with no key and reads the pages it finds, and you see every search and every page first. |
 | **Nothing leaves without you** | No account and no server of ours. With a local model every part of a film is made on your computer; a cloud model is asked only when you choose one, on your own key. |
 
-> **Version 1.2.0: product films.** For macOS on Apple Silicon. [Download it](https://github.com/Hash-7777/open-Hash-LMG/releases/tag/v1.2.0), or run it from source on any system.
+> **Version 1.3.0: every frame whole.** For macOS on Apple Silicon. [Download it](https://github.com/Hash-7777/open-Hash-LMG/releases/tag/v1.3.0), or run it from source on any system.
 
 > Type *"a 30-second launch film for my desk lamp, calm, with a voice"*. Hash LMG writes the storyboard, draws the lamp, lays out every frame, composes music for that one film, speaks the lines, checks its own stills, and has it ready to export.
 
@@ -135,7 +135,7 @@ The voices are not part of the app: it runs the ones you install. Kokoro's code 
 
 ## Install
 
-Download `Hash-LMG_1.2.0_aarch64.dmg` from the [release](https://github.com/Hash-7777/open-Hash-LMG/releases/tag/v1.2.0), open it and drag Hash LMG into Applications. It is for Macs with Apple Silicon, on macOS 11 or later.
+Download `Hash-LMG_1.3.0_aarch64.dmg` from the [release](https://github.com/Hash-7777/open-Hash-LMG/releases/tag/v1.3.0), open it and drag Hash LMG into Applications. It is for Macs with Apple Silicon, on macOS 11 or later.
 
 The app is not signed by Apple yet, so the first time macOS says it cannot check it. Open it once this way: in Applications, Control-click Hash LMG and choose **Open**, then **Open** again. If macOS still refuses, open **System Settings**, **Privacy & Security**, and choose **Open Anyway** beside Hash LMG. Or, in Terminal:
 
