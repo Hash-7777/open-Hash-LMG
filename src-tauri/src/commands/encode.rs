@@ -17,9 +17,9 @@ use std::sync::Mutex;
 
 use openh264::encoder::{
     BitRate, Encoder, EncoderConfig, FrameRate, IntraFramePeriod, RateControlMode, SpsPpsStrategy,
-    UsageType,
+    UsageType, VuiConfig,
 };
-use openh264::formats::{RgbaSliceU8, YUVBuffer};
+use openh264::formats::YUVBuffer;
 use openh264::OpenH264API;
 use tauri::ipc::{InvokeBody, Request, Response};
 use tauri::State;
@@ -41,7 +41,10 @@ enum Session {
         enc: gif::Encoder<Vec<u8>>,
         width: u16,
         height: u16,
-        delay: u16,
+        // Frames written so far, and the frames a second: each frame's delay
+        // is what keeps the running total on the film's own clock.
+        frames: u32,
+        fps: f32,
     },
 }
 
@@ -89,7 +92,10 @@ pub fn h264_encoder(
         .usage_type(UsageType::CameraVideoRealTime)
         // Parameter sets with every key frame, so the stream can start anywhere.
         .sps_pps_strategy(SpsPpsStrategy::ConstantId)
-        .intra_frame_period(IntraFramePeriod::from_num_frames(keyint.clamp(1, 600)));
+        .intra_frame_period(IntraFramePeriod::from_num_frames(keyint.clamp(1, 600)))
+        // The stream says its colours are BT.709, limited range, as HD video
+        // is, and as the pixels are converted (av1::to_yuv420).
+        .vui(VuiConfig::bt709());
     Encoder::with_api_config(OpenH264API::from_source(), config)
         .map_err(|e| format!("The video encoder could not start: {e}"))
 }
@@ -107,7 +113,12 @@ pub fn h264_frame(
     if rgba.len() != (width * height * 4) as usize {
         return Err("The frame is not the size the export began with.".into());
     }
-    yuv.read_rgba8(RgbaSliceU8::new(rgba, (width as usize, height as usize)));
+    // BT.709, as the stream and the file both say; the same conversion as AV1.
+    let (y, u, v) = super::av1::to_yuv420(rgba, width as usize, height as usize);
+    let mut planes = y;
+    planes.extend_from_slice(&u);
+    planes.extend_from_slice(&v);
+    *yuv = YUVBuffer::from_vec(planes, width as usize, height as usize);
     if key {
         enc.force_intra_frame();
     }
@@ -127,6 +138,15 @@ fn header(request: &Request<'_>, name: &str) -> Option<String> {
         .get(name)
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string())
+}
+
+/// A GIF frame's delay in hundredths of a second, the only unit a GIF has:
+/// the difference between where this frame and the next start on the film's
+/// clock, rounded, so the delays add up to the film's length instead of each
+/// rounding the same way. Never under two, which players would slow down.
+pub fn gif_delay(frame: u32, fps: f32) -> u16 {
+    let at = |n: u32| (n as f64 * 100.0 / fps as f64).round();
+    (at(frame + 1) - at(frame)).max(2.0) as u16
 }
 
 /// Starts an encoding session. kind: "h264", "av1" or "gif".
@@ -150,7 +170,9 @@ pub fn encoder_open(
                 height,
             }
         }
-        "av1" => Session::Av1(Box::new(super::av1::Av1::open(width, height, fps, bitrate, keyint)?)),
+        "av1" => Session::Av1(Box::new(super::av1::Av1::open(
+            width, height, fps, bitrate, keyint,
+        )?)),
         "gif" => {
             check_size(width, height)?;
             let (w, h) = (width as u16, height as u16);
@@ -158,13 +180,12 @@ pub fn encoder_open(
                 .map_err(|e| format!("The GIF encoder could not start: {e}"))?;
             enc.set_repeat(gif::Repeat::Infinite)
                 .map_err(|e| e.to_string())?;
-            // GIF times frames in hundredths of a second.
-            let delay = (100.0 / fps.clamp(1.0, 50.0)).round().max(2.0) as u16;
             Session::Gif {
                 enc,
                 width: w,
                 height: h,
-                delay,
+                frames: 0,
+                fps: fps.clamp(1.0, 50.0),
             }
         }
         _ => return Err("The app has no encoder of that kind.".into()),
@@ -211,7 +232,8 @@ pub fn encoder_frame(
             enc,
             width,
             height,
-            delay,
+            frames,
+            fps,
         } => {
             if rgba.len() != (*width as usize) * (*height as usize) * 4 {
                 return Err("The frame is not the size the export began with.".into());
@@ -219,7 +241,8 @@ pub fn encoder_frame(
             let mut pixels = rgba.to_vec();
             // Speed 10 of 30: a good palette at a pace a long film can keep.
             let mut frame = gif::Frame::from_rgba_speed(*width, *height, &mut pixels, 10);
-            frame.delay = *delay;
+            frame.delay = gif_delay(*frames, *fps);
+            *frames += 1;
             enc.write_frame(&frame)
                 .map_err(|e| format!("The GIF encoder failed: {e}"))?;
             Ok(Response::new(Vec::new()))
@@ -291,84 +314,5 @@ pub fn mp3_encode(request: Request<'_>) -> Result<Response, String> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use openh264::decoder::Decoder;
-
-    fn gradient(width: u32, height: u32, shift: u32) -> Vec<u8> {
-        let mut v = Vec::with_capacity((width * height * 4) as usize);
-        for y in 0..height {
-            for x in 0..width {
-                v.extend_from_slice(&[((x + shift) % 256) as u8, (y % 256) as u8, 128, 255]);
-            }
-        }
-        v
-    }
-
-    #[test]
-    fn sizes_outside_the_encoder_are_refused() {
-        assert!(check_size(1920, 1080).is_ok());
-        assert!(check_size(3840, 2160).is_ok());
-        assert!(check_size(1921, 1080).is_err());
-        assert!(check_size(8, 8).is_err());
-        assert!(check_size(8192, 4320).is_err());
-    }
-
-    #[test]
-    fn h264_frames_decode_back_to_pictures_of_the_same_size() {
-        let (w, h) = (320, 180);
-        let mut enc = h264_encoder(w, h, 30.0, 2_000_000, 30).expect("encoder");
-        let mut yuv = YUVBuffer::new(w as usize, h as usize);
-        let mut dec = Decoder::new().expect("decoder");
-        let mut keys = 0;
-        let mut pictures = 0;
-        for i in 0..12 {
-            let (bytes, key) = h264_frame(&mut enc, &mut yuv, w, h, &gradient(w, h, i * 4), i == 6)
-                .expect("frame");
-            assert!(!bytes.is_empty());
-            if key {
-                keys += 1;
-            }
-            if let Ok(Some(picture)) = dec.decode(&bytes) {
-                use openh264::formats::YUVSource;
-                assert_eq!(picture.dimensions(), (w as usize, h as usize));
-                pictures += 1;
-            }
-        }
-        assert!(
-            keys >= 2,
-            "the first frame and the forced one are key frames"
-        );
-        assert_eq!(pictures, 12);
-    }
-
-    #[test]
-    fn a_frame_of_the_wrong_size_is_refused() {
-        let mut enc = h264_encoder(64, 64, 30.0, 1_000_000, 30).expect("encoder");
-        let mut yuv = YUVBuffer::new(64, 64);
-        assert!(h264_frame(&mut enc, &mut yuv, 64, 64, &[0u8; 10], false).is_err());
-    }
-
-    #[test]
-    fn gif_frames_make_a_gif_file() {
-        let mut enc = gif::Encoder::new(Vec::new(), 32, 16, &[]).expect("gif");
-        for i in 0..3 {
-            let mut px = gradient(32, 16, i * 20);
-            enc.write_frame(&gif::Frame::from_rgba_speed(32, 16, &mut px, 10))
-                .expect("frame");
-        }
-        let bytes = enc.into_inner().expect("finish");
-        assert_eq!(&bytes[..6], b"GIF89a");
-    }
-
-    #[test]
-    fn sound_becomes_mp3_frames() {
-        let n = 48_000;
-        let left: Vec<f32> = (0..n).map(|i| (i as f32 * 0.05).sin() * 0.3).collect();
-        let bytes = mp3(&left, &left, 48_000).expect("mp3");
-        assert!(bytes.len() > 1000);
-        // Every MP3 frame starts with eleven set bits.
-        assert_eq!(bytes[0], 0xFF);
-        assert_eq!(bytes[1] & 0xE0, 0xE0);
-    }
-}
+#[path = "encode_tests.rs"]
+mod tests;

@@ -137,6 +137,15 @@ the H.264 stream into samples and writes MP4 and MOV itself
 (`src/core/export/webm.js`). Sound goes into MP4 and MOV as AAC where the
 web view or the system can encode it, otherwise as MP3.
 
+MP4 and MOV follow what video sites ask of an upload: the index first, no
+edit lists, a closed key frame every half second, 4:2:0, and BT.709 colour,
+converted that way (`av1.rs` `to_yuv420`, used by both video encoders) and
+labelled so in the file and in the H.264 stream's own parameters. With no
+edit list to skip a sound encoder's start-up delay, the sound is moved that
+much earlier before encoding (`src/core/export/start-delay.js`), and AAC
+carries the gapless-playback note players on Apple systems read, so picture
+and sound start together on players of either kind.
+
 The 3D stage (`src/core/engine/stage3d.js`) draws flat planes standing in a
 room with plain 2D canvas calls, the kind the worker draws with. Each plane's
 corners, and a grid inside it, are taken through the plane's pose and the

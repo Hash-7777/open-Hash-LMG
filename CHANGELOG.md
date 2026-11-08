@@ -16,6 +16,18 @@ person making a film.
   or timed as if spoken. The form is kept with the film, so it can be
   changed and made again. Screen recordings of the product come later.
 
+### Export
+- MP4 and MOV are written as video sites ask for uploads: no edit lists, a
+  clean key frame every half second, and colours converted and labelled as
+  BT.709, the HD standard, in the file and in the video stream itself, so
+  players and sites decode them as they were made.
+- Picture and sound start together with no edit list: each sound encoder's
+  start-up delay is taken out before encoding, and AAC sound carries the
+  gapless-playback note that players on Apple systems read.
+- Where a system has no AAC encoder, the video's MP3 sound is in sync, and
+  the export says that Apple devices play such a file silent.
+- GIF frames keep the film's own clock, so a GIF lasts as long as its film.
+
 ### Sound and voice
 - A new score, Release: one calm, bright piece for a film narrated from
   start to end, built from pure tones, with a motif of the film's own that

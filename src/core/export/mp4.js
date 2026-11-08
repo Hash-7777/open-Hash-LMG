@@ -7,9 +7,12 @@
 // keeps the tables short and the layout easy to check.
 //
 // What it writes, top level: ftyp, moov, mdat. Inside moov: mvhd, then one trak
-// per stream with tkhd, an edit list where a stream must skip leading samples
-// (B-frame reordering, the AAC encoder's priming), mdhd, hdlr and the sample
-// tables (stsd, stts, ctts, stss, stsc, stsz, stco or co64).
+// per stream with tkhd, mdhd, hdlr and the sample tables (stsd, stts, ctts,
+// stss, stsc, stsz, stco or co64). It writes no edit lists: upload services
+// process files without them most reliably. Reordered frames are placed by
+// signed presentation offsets (ctts version 1), and a sound encoder's start-up
+// delay is taken out before encoding (src/render/export.js), so every stream
+// starts at zero as it is.
 
 const enc = new TextEncoder();
 
@@ -79,10 +82,17 @@ function tkhd(id, durationMs, width, height, audio) {
   });
 }
 
-// An edit list that starts presentation `skip` media units in, for the whole
-// presented duration.
-function edts(durationMs, skip) {
-  return box('edts', full('elst', 0, 0, (w) => { w.u32(1).u32(durationMs).i32(skip).u32(0x00010000); }));
+// The gapless-playback note (iTunSMPB) under moov/udta/meta/ilst: the delay
+// at the start of the sound (none: it was taken out before encoding), the
+// padding at its end, and how many samples it really holds.
+function gaplessNote(padding, samples) {
+  const hex = (v, n) => Math.max(0, Math.round(v)).toString(16).toUpperCase().padStart(n, '0');
+  const text = ` 00000000 ${hex(0, 8)} ${hex(padding, 8)} ${hex(samples, 16)} 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000`;
+  const data = new Writer();
+  data.u32(1).u32(0).str(text);
+  const item = box('----', full('mean', 0, 0, (w) => { w.str('com.apple.iTunes'); }), full('name', 0, 0, (w) => { w.str('iTunSMPB'); }), box('data', data.out()));
+  const handler = full('hdlr', 0, 0, (w) => { w.u32(0).str('mdir').str('appl').zeros(8).u8(0); });
+  return box('udta', full('meta', 0, 0, (w) => { w.bytes(handler).bytes(box('ilst', item)); }));
 }
 
 function mdhd(timescale, duration) {
@@ -180,7 +190,8 @@ function stbl(entry, samples, chunkOffset, { syncSamples = null, ctts = null } =
 }
 
 // video: { width, height, fps, avcC (Uint8Array), packets: [{ data, key, pts (seconds) }] in decode order }
-// audio: { sampleRate, channels, asc (Uint8Array), priming (samples), bitrate, packets: [{ data }], codec: 'aac' | 'mp3' } or null
+// audio: { sampleRate, channels, asc (Uint8Array), bitrate, packets: [{ data }], codec: 'aac' | 'mp3', samples } or null,
+//        its encoder's start-up delay already taken out of the sound
 // Returns the file as one Uint8Array.
 export function muxMp4({ video, audio = null, mov = false }) {
   const VTS = 90000; // divides evenly by 24, 25, 30, 50 and 60 frames a second
@@ -188,9 +199,7 @@ export function muxMp4({ video, audio = null, mov = false }) {
   const vSamples = video.packets.map((p) => ({ data: p.data, duration: delta }));
   const vCount = vSamples.length;
   // Presentation offsets: decode time i * delta against each packet's own time.
-  const offsets = video.packets.map((p, i) => Math.round(p.pts * VTS) - i * delta);
-  const shift = Math.max(0, -Math.min(0, ...offsets));
-  const ctts = offsets.map((o) => o + shift);
+  const ctts = video.packets.map((p, i) => Math.round(p.pts * VTS) - i * delta);
   const durationMs = Math.round((vCount / video.fps) * 1000);
   const sync = [];
   video.packets.forEach((p, i) => { if (p.key) sync.push(i + 1); });
@@ -200,7 +209,7 @@ export function muxMp4({ video, audio = null, mov = false }) {
   const frameLen = audio?.codec === 'mp3' ? (audio.sampleRate >= 32000 ? 1152 : 576) : 1024;
   if (audio && audio.packets.length) {
     aSamples = audio.packets.map((p) => ({ data: p.data, duration: frameLen }));
-    aDurMs = Math.round(((aSamples.length * frameLen - (audio.priming || 0)) / audio.sampleRate) * 1000);
+    aDurMs = Math.round(((aSamples.length * frameLen) / audio.sampleRate) * 1000);
   }
 
   const vBytes = vSamples.reduce((n, s) => n + s.data.length, 0);
@@ -211,7 +220,6 @@ export function muxMp4({ video, audio = null, mov = false }) {
   const build = (vOff, aOff) => {
     const vTrak = box('trak',
       tkhd(1, durationMs, video.width, video.height, false),
-      shift ? edts(durationMs, shift) : null,
       box('mdia',
         mdhd(VTS, vCount * delta),
         hdlr(false),
@@ -223,7 +231,6 @@ export function muxMp4({ video, audio = null, mov = false }) {
     if (aSamples) {
       aTrak = box('trak',
         tkhd(2, Math.min(aDurMs, durationMs), 0, 0, true),
-        audio.priming ? edts(Math.min(aDurMs, durationMs), audio.priming) : null,
         box('mdia',
           mdhd(audio.sampleRate, aSamples.length * frameLen),
           hdlr(true),
@@ -232,7 +239,10 @@ export function muxMp4({ video, audio = null, mov = false }) {
             dinf(),
             stbl(mp4a(audio.channels, audio.sampleRate, audio.asc, audio.bitrate || 192000, audio.codec, mov), aSamples, aOff))));
     }
-    return box('moov', mvhd(durationMs, aSamples ? 3 : 2), vTrak, aTrak);
+    // AAC carries the gapless-playback note, so players that otherwise assume
+    // an encoder delay of their own know there is none left to skip.
+    const note = aSamples && audio.codec !== 'mp3' && audio.samples ? gaplessNote(aSamples.length * frameLen - audio.samples, audio.samples) : null;
+    return box('moov', mvhd(durationMs, aSamples ? 3 : 2), vTrak, aTrak, note);
   };
 
   const head = ftyp(mov);

@@ -4,7 +4,7 @@
 // for them, with the index before the media so a film starts playing at once.
 
 import assert from 'node:assert/strict';
-import { section, claim, done } from './lib/check.mjs';
+import { section, claim, ok, done } from './lib/check.mjs';
 import { makeScore, scorePlan } from '../../src/core/audio/score.js';
 import { integratedLufs, truePeakDb } from '../../src/core/audio/master.js';
 import { encodeWav, decodeWav } from '../../src/core/audio/wav.js';
@@ -75,19 +75,29 @@ await claim('a WAV reads back as it was written', () => {
   assert.equal(back.sampleRate, 48000); assert.ok(Math.abs(back.channels[0][100] - L[100]) < 1e-3);
 });
 
+section('An encoder\'s start-up delay');
+{
+  const { ahead, AAC_SYSTEM_DELAY } = await import('../../src/core/export/start-delay.js');
+  const L = Float32Array.from({ length: 5000 }, (_, i) => i), moved = ahead({ left: L, right: L, sampleRate: 48000 }, AAC_SYSTEM_DELAY);
+  ok('the sound moves earlier by the delay', moved.left[0] === AAC_SYSTEM_DELAY && moved.right[100] === AAC_SYSTEM_DELAY + 100);
+  ok('and keeps its length, ending in silence', moved.left.length === L.length && moved.left[L.length - 1] === 0);
+  ok('no delay leaves it as it is', ahead({ left: L, right: L }, 0).left === L);
+}
+
 section('The MP4 and MOV writer');
 const fakeVideo = { width: 1920, height: 1080, fps: 60, avcC: new Uint8Array([1, 0x64, 0, 0x28, 0xff, 0xe1, 0, 0]), packets: Array.from({ length: 120 }, (_, i) => ({ data: new Uint8Array([0, 0, 0, 2, 9, i & 255]), key: i % 60 === 0, pts: i / 60 })) };
 const adts = (() => { const frames = []; for (let i = 0; i < 100; i++) { const len = 7 + 4; const f = new Uint8Array(len); f[0] = 0xff; f[1] = 0xf1; f[2] = 0x4c; f[3] = 0x80 | ((len >> 11) & 3); f[4] = (len >> 3) & 0xff; f[5] = ((len & 7) << 5) | 0x1f; f[6] = 0xfc; frames.push(f); } const out = new Uint8Array(frames.reduce((n, f) => n + f.length, 0)); let p = 0; for (const f of frames) { out.set(f, p); p += f.length; } return out; })();
-const audio = { sampleRate: 48000, channels: 2, asc: aacConfig(48000, 2), priming: 2112, bitrate: 192000, packets: adtsFrames(adts).map((data) => ({ data })) };
+const audio = { sampleRate: 48000, channels: 2, asc: aacConfig(48000, 2), bitrate: 192000, packets: adtsFrames(adts).map((data) => ({ data })) };
 for (const mov of [false, true]) {
-  await claim(`${mov ? 'MOV' : 'MP4'}: ftyp, then moov, then mdat`, () => {
+  await claim(`${mov ? 'MOV' : 'MP4'}: ftyp, then moov, then mdat, and no edit lists`, () => {
     const file = muxMp4({ video: fakeVideo, audio, mov });
     const top = readBoxes(file).map((b) => b.type);
     assert.deepEqual(top, ['ftyp', 'moov', 'mdat']);
     const moov = readBoxes(file).find((b) => b.type === 'moov');
     const traks = moov.children.filter((b) => b.type === 'trak');
     assert.equal(traks.length, 2);
-    assert.ok(traks[1].children.some((b) => b.type === 'edts'), 'the sound skips its encoder priming with an edit list');
+    // Upload services process files without edit lists most reliably.
+    assert.ok(traks.every((t) => !t.children.some((b) => b.type === 'edts')), 'no edit list in any track');
   });
 }
 // The sound's sample entry: the ISO form in an MP4, the QuickTime form in a
@@ -146,7 +156,7 @@ await claim('frames are split by their headers', () => {
   assert.equal(frames.length, 3); assert.equal(frames[0].data.length, 384); assert.equal(frames[0].rate, 48000);
 });
 await claim('an MP4 with MP3 sound names it as MP3 and times its frames of 1152', () => {
-  const file = muxMp4({ video: fakeVideo, audio: { codec: 'mp3', sampleRate: 48000, channels: 2, asc: null, priming: 0, bitrate: 128000, packets: mp3Frames(mp3).map((f) => ({ data: f.data })) } });
+  const file = muxMp4({ video: fakeVideo, audio: { codec: 'mp3', sampleRate: 48000, channels: 2, asc: null, bitrate: 128000, packets: mp3Frames(mp3).map((f) => ({ data: f.data })) } });
   const at = (bytes, tag) => { for (let i = 0; i < bytes.length - 4; i++) if (String.fromCharCode(...bytes.subarray(i, i + 4)) === tag) return i; return -1; };
   const esds = at(file, 'esds');
   assert.ok(esds > 0);

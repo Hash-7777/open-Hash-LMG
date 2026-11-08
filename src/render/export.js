@@ -12,6 +12,7 @@
 // and the person is told so.
 
 import { muxMp4, aacConfig, adtsFrames } from '../core/export/mp4.js';
+import { ahead, AAC_SYSTEM_DELAY, MP3_DELAY } from '../core/export/start-delay.js';
 import { mp3Frames } from '../core/export/h264.js';
 import { videoSink, gifSink, av1Sink } from './encoders.js';
 import { muxWebm } from '../core/export/webm.js';
@@ -73,19 +74,25 @@ async function encodeAudioWebCodecs(left, right, sampleRate) {
 // a silent film when none of them can.
 async function encodeSound(st, encodeAacNative, notes) {
   let enc = await encodeAudioWebCodecs(st.left, st.right, st.sampleRate);
+  // The web view's encoder says its delay only once it has run; run it again
+  // on the sound moved by that much.
+  if (enc && enc.priming) { const s2 = ahead(st, enc.priming); enc = await encodeAudioWebCodecs(s2.left, s2.right, s2.sampleRate); }
   if (!enc && encodeAacNative) {
     try {
-      const adts = await encodeAacNative(encodeWav(st.left, st.right, st.sampleRate));
-      // The system's AAC encoder primes with 2112 samples, which the edit list skips.
-      if (adts && adts.length) enc = { packets: adtsFrames(adts).map((data) => ({ data })), priming: 2112 };
+      const s2 = ahead(st, AAC_SYSTEM_DELAY);
+      const adts = await encodeAacNative(encodeWav(s2.left, s2.right, s2.sampleRate));
+      if (adts && adts.length) enc = { packets: adtsFrames(adts).map((data) => ({ data })) };
     } catch (err) { notes.push(`The system's sound encoder failed: ${err.message || err}`); }
   }
-  if (enc && enc.packets.length) return { audio: { codec: 'aac', sampleRate: st.sampleRate, channels: 2, asc: aacConfig(st.sampleRate, 2), priming: enc.priming, bitrate: 192000, packets: enc.packets } };
+  if (enc && enc.packets.length) return { audio: { codec: 'aac', sampleRate: st.sampleRate, channels: 2, samples: st.left.length, asc: aacConfig(st.sampleRate, 2), bitrate: 192000, packets: enc.packets } };
   if (nativeEncoder.available) {
     try {
-      const frames = mp3Frames(await nativeEncoder.mp3(st.left, st.right, st.sampleRate));
-      // The MP3 encoder's own delay, skipped by the edit list.
-      if (frames.length) return { audio: { codec: 'mp3', sampleRate: st.sampleRate, channels: 2, asc: null, priming: 1105, bitrate: 192000, packets: frames.map((f) => ({ data: f.data })) } };
+      const s2 = ahead(st, MP3_DELAY);
+      const frames = mp3Frames(await nativeEncoder.mp3(s2.left, s2.right, s2.sampleRate));
+      if (frames.length) {
+        notes.push('This system has no AAC sound encoder, so the sound is MP3 inside the video. Video sites, browsers and most players read it; Apple devices play it silent. Export from macOS for a file every device plays.');
+        return { audio: { codec: 'mp3', sampleRate: st.sampleRate, channels: 2, asc: null, bitrate: 192000, packets: frames.map((f) => ({ data: f.data })) } };
+      }
     } catch (err) { notes.push(`The app's sound encoder failed: ${err.message || err}`); }
   }
   notes.push('The sound could not be encoded into the video here, so the film is silent and its soundtrack is saved beside it as a WAV file.');
@@ -124,7 +131,9 @@ export async function renderVideo(opts) {
   const fps = opts.fps || scene.fps;
   const width = opts.width || scene.width, height = opts.height || scene.height;
   const total = Math.max(1, Math.round(scene.duration * fps));
-  const gop = Math.round(fps * 2);
+  // A key frame every half second, each one a clean start (closed), as upload
+  // services ask of an MP4; a WebM keeps one a second.
+  const gop = Math.max(1, Math.round(fps / 2));
   const blur = opts.blur && opts.blur.samples > 1 ? opts.blur : null;
   const notes = [];
   if (format !== 'gif' && !canEncodeVideo()) throw new Error('There is no video encoder here. Export from the desktop app, which carries its own.');
