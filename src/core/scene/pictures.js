@@ -111,6 +111,10 @@ export function normalizeDrawing(raw) {
   const lit = polylines(strokesAndShapes(raw.accent, { frames: true }));
   const all = [...main, ...lit];
   if (all.length < 2 && !(all.length === 1 && all[0].length >= 8)) return { picture: null, why: 'too few strokes' };
+  // Its own outline must carry the thing: three shapes at least.
+  // Two plain shapes (a box and a bar) read as anything at the size a film
+  // shows a drawing, and the accent alone cannot make up for it.
+  if (Array.isArray(raw.shapes) && main.length < 3 && !(raw.strokes ?? raw.paths ?? raw.d)) return { picture: null, why: 'too plain to read' };
   if (all.length > MAX_STROKES) return { picture: null, why: 'too many strokes' };
   if (all.reduce((n, p) => n + p.length, 0) > MAX_POINTS) return { picture: null, why: 'too many points' };
   const xs = all.flatMap((p) => p.map((q) => q[0]));

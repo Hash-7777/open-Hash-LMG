@@ -75,7 +75,10 @@ export function createKit(ctx, options = {}) {
   function layoutText(text, o = {}) {
     const size = o.size || 48;
     const font = fontString(o);
-    const track = (o.tracking || 0) * size;
+    // Tight tracking suits display type only: below a 110 headline it eases
+    // off, and body sizes keep the face's own spacing, so letters never crowd.
+    const tr = o.tracking || 0;
+    const track = (tr < 0 ? tr * clamp((size / u - 40) / 70) : tr) * size;
     const lineH = size * (o.leading || 1.1);
     const maxW = o.maxWidth || Infinity;
     const src = o.upper ? String(text).toUpperCase() : String(text);

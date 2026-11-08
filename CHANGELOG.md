@@ -15,6 +15,12 @@ person making a film.
   an end card, in the two colours of the icon, narrated in the chosen voice
   or timed as if spoken. The form is kept with the film, so it can be
   changed and made again. Screen recordings of the product come later.
+- Type: the tight letter spacing of a look is kept for large headlines and
+  eases off at smaller sizes, so letters never crowd.
+- Words on a button or a band are checked against the button, not the page
+  behind it, and given the colour that reads on it.
+- A drawing too plain to read (a box and a line) is set aside, and its
+  scene is laid out without one.
 
 ### Export
 - MP4 and MOV are written as video sites ask for uploads: no edit lists, a

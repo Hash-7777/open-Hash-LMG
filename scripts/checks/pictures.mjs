@@ -15,8 +15,9 @@ import { normalizeStoryboard, storyboardForModel, keepPictures } from '../../src
 import { applyPictures, picturesMessage, pictureCount, picturesPrompt, PICTURE_EXAMPLES, copiedExample } from '../../src/core/director/pictures.js';
 import { compileStoryboard } from '../../src/core/scene/compile.js';
 import { chooseDirection } from '../../src/core/scene/direction.js';
-import { lintScene, sampleTimes } from '../../src/core/scene/lint.js';
+import { lintScene, sampleTimes, autofix } from '../../src/core/scene/lint.js';
 import { STYLE_NAMES, ASPECTS } from '../../src/core/scene/format.js';
+import { normalizeScene } from '../../src/core/scene/normalize.js';
 import { createDirector, sceneForModel } from '../../src/core/director/pipeline.js';
 import { restore } from '../../src/core/director/scene-io.js';
 
@@ -265,4 +266,21 @@ await claim('the prompt asks for one everyday object built from shapes, with its
   assert.match(p, /\["rect", x, y, width, height, cornerRadius\]/); assert.match(p, /no frame or border/); assert.match(p, /copy one only when you draw that same object/);
   for (const e of PICTURE_EXAMPLES) assert.ok(p.includes(JSON.stringify(e)));
 });
+section('A drawing must carry its thing in its own outline');
+ok('two plain shapes, however accented, are set aside as too plain to read', normalizeDrawing({ name: 'ticket', shapes: [['rect', 10, 34, 80, 32, 6], ['line', 64, 34, 64, 66]], accent: [['arc', 64, 34, 7, 0, 180], ['arc', 64, 66, 7, 180, 360]] }).why === 'too plain to read');
+ok('three shapes are kept', normalizeDrawing({ name: 'seat', shapes: [['rect', 32, 10, 36, 48, 10], ['rect', 22, 56, 56, 16, 7], ['line', 30, 72, 30, 88]] }).picture !== null);
+ok('every worked example in the prompt would itself be kept', PICTURE_EXAMPLES.every((e) => normalizeDrawing(e).picture !== null));
+
+section('Words on a button are measured against the button');
+{
+  const doc = normalizeScene({ aspect: '16:9', palette: { bg: '#f3f1ec', ink: '#141414', accent: '#2a5bd4' }, scenes: [{ id: 'end', duration: 4, layers: [
+    { id: 'pill', type: 'shape', shape: 'rect', x: 0.5, y: 0.8, w: 520, h: 70, radius: 35, fill: 'accent', z: 1 },
+    { id: 'cta', type: 'text', text: 'Download it and just ask.', x: 0.5, y: 0.8, size: 30, color: 'ink', z: 2 },
+  ] }] }).scene;
+  const issues = lintScene(doc).filter((i) => i.code === 'contrast');
+  ok('dark words on a blue button are found hard to read, though the page behind is light', issues.some((i) => i.layer === 'cta'));
+  const fixed = autofix(doc, issues).scene;
+  const cta = fixed.scenes[0].layers.find((L) => L.id === 'cta');
+  ok('and are turned to the colour that reads on the button', cta.color === 'bg' && lintScene(fixed).every((i) => i.code !== 'contrast'));
+}
 done();

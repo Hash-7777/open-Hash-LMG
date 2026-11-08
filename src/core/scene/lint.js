@@ -125,7 +125,7 @@ export function lintScene(doc, opts = {}) {
       const minSize = vertical ? 34 : 26;
       if (size < minSize) add('warn', 'small-text', `"${(L.text || '').slice(0, 40)}" is set at ${Math.round(size)}, too small to read on a phone. Use ${minSize} or more.`, { scene: S.id, layer: L.id }, { kind: 'grow-text', scene: S.id, layer: L.id, to: minSize });
       const fg = resolve(doc, L.color);
-      const ratio = contrast(fg, bg);
+      const ratio = contrast(fg, behindColour(doc, S, L, bg));
       const need = size >= 48 ? 3 : 4.5;
       if (ratio < need) add('warn', 'contrast', `"${(L.text || L.id).slice(0, 40)}" is hard to see against its background (contrast ${ratio.toFixed(1)} to 1, needs ${need}).`, { scene: S.id, layer: L.id }, { kind: 'raise-contrast', scene: S.id, layer: L.id });
       if (L.type === 'text') {
@@ -301,7 +301,7 @@ export function autofix(doc, issues) {
     } else if (f.kind === 'raise-contrast') {
       const hit = findLayer(d, f.layer);
       if (!hit) continue;
-      const bg = resolve(d, hit.S.background ?? d.background.color ?? 'bg');
+      const bg = behindColour(d, hit.S, hit.L, resolve(d, hit.S.background ?? d.background.color ?? 'bg'));
       const choices = ['ink', 'bg', 'accent', 'muted'].filter((c) => c !== hit.L.color);
       const best = choices.map((c) => ({ c, r: contrast(resolve(d, c), bg) })).sort((a, b) => b.r - a.r)[0];
       if (best) { hit.L.color = best.c; applied.push(`Changed the colour of "${(hit.L.text || '').slice(0, 30)}" so it stands out from its background.`); }
@@ -375,4 +375,16 @@ export function autofix(doc, issues) {
     if (placedVoice) applied.push(grown.length ? `Laid the narration over the film again and held ${grown.length === 1 ? 'one scene' : `${grown.length} scenes`} a little longer for it.` : 'Laid the narration over the film again, each line after the one before it.');
   }
   return { scene: normalizeScene(d).scene, applied };
+}
+
+// The colour really behind a line of text: its own plate, else the topmost
+// filled shape under its point (a button, a band), else the scene's own.
+function behindColour(doc, S, L, sceneBg) {
+  if (L.plate?.color) return resolve(doc, L.plate.color);
+  const W = doc.width, H = doc.height, u = Math.min(W, H) / 1080;
+  const px = L.x * W, py = L.y * H;
+  const under = (S.layers || []).filter((M) => M !== L && M.type === 'shape' && M.fill && ['rect', 'circle', 'ellipse', 'polygon'].includes(M.shape) && (M.z ?? 0) <= (L.z ?? 0)
+    && Math.abs(M.x * W - px) <= ((M.w || 0) * u) / 2 && Math.abs(M.y * H - py) <= ((M.h || 0) * u) / 2);
+  under.sort((a, b) => (a.z ?? 0) - (b.z ?? 0));
+  return under.length ? resolve(doc, under[under.length - 1].fill) : sceneBg;
 }
