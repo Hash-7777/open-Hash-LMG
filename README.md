@@ -194,7 +194,8 @@ src/
                    loop, drawings, music, the brief check, the code check, the run record
     research/      what to look up, pages read as text, the notes
     providers/     model services, requests and streams, model sizes, voices
-    audio/         synth, score, grooves, the music kit and its player, narration mix, loudness, word timing, WAV
+    audio/         synth, score, grooves, the music kit and its player, the release score and its
+                   voice-first mix, filters, narration mix, loudness, word timing, WAV
     export/        the MP4, MOV, WebM and ZIP writers
   render/          the locked-down render worker, its host, footage frames, video export
   platform/        the desktop app or a browser: projects, files, settings and keys

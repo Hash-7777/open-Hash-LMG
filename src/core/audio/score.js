@@ -10,7 +10,8 @@
 //   soft       a brighter key, a half-time kick and a quiet glass arpeggio
 //   cinematic  wide slow chords, a low heartbeat, swells and bells, no drums
 // four played grooves with a melody of each film's own (grooves.js): bounce,
-// drive, keys and arp; and 'composed', a score a model wrote as code for this
+// drive, keys and arp; 'release', the piece a product film is narrated over,
+// with its own voice-first mix (release.js); and 'composed', a score a model wrote as code for this
 // film alone (music-kit.js), played by notes.js. A composed score with no
 // notes plays as pulse.
 //
@@ -22,6 +23,7 @@ import { Bus, SR, pad, kick, sub, tick, hat, snap, boom, swell, bell, whoosh, hi
 import { master, integratedLufs } from './master.js';
 import { GROOVES, playGroove, grooveSounds, writeMelody } from './grooves.js';
 import { playNotes } from './notes.js';
+import { makeRelease } from './release.js';
 
 const A2 = 110;
 const semi = (k) => A2 * 2 ** (k / 12);
@@ -62,6 +64,7 @@ export function scorePlan(doc) {
 // beds: [{ t, left, right, gain }], stereo 48 kHz sound from imported footage
 // and music, already trimmed and faded, laid under the narration with the score.
 export async function makeScore(doc, { onStage = null, seed = 1, voices = [], beds = [] } = {}) {
+  if (doc.sound.score === 'release') return makeRelease(doc, { voices, onStage });
   const composed = doc.sound.score === 'composed' && doc.sound.notes?.length ? doc.sound.notes : null;
   const flavor = doc.sound.score === 'composed' && !composed ? 'pulse' : doc.sound.score;
   if (flavor === 'none' && !voices.length && !beds.length) return null;

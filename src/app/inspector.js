@@ -30,7 +30,7 @@ import { createLayerPanel, layerTitle, layerActions, followsPlayhead, layerTab }
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ');
 const labelled = (list) => list.map((v) => [v, cap(v)]);
-const SCORE_LABELS = { composed: 'Composed by the model for this film', pulse: 'Pulse: deep and minimal', soft: 'Soft: bright and light', cinematic: 'Cinematic: wide, no drums', bounce: 'Bounce: playful, mallets and claps', drive: 'Drive: fast, four on the floor', keys: 'Keys: warm electric piano', arp: 'Arp: running synth, precise', none: 'No music' };
+const SCORE_LABELS = { composed: 'Composed by the model for this film', pulse: 'Pulse: deep and minimal', soft: 'Soft: bright and light', cinematic: 'Cinematic: wide, no drums', bounce: 'Bounce: playful, mallets and claps', drive: 'Drive: fast, four on the floor', keys: 'Keys: warm electric piano', arp: 'Arp: running synth, precise', release: 'Release: calm and bright, clear of the voice', none: 'No music' };
 const CAMERA_FEELS = [['inOutSine', 'Soft in and out'], ['linear', 'Even'], ['inOutCubic', 'Ease in and out'], ['outExpo', 'Fast, then slow']];
 
 function allLayers(list, out = []) {

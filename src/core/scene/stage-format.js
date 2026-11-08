@@ -9,6 +9,7 @@
 
 import { EASE_NAMES } from '../engine/ease.js';
 import { ICON_NAMES } from '../engine/stage-icons.js';
+import { normalizeRelease } from '../audio/release.js';
 
 export const STAGE_PART_KINDS = ['open', 'name', 'icon', 'steps', 'split', 'hub', 'drawings', 'figures', 'ring', 'lift', 'end'];
 const LIMIT = { parts: 200, keys: 400, items: 9, films: 9 };
@@ -83,4 +84,16 @@ export function normalizeStage(input, X) {
     })
     .filter((p) => !(p.kind === 'lift' && !p.film) && !(p.kind === 'icon' && !p.asset));
   return { camera, parts };
+}
+
+// What a product film adds to a normalised film: its stage, and its score's
+// settings (sound.release, kept by the score's own rules). normalize is the
+// scene normaliser, for the films a part shows inside the film.
+export function withProductFilm(scene, doc, normalize) {
+  const release = normalizeRelease(isObj(doc.sound) ? doc.sound.release : null, scene.duration);
+  const stage = normalizeStage(doc.stage, { duration: scene.duration, assets: scene.assets, film: (f) => normalize({ ...f, stage: undefined }).scene });
+  let out = scene;
+  if (release) out = { ...out, sound: { ...out.sound, release } };
+  if (stage) out = { ...out, stage };
+  return out;
 }

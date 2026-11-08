@@ -85,7 +85,8 @@ src/
     providers/           the model services, request and stream shapes, local model
                          sessions, model profiles, speech requests
     audio/               synthesis, the score and its played grooves, the music kit a
-                         model composes with and the player of its notes, mastering,
+                         model composes with and the player of its notes, the release
+                         score and its voice-first mix, zero-phase filters, mastering,
                          word timing, WAV
     export/              the MP4 and MOV writer, the WebM writer, the ZIP writer, H.264 sample shaping and MP3 frames,
                          export sizes
@@ -164,7 +165,7 @@ checks and every export draw it the same way.
 
 `npm run check` runs every script in `scripts/checks/`: the scene format and
 its field guard, every composition in every look and frame shape, the film
-checks, the 3D stage's projection and drawing, a film on the stage and its diagrams, the director with a scripted model, the brief check, timing and
+checks, the 3D stage's projection and drawing, a film on the stage and its diagrams, the release score and its mix, the director with a scripted model, the brief check, timing and
 narration, the person's media, drawings, music, model requests and replies,
 the rule every model question ends with, settings, the store and editing,
 sound and file writing (MP4, MOV, WebM, ZIP), the worker's walls, the content policy and the bridge to the Rust side, the run

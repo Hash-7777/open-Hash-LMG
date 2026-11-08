@@ -3,6 +3,16 @@
 What has changed in Hash LMG, newest first, grouped by what it does for the
 person making a film.
 
+## Unreleased
+
+### Sound and voice
+- A new score, Release: one calm, bright piece for a film narrated from
+  start to end, built from pure tones, with a motif of the film's own that
+  opens every quiet stretch and blooms on each hit. Its mix keeps the voice
+  first: the music dips under every line, the voice's own band is taken a
+  little further out of the music while it speaks, and soft clicks and key
+  ticks can sit on a recording's own clicks and typing.
+
 ## 1.0.0, 26 October 2026: the first release
 
 The first release, for macOS on Apple Silicon. Everything below is in it.
